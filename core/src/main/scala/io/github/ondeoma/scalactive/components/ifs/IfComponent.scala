@@ -18,10 +18,11 @@ object IfComponent extends BaseComponent {
       if (conditionV.v) {
         for {
           // Scala 3.4.0~
-          // (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
+          // (ns, children, tmpRs, eIds) <- ComponentManager(genHtml)
           t4 <- ComponentManager(genHtml)
-          (eles, children, tmpRs, eIds) = t4
-          _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
+          (ns, children, tmpRs, eIds) = t4
+          eles = ns.toHtmlElements
+          _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
         } yield {
           c.elements = eles
           c.children = children
@@ -30,7 +31,7 @@ object IfComponent extends BaseComponent {
           c
         }
       } else Right(c)
-    }
+    } 
   }
 
   def apply(conditionV: Reactive[Boolean])

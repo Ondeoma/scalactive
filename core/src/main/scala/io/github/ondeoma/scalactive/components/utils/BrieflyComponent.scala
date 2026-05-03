@@ -24,10 +24,10 @@ object BrieflyComponent extends BaseComponent {
           // Scala 3.4.0~
           // (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
           t4 <- ComponentManager(genHtml)
-          (eles, children, tmpRs, eIds) = t4
-          _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
+          (ns, children, tmpRs, eIds) = t4
+          _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
         } yield {
-          c.elements = eles
+          c.elements = ns.toHtmlElements
           c.children = children
           c.tmpReactives = tmpRs
           c.eventHandlers = eIds

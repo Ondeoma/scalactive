@@ -45,12 +45,12 @@ trait BaseComponent {
     HtmlElementsComponentController { c =>
       for {
         // scala 3.4.0~
-        // (eles, children, tmpRs, eIds) <- gen
+        // (ns, children, tmpRs, eIds) <- gen
         t4 <- gen
-        (eles, children, tmpRs, eIds) = t4
-        _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
+        (ns, children, tmpRs, eIds) = t4
+        _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
       } yield {
-        c.elements = eles
+        c.elements = ns.toHtmlElements
         c.children = children
         c.tmpReactives = tmpRs
         c.eventHandlers = eIds
@@ -69,11 +69,12 @@ trait BaseComponent {
     HtmlElementsComponentController { c =>
       for {
         // Scala 3.4.0~
-        // (eles, children, tmpRs, eIds) <- gen
+        // (ns, children, tmpRs, eIds) <- gen
         t4 <- gen
-        (eles, children, tmpRs, eIds) = t4
+        (ns, children, tmpRs, eIds) = t4
+        eles = ns.toHtmlElements
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
-        _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
+        _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
       } yield {
         c.elements = eles
         c.children = children
@@ -96,9 +97,10 @@ trait BaseComponent {
     HtmlElementsComponentController { c =>
       for {
         // Scala 3.4.0~
-        // (eles, children, tmpRs, eIds) <- gen
+        // (ns, children, tmpRs, eIds) <- gen
         t4 <- gen
-        (eles, children, tmpRs, eIds) = t4
+        (ns, children, tmpRs, eIds) = t4
+        eles = ns.toHtmlElements
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
         _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
       } yield {

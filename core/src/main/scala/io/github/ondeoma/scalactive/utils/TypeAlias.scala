@@ -22,6 +22,6 @@ object TypeAlias {
   type ElementEffectF = HTMLElement => ComponentController[?]
   type EventHandlerIds = List[ID]
   type TemporaryReactiveValues = List[Reactive[?]]
-  type GenResult = Either[String, (List[HTMLElement], ChildrenComponents, TemporaryReactiveValues, EventHandlerIds)]
+  type GenResult = Either[String, (List[Node], ChildrenComponents, TemporaryReactiveValues, EventHandlerIds)]
 
 }

@@ -27,10 +27,15 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   private lazy val eventHandlerIds = ListBuffer[ID]()
 
   def gen(): GenResult = {
-    val eles = html.toHtmlElements
-    val root = eles.root.getOrElse(document.body)
-    val children = genChildren(root)
-    children.traverse(_.init()).map(cs => (eles, cs, tmpReactives.toList, eventHandlerIds.toList))
+    val tmpDiv = mkDiv()
+    val nodes = html.toNodes
+    for {
+      _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
+      children = genChildren(tmpDiv)
+      cs <- children.traverse(_.init())
+      ns = tmpDiv.childNodes.toList
+      _ = tmpDiv.remove()
+    } yield (ns, cs, tmpReactives.toList, eventHandlerIds.toList)
   }
 
   private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {

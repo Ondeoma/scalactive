@@ -123,7 +123,7 @@ object DomUtil {
     Option(it.nextNode()) match {
       case Some(c: Comment) => f(c).some
       case _ =>
-        ConsoleUtil.debug(s"Not Found Comment: `$commentId`")
+        ConsoleUtil.error(s"Not Found Comment: `$commentId`")
         None
     }
   }
@@ -174,6 +174,10 @@ object DomUtil {
 
   def mkTemplate(): HTMLTemplateElement = {
     document.createElement("template").asInstanceOf[HTMLTemplateElement]
+  }
+
+  def mkDiv(): HTMLDivElement = {
+    document.createElement("div").asInstanceOf[HTMLDivElement]
   }
 
   def expandAttrs(attrs: Map[AttrName, String | Boolean]): String = {
@@ -306,6 +310,10 @@ object DomUtil {
       def rmClasses(clss: List[String]): Unit = {
         clss.foreach(e.classList.remove)
       }
+      
+      def childrenHtmlElements: List[HTMLElement] = {
+        e.childNodes.toList.toHtmlElements
+      }
 
     }
 
@@ -387,6 +395,14 @@ object DomUtil {
         }
       }
 
+    }
+
+    extension (nodes: List[Node]) {
+      def toHtmlElements: List[HTMLElement] = {
+        nodes.collect {
+          case e: HTMLElement => e
+        }
+      }
     }
 
     extension (eles: List[HTMLElement]) {
