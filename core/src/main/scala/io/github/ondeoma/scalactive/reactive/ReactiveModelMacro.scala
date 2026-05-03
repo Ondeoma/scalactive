@@ -10,19 +10,23 @@ object ReactiveModelMacro {
   private val basePackage = "io.github.ondeoma.scalactive.reactive"
   private val RMCompatible = s"${basePackage}.RMCompatible"
   private val ListRV = s"${basePackage}.ListRV"
-  
+
+  val collectReactivesPF: PartialFunction[Any, Reactive[?]] = {
+    case r: Reactive[?] => r
+  }
+
+  val collectReactiveModelsPF: PartialFunction[Any, ReactiveModel[?, ?]] = {
+    case rm: ReactiveModel[?, ?] => rm
+  }
+
   inline def collectReactives[A <: Product](a: A)
                                            (using m: Mirror.ProductOf[A]): List[Reactive[?]] = {
-    Tuple.fromProductTyped(a).toList.collect {
-      case r: Reactive[?] => r
-    }
+    Tuple.fromProductTyped(a).toList.collect(collectReactivesPF)
   }
 
   inline def collectReactiveModels[A <: Product](a: A)
                                                 (using m: Mirror.ProductOf[A]): List[ReactiveModel[?, ?]] = {
-    Tuple.fromProductTyped(a).toList.collect {
-      case w: ReactiveModel[?, ?] => w
-    }
+    Tuple.fromProductTyped(a).toList.collect(collectReactiveModelsPF)
   }
 
   inline def genToOrigin[O <: Product, RM <: ReactiveModel[O, RM]](inline rm: RM): O = {

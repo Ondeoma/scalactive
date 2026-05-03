@@ -1,17 +1,18 @@
 package io.github.ondeoma.scalactive.reactive
 
+import io.github.ondeoma.scalactive.components.ComponentManager
 import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.*
-import ListRV.ext.*
+import io.github.ondeoma.scalactive.reactive.ListRV.ext.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
-import io.github.ondeoma.scalactive.components.ComponentManager
-import io.github.ondeoma.scalactive.models.WatchInfo
 
-import scala.annotation.publicInBinary
+// Scala 3.4.0~
+// import scala.annotation.publicInBinary
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class ListRV[A] @publicInBinary(private var value: List[RV[A]]) extends Reactive[List[A]] {
+// class ListRV[A] @publicInBinary(private var value: List[RV[A]]) extends Reactive[List[A]] {
+class ListRV[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
   val rowLevelWatchingIdPrefix = "RLW-"
 

@@ -17,7 +17,10 @@ object IfComponent extends BaseComponent {
       c.watchInfos = List(conditionV.addWatcher(_ => c.reload()))
       if (conditionV.v) {
         for {
-          (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
+          // Scala 3.4.0~
+          // (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
+          t4 <- ComponentManager(genHtml)
+          (eles, children, tmpRs, eIds) = t4
           _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
         } yield {
           c.elements = eles

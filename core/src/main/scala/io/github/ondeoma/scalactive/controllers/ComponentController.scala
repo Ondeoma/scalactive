@@ -27,7 +27,7 @@ trait ComponentController[CC <: ComponentController[?]] {
       clear()
       init()
       restoreScrollPosition()
-    }, ScalactiveConfig.reloadTimerLazyDuration.toMillis)
+    }, ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble)
   }
 
   def backupScrollPosition(): Unit = {

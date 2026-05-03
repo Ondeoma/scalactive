@@ -44,7 +44,10 @@ trait BaseComponent {
                                  am: AddMethod): HtmlEsCC = {
     HtmlElementsComponentController { c =>
       for {
-        (eles, children, tmpRs, eIds) <- gen
+        // scala 3.4.0~
+        // (eles, children, tmpRs, eIds) <- gen
+        t4 <- gen
+        (eles, children, tmpRs, eIds) = t4
         _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
       } yield {
         c.elements = eles
@@ -65,7 +68,10 @@ trait BaseComponent {
                                           am: AddMethod): HtmlEsCC = {
     HtmlElementsComponentController { c =>
       for {
-        (eles, children, tmpRs, eIds) <- gen
+        // Scala 3.4.0~
+        // (eles, children, tmpRs, eIds) <- gen
+        t4 <- gen
+        (eles, children, tmpRs, eIds) = t4
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
         _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
       } yield {
@@ -89,7 +95,10 @@ trait BaseComponent {
                                          am: AddMethod): HtmlEsCC = {
     HtmlElementsComponentController { c =>
       for {
-        (eles, children, tmpRs, eIds) <- gen
+        // Scala 3.4.0~
+        // (eles, children, tmpRs, eIds) <- gen
+        t4 <- gen
+        (eles, children, tmpRs, eIds) = t4
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
         _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
       } yield {

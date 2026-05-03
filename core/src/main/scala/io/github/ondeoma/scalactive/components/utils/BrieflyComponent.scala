@@ -21,14 +21,17 @@ object BrieflyComponent extends BaseComponent {
       c.watchInfos = List(watcher)
       if (openV.v) {
         for {
-          (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
+          // Scala 3.4.0~
+          // (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
+          t4 <- ComponentManager(genHtml)
+          (eles, children, tmpRs, eIds) = t4
           _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
         } yield {
           c.elements = eles
           c.children = children
           c.tmpReactives = tmpRs
           c.eventHandlers = eIds
-          window.setTimeout(() => c.clearElements(), duration.toMillis)
+          window.setTimeout(() => c.clearElements(), duration.toMillis.toDouble)
           c
         }
       } else {

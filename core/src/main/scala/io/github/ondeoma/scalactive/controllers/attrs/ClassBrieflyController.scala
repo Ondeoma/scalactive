@@ -22,7 +22,7 @@ object ClassBrieflyController {
         if (rv.v) {
           ele.addClasses(clss)
           ac.nowClss = clss
-          window.setTimeout(setFalse, duration.toMillis)
+          window.setTimeout(setFalse, duration.toMillis.toDouble)
         } else setFalse()
       }
       ac.element = ele.some

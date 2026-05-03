@@ -4,6 +4,7 @@ import cats.syntax.all.*
 import org.scalajs.dom.*
 import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.controllers.ComponentController
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
 
 class StyleController(val initF: StyleController => Either[String, StyleController],
                       var element: Option[HTMLElement] = None,

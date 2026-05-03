@@ -1,9 +1,11 @@
 package io.github.ondeoma.scalactive.reactive
 
 import io.github.ondeoma.scalactive.components.ComponentManager
-import scala.annotation.publicInBinary
+// Scala 3.4.0~
+// import scala.annotation.publicInBinary
 
-class RV[A] @publicInBinary(private var value: A) extends Reactive[A] {
+// class RV[A] @publicInBinary(private var value: A) extends Reactive[A] {
+class RV[A](private var value: A) extends Reactive[A] {
 
   override def v: A = value
 

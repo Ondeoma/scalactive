@@ -20,7 +20,7 @@ object StyleBrieflyController {
       val set = () => {
         if (rv.v) {
           ele.setStyle(name, ifTrue)
-          window.setTimeout(setFalse, duration.toMillis)
+          window.setTimeout(setFalse, duration.toMillis.toDouble)
         } else setFalse()
       }
       sc.element = ele.some
