@@ -1,6 +1,6 @@
 ThisBuild / description := "A frontend framework for Scala.js"
 ThisBuild / organization := "io.github.ondeoma"
-ThisBuild / version := "0.1.5"
+ThisBuild / version := "0.1.6"
 ThisBuild / scalaVersion := "3.3.7"
 ThisBuild / homepage := Some(url("https://github.com/Ondeoma/scalactive"))
 ThisBuild / licenses := List("MIT" -> url("https://opensource.org/licenses/MIT"))
