@@ -13,9 +13,7 @@ trait BaseComponent {
   val ComponentManager = io.github.ondeoma.scalactive.components.ComponentManager(_)
 
   export io.github.ondeoma.scalactive.components.ComponentManager.*
-
-  type HtmlEsCC = NodesComponentController
-
+  
   protected def addNodesErrorMessage: String = {
     val e = s"${this.getClass.getSimpleName} Add Nodes Error!"
     ConsoleUtil.error(e)
@@ -35,9 +33,9 @@ trait BaseComponent {
   }
 
   protected def mkSimpleHtmlEsCC(gen: => GenResult,
-                                 watch: HtmlEsCC => WatchInfos = _ => Nil)
+                                 watch: NodesComponentController => WatchInfos = _ => Nil)
                                 (implicit root: HTMLElement,
-                                 am: AddMethod): HtmlEsCC = {
+                                 am: AddMethod): NodesComponentController = {
     NodesComponentController { c =>
       for {
         // scala 3.4.0~
@@ -60,9 +58,9 @@ trait BaseComponent {
   protected def mkSimpleHtmlEsWithAttrsCC(gen: => GenResult,
                                           attrs: Map[AttrName, String | Boolean],
                                           attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-                                          watch: HtmlEsCC => WatchInfos = _ => Nil)
+                                          watch: NodesComponentController => WatchInfos = _ => Nil)
                                          (implicit root: HTMLElement,
-                                          am: AddMethod): HtmlEsCC = {
+                                          am: AddMethod): NodesComponentController = {
     NodesComponentController { c =>
       for {
         // Scala 3.4.0~
@@ -89,9 +87,9 @@ trait BaseComponent {
                                          setToElement: HTMLElement => Unit,
                                          attrs: Map[AttrName, String | Boolean],
                                          attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-                                         watch: HtmlEsCC => WatchInfos = _ => Nil)
+                                         watch: NodesComponentController => WatchInfos = _ => Nil)
                                         (implicit root: HTMLElement,
-                                         am: AddMethod): HtmlEsCC = {
+                                         am: AddMethod): NodesComponentController = {
     NodesComponentController { c =>
       for {
         // Scala 3.4.0~
