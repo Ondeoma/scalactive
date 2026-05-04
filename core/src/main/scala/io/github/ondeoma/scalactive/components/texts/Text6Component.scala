@@ -1,12 +1,8 @@
 package io.github.ondeoma.scalactive.components.texts
 
 import cats.syntax.all.*
-import org.scalajs.dom.HTMLElement
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.components.BaseComponent
-import io.github.ondeoma.scalactive.controllers.TextComponentController
-import io.github.ondeoma.scalactive.models.AddMethod
-import io.github.ondeoma.scalactive.reactive.Reactive
+import org.scalajs.dom.HTMLElement
 
 object Text6Component extends BaseComponent {
 

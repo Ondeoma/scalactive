@@ -1,24 +1,20 @@
 package io.github.ondeoma.scalactive.components
 
-import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.enums.EventType.input
-import io.github.ondeoma.scalactive.syntax.All.*
-import io.github.ondeoma.scalactive.utils
-import io.github.ondeoma.scalactive.controllers.{ComponentController, HtmlElementsComponentController, HtmlElementsController}
+import io.github.ondeoma.scalactive.controllers.*
 import io.github.ondeoma.scalactive.enums.EventType
 import io.github.ondeoma.scalactive.models.AddMethod
-import io.github.ondeoma.scalactive.reactive.{RV, Reactive}
+import io.github.ondeoma.scalactive.reactive.*
 import io.github.ondeoma.scalactive.utils
 import io.github.ondeoma.scalactive.utils.ConsoleUtil
+import org.scalajs.dom.*
 
 trait BaseComponent {
 
-  export ComponentManager.*
-  export EventType.*
+  val ComponentManager = io.github.ondeoma.scalactive.components.ComponentManager(_)
 
-  type HtmlEsC[CC <: ComponentController[CC]] = HtmlElementsController[CC]
-  type HtmlEsCC = HtmlElementsComponentController
+  export io.github.ondeoma.scalactive.components.ComponentManager.*
+  
+  type HtmlEsCC = NodesComponentController
 
   protected def addNodesErrorMessage: String = {
     val e = s"${this.getClass.getSimpleName} Add Nodes Error!"
@@ -42,7 +38,7 @@ trait BaseComponent {
                                  watch: HtmlEsCC => WatchInfos = _ => Nil)
                                 (implicit root: HTMLElement,
                                  am: AddMethod): HtmlEsCC = {
-    HtmlElementsComponentController { c =>
+    NodesComponentController { c =>
       for {
         // scala 3.4.0~
         // (ns, children, tmpRs, eIds) <- gen
@@ -50,7 +46,7 @@ trait BaseComponent {
         (ns, children, tmpRs, eIds) = t4
         _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
       } yield {
-        c.elements = ns.toHtmlElements
+        c.nodes = ns
         c.children = children
         c.tmpReactives = tmpRs
         c.eventHandlers = eIds
@@ -66,7 +62,7 @@ trait BaseComponent {
                                           watch: HtmlEsCC => WatchInfos = _ => Nil)
                                          (implicit root: HTMLElement,
                                           am: AddMethod): HtmlEsCC = {
-    HtmlElementsComponentController { c =>
+    NodesComponentController { c =>
       for {
         // Scala 3.4.0~
         // (ns, children, tmpRs, eIds) <- gen
@@ -76,7 +72,7 @@ trait BaseComponent {
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
         _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
       } yield {
-        c.elements = eles
+        c.nodes = ns
         c.children = children
         c.tmpReactives = tmpRs
         c.eventHandlers = eIds
@@ -94,7 +90,7 @@ trait BaseComponent {
                                          watch: HtmlEsCC => WatchInfos = _ => Nil)
                                         (implicit root: HTMLElement,
                                          am: AddMethod): HtmlEsCC = {
-    HtmlElementsComponentController { c =>
+    NodesComponentController { c =>
       for {
         // Scala 3.4.0~
         // (ns, children, tmpRs, eIds) <- gen
@@ -104,7 +100,7 @@ trait BaseComponent {
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
         _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
       } yield {
-        c.elements = List(ele)
+        c.nodes = List(ele)
         c.watchInfos = value.addWatcher(_ => setToElement(ele)) ::
           watch(c) :::
           attrRs.map(_._2.addWatcher(_ => setAttrs(ele, attrs, attrRs))).toList

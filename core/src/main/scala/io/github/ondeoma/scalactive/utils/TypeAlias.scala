@@ -1,10 +1,10 @@
 package io.github.ondeoma.scalactive.utils
 
+import io.github.ondeoma.scalactive.components.ComponentManager
 import io.github.ondeoma.scalactive.controllers.ComponentController
-import io.github.ondeoma.scalactive.models.{AddMethod, WatchInfo}
+import io.github.ondeoma.scalactive.models.*
 import io.github.ondeoma.scalactive.reactive.Reactive
 import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.models.*
 
 object TypeAlias {
 
@@ -16,6 +16,7 @@ object TypeAlias {
   type SelectValue = String
   type SelectDisplayName = String
 
+  type CM = ComponentManager
   type WatchInfos = List[WatchInfo]
   type ChildrenComponents = List[ComponentController[?]]
   type GenComponentF = (HTMLElement, AddMethod) => ComponentController[?]

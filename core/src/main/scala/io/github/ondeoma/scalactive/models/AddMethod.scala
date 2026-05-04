@@ -1,7 +1,7 @@
 package io.github.ondeoma.scalactive.models
 
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
 
 sealed trait AddMethod
 

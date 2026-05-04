@@ -1,8 +1,7 @@
 package io.github.ondeoma.scalactive.reactive
 
-import Reactive.registerCM
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.models.WatchInfo
+import io.github.ondeoma.scalactive.reactive.Reactive.registerCM
 
 trait CRV[R] extends Reactive[R] {
 

@@ -1,12 +1,11 @@
 package io.github.ondeoma.scalactive.components.inputs.links
 
-import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.components.texts.TextComponent
-import io.github.ondeoma.scalactive.controllers.HtmlElementsComponentController
+import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
+import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.reactive.Reactive
+import org.scalajs.dom.*
 
 object LinkComponent extends BaseComponent {
 
@@ -16,7 +15,7 @@ object LinkComponent extends BaseComponent {
             onClick: Event => Unit,
             attrs: Map[AttrName, String | Boolean],
             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): HtmlElementsComponentController = {
+           ): NodesComponentController = {
     mkSimpleHtmlEsWithAttrsCC(genElement(text, onClick, attrs), attrs, attrRs)(root, am)
   }
 
@@ -24,7 +23,7 @@ object LinkComponent extends BaseComponent {
             onClick: Event => Unit,
             attrs: Map[AttrName, String | Boolean],
             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): (HTMLElement, AddMethod) => HtmlElementsComponentController = {
+           ): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, text, onClick, attrs, attrRs)
   }
 
@@ -33,7 +32,7 @@ object LinkComponent extends BaseComponent {
                          attrs: Map[AttrName, String | Boolean]): GenResult = {
     ComponentManager { implicit cm =>
       // language=html
-      s"<a ${expandAttrs(attrs)} ${ev(click, onClick)}>${c(TextComponent(text)(identity))}</a>"
+      s"<a ${expandAttrs(attrs)} ${ev(EventType.click, onClick)}>${c(TextComponent(text)(identity))}</a>"
     }
   }
 

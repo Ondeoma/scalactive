@@ -1,11 +1,10 @@
 package io.github.ondeoma.scalactive.components.inputs.buttons
 
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
-import io.github.ondeoma.scalactive.controllers.HtmlElementsComponentController
+import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.reactive.Reactive
+import org.scalajs.dom.*
 
 object ButtonComponent extends BaseComponent {
 
@@ -14,7 +13,7 @@ object ButtonComponent extends BaseComponent {
             text: String,
             onClick: Event => Unit,
             attrs: Map[AttrName, String | Boolean],
-            attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]]): HtmlElementsComponentController = {
+            attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]]): NodesComponentController = {
     mkSimpleHtmlEsWithAttrsCC(genElement(onClick, text, attrs), attrs, attrRs)(root, am)
   }
 
@@ -22,7 +21,7 @@ object ButtonComponent extends BaseComponent {
             onClick: Event => Unit,
             attrs: Map[AttrName, String | Boolean],
             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): (HTMLElement, AddMethod) => HtmlElementsComponentController = {
+           ): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, text, onClick, attrs, attrRs)
   }
 
@@ -30,7 +29,7 @@ object ButtonComponent extends BaseComponent {
                          text: String,
                          attrs: Map[AttrName, String | Boolean]) = {
     ComponentManager { implicit cc =>
-      s"""<button ${ev(click, onClick)} ${expandAttrs(attrs)}>$text</button>"""
+      s"""<button ${ev(EventType.click, onClick)} ${expandAttrs(attrs)}>$text</button>"""
     }
   }
 

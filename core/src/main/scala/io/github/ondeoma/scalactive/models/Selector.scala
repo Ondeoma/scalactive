@@ -1,10 +1,9 @@
 package io.github.ondeoma.scalactive.models
 
-import io.github.ondeoma.scalactive.enums.*
 import io.github.ondeoma.scalactive.enums.SelectorAttributeOperator.Equal
 import io.github.ondeoma.scalactive.enums.SelectorRelationCombinator.*
-import Selector.*
-import io.github.ondeoma.scalactive.enums.{SelectorAttributeOperator, SelectorRelationCombinator}
+import io.github.ondeoma.scalactive.enums.*
+import io.github.ondeoma.scalactive.models.Selector.*
 
 sealed trait Selector {
   val selector: String

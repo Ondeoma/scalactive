@@ -1,18 +1,23 @@
 package io.github.ondeoma.scalactive.components
 
 import cats.syntax.all.*
-import io.github.ondeoma.scalactive.components.fors.{ForLRComponent, ForRMComponent, ForRVComponent, ForStaticComponent}
-import org.scalajs.dom.*
+import io.github.ondeoma.scalactive.components.*
+import io.github.ondeoma.scalactive.components.fors.*
+import io.github.ondeoma.scalactive.components.ifs.*
+import io.github.ondeoma.scalactive.components.inputs.*
+import io.github.ondeoma.scalactive.components.texts.*
+import io.github.ondeoma.scalactive.components.utils.*
+import io.github.ondeoma.scalactive.controllers.*
+import io.github.ondeoma.scalactive.controllers.attrs.*
+import io.github.ondeoma.scalactive.controllers.events.*
+import io.github.ondeoma.scalactive.enums.*
+import io.github.ondeoma.scalactive.facades.Crypto.*
+import io.github.ondeoma.scalactive.models.*
+import io.github.ondeoma.scalactive.models.Selector.*
 import io.github.ondeoma.scalactive.reactive.*
-import io.github.ondeoma.scalactive.syntax.All.*
+import io.github.ondeoma.scalactive.utils.DomUtil.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
-import io.github.ondeoma.scalactive.components.ifs.IfComponent
-import io.github.ondeoma.scalactive.controllers.ComponentController
-import io.github.ondeoma.scalactive.controllers.attrs.{ClassBooleanController, ClassStringController, ClassStringsController, StyleBrieflyController, StyleToggleController}
-import io.github.ondeoma.scalactive.controllers.events.EventController
-import io.github.ondeoma.scalactive.enums.{EventType, SelectorAttributeOperator}
-import io.github.ondeoma.scalactive.models.AddMethod
-import io.github.ondeoma.scalactive.reactive.{CRV, ListRM, ListRV, RV, Reactive, ReactiveModel}
+import org.scalajs.dom.*
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
@@ -62,6 +67,70 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 }
 
 object ComponentManager {
+
+  export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
+  export io.github.ondeoma.scalactive.components.fors.ForLRComponent
+  export io.github.ondeoma.scalactive.components.fors.ForRMComponent
+  export io.github.ondeoma.scalactive.components.fors.ForRVComponent
+  export io.github.ondeoma.scalactive.components.fors.ForStaticComponent
+  export io.github.ondeoma.scalactive.components.htmls.HtmlComponent
+  export io.github.ondeoma.scalactive.components.htmls.Html2Component
+  export io.github.ondeoma.scalactive.components.htmls.Html3Component
+  export io.github.ondeoma.scalactive.components.htmls.Html4Component
+  export io.github.ondeoma.scalactive.components.htmls.Html5Component
+  export io.github.ondeoma.scalactive.components.htmls.Html6Component
+  export io.github.ondeoma.scalactive.components.ifs.IfComponent
+  export io.github.ondeoma.scalactive.components.inputs.buttons.ButtonComponent
+  export io.github.ondeoma.scalactive.components.inputs.checkboxes.CheckboxBooleanComponent
+  export io.github.ondeoma.scalactive.components.inputs.checkboxes.CheckboxGeneralComponent
+  export io.github.ondeoma.scalactive.components.inputs.checkboxes.CheckboxGroupPartComponent
+  export io.github.ondeoma.scalactive.components.inputs.files.FileInputComponent
+  export io.github.ondeoma.scalactive.components.inputs.links.LinkComponent
+  export io.github.ondeoma.scalactive.components.inputs.links.LinkStaticComponent
+  export io.github.ondeoma.scalactive.components.inputs.radios.RadioGeneralComponent
+  export io.github.ondeoma.scalactive.components.inputs.radios.RadioStringComponent
+  export io.github.ondeoma.scalactive.components.inputs.selects.SelectGeneralComponent
+  export io.github.ondeoma.scalactive.components.inputs.selects.SelectStringComponent
+  export io.github.ondeoma.scalactive.components.inputs.textareas.TextAreaComponent
+  export io.github.ondeoma.scalactive.components.inputs.texts.TextInputGeneralComponent
+  export io.github.ondeoma.scalactive.components.inputs.texts.TextInputStringComponent
+  export io.github.ondeoma.scalactive.components.texts.TextComponent
+  export io.github.ondeoma.scalactive.components.texts.Text2Component
+  export io.github.ondeoma.scalactive.components.texts.Text3Component
+  export io.github.ondeoma.scalactive.components.texts.Text4Component
+  export io.github.ondeoma.scalactive.components.texts.Text5Component
+  export io.github.ondeoma.scalactive.components.texts.Text6Component
+  
+  export io.github.ondeoma.scalactive.controllers.NodesComponentController
+  export io.github.ondeoma.scalactive.controllers.TextComponentController
+  export io.github.ondeoma.scalactive.controllers.events.EventController
+
+  export io.github.ondeoma.scalactive.enums.AdjacentPosition
+  export io.github.ondeoma.scalactive.enums.EventType
+  export io.github.ondeoma.scalactive.enums.HtmlInputType
+  export io.github.ondeoma.scalactive.enums.HtmlInputType.StringInputType
+  export io.github.ondeoma.scalactive.enums.SelectorAttributeOperator
+  export io.github.ondeoma.scalactive.enums.SelectorCaseInsensitive
+  export io.github.ondeoma.scalactive.enums.SelectorRelationCombinator
+  export io.github.ondeoma.scalactive.models.AddMethod
+  export io.github.ondeoma.scalactive.models.Selector
+  export io.github.ondeoma.scalactive.models.Selector.*
+  export io.github.ondeoma.scalactive.models.WatchInfo
+
+  export io.github.ondeoma.scalactive.reactive.CRV
+  export io.github.ondeoma.scalactive.reactive.ListRM
+  export io.github.ondeoma.scalactive.reactive.ListRV
+  export io.github.ondeoma.scalactive.reactive.Reactive
+  export io.github.ondeoma.scalactive.reactive.ReactiveModel
+  export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro
+  export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
+  export io.github.ondeoma.scalactive.reactive.RMCompatible
+  export io.github.ondeoma.scalactive.reactive.RMCompatible.*
+  export io.github.ondeoma.scalactive.reactive.RV
+
+  export io.github.ondeoma.scalactive.utils.ConsoleUtil.*
+  export io.github.ondeoma.scalactive.utils.DomUtil.*
+  export io.github.ondeoma.scalactive.utils.TypeAlias.*
 
   def apply(f: ComponentManager => HTML): GenResult = {
     new ComponentManager(f).gen()

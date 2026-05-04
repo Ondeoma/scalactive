@@ -1,11 +1,10 @@
-package io.github.ondeoma.scalactive.components.texts
+package io.github.ondeoma.scalactive.components.htmls
 
-import org.scalajs.dom.HTMLElement
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.components.BaseComponent
 import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.reactive.Reactive
+import org.scalajs.dom.HTMLElement
 
 object Html4Component extends BaseComponent {
 

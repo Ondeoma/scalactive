@@ -1,6 +1,6 @@
 package io.github.ondeoma.scalactive.enums
 
-import EventType.*
+import io.github.ondeoma.scalactive.enums.EventType.*
 
 enum AdjacentPosition {
 

@@ -1,8 +1,8 @@
 package io.github.ondeoma.scalactive.reactive
 
 import io.github.ondeoma.scalactive.facades.Crypto.*
-import io.github.ondeoma.scalactive.utils.TypeAlias.ID
 import io.github.ondeoma.scalactive.models.WatchInfo
+import io.github.ondeoma.scalactive.utils.TypeAlias.ID
 
 import scala.collection.mutable
 
@@ -41,6 +41,7 @@ abstract class Reactive[A] {
 object Reactive {
   inline def registerCM(rv: Reactive[?]): Unit = {
     import io.github.ondeoma.scalactive.components.ComponentManager
+
     import scala.compiletime.summonFrom
 
     summonFrom {

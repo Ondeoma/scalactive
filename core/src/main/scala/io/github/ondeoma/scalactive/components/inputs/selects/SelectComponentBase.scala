@@ -1,10 +1,10 @@
 package io.github.ondeoma.scalactive.components.inputs.selects
 
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.models.AddMethod.append
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
+import io.github.ondeoma.scalactive.models.AddMethod.append
 import io.github.ondeoma.scalactive.reactive.{CRV, RV, Reactive}
-import io.github.ondeoma.scalactive.syntax.All.*
+import org.scalajs.dom.*
+
 
 trait SelectComponentBase extends BaseComponent {
 
@@ -38,7 +38,7 @@ trait SelectComponentBase extends BaseComponent {
         s"""<option value="${s._1}" $selected>${s._2}</option>"""
       }
       // language=html
-      s"""<select ${ev(input, _.ifSelect(ele => rv := fromSV(ele.value)))}>
+      s"""<select ${ev(EventType.input, _.ifSelect(ele => rv := fromSV(ele.value)))}>
          |    $options
          |</select>""".stripMargin
     }

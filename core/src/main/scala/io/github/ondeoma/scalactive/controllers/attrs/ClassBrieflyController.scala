@@ -1,9 +1,9 @@
 package io.github.ondeoma.scalactive.controllers.attrs
 
 import cats.syntax.all.*
+import io.github.ondeoma.scalactive.reactive.*
+import io.github.ondeoma.scalactive.utils.DomUtil.*
 import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
-import io.github.ondeoma.scalactive.reactive.Reactive
 
 import scala.concurrent.duration.FiniteDuration
 

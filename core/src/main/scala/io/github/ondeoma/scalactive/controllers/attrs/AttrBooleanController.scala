@@ -1,9 +1,8 @@
 package io.github.ondeoma.scalactive.controllers.attrs
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.reactive.Reactive
+import org.scalajs.dom.*
 
 object AttrBooleanController {
 

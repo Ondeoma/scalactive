@@ -1,7 +1,7 @@
 package io.github.ondeoma.scalactive.controllers
 
-import org.scalajs.dom.Text
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
+import org.scalajs.dom.Text
 
 class TextComponentController(val initF: TextComponentController => Either[String, TextComponentController],
                               var text: Option[Text] = None,

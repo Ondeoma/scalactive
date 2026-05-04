@@ -1,6 +1,5 @@
 package io.github.ondeoma.scalactive.reactive
 
-import io.github.ondeoma.scalactive.components.ComponentManager
 import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.WatchInfo
 import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.toRMs

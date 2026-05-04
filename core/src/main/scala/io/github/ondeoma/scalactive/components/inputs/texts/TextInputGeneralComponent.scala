@@ -1,14 +1,10 @@
 package io.github.ondeoma.scalactive.components.inputs.texts
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.enums.EventType.*
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
-import io.github.ondeoma.scalactive.syntax.All.*
-import io.github.ondeoma.scalactive.controllers.HtmlElementsComponentController
 import io.github.ondeoma.scalactive.enums.EventType
-import io.github.ondeoma.scalactive.models.AddMethod
-import io.github.ondeoma.scalactive.reactive.{RV, Reactive}
+import io.github.ondeoma.scalactive.enums.EventType.*
+import org.scalajs.dom.*
 
 object TextInputGeneralComponent extends BaseComponent {
 
@@ -21,7 +17,7 @@ object TextInputGeneralComponent extends BaseComponent {
                attrs: Map[AttrName, String | Boolean],
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
                updateEvents: List[EventType],
-              ): HtmlElementsComponentController = {
+              ): NodesComponentController = {
     mkSimpleHtmlEsInputCC(
       value,
       genElement(value, fromS, inputType, updateEvents),
@@ -38,7 +34,7 @@ object TextInputGeneralComponent extends BaseComponent {
                attrs: Map[AttrName, String | Boolean],
                attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
                updateEvents: List[EventType],
-              ): (HTMLElement, AddMethod) => HtmlElementsComponentController = {
+              ): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, inputType, value, fromS, toS, attrs, attrRVs, updateEvents)
   }
 

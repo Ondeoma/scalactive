@@ -1,7 +1,5 @@
 package io.github.ondeoma.scalactive.reactive
 
-import RMCompatible.*
-
 trait RMCompatible[A, M <: ReactiveModel[A, M]] {
   def toReactiveModel(a: A): M
 }

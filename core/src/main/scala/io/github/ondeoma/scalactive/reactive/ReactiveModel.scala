@@ -1,6 +1,6 @@
 package io.github.ondeoma.scalactive.reactive
 
-import RMCompatible.ext.toRM
+import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.toRM
 import io.github.ondeoma.scalactive.utils.TypeAlias.WatchInfos
 
 trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Product {

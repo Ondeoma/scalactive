@@ -17,5 +17,5 @@ object ScalactiveConfig {
    * 有効にする場合はtrue。
    */
   var keepWindowScrollPositionWhenReload: Boolean = true
-  
+
 }

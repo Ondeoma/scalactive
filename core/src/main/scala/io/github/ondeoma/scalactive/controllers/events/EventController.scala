@@ -1,12 +1,12 @@
 package io.github.ondeoma.scalactive.controllers.events
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.utils.DomUtil.*
-import io.github.ondeoma.scalactive.reactive.*
-import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import io.github.ondeoma.scalactive.controllers.ComponentController
 import io.github.ondeoma.scalactive.enums.EventType
+import io.github.ondeoma.scalactive.reactive.*
+import io.github.ondeoma.scalactive.utils.DomUtil.*
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
+import org.scalajs.dom.*
 
 class EventController(val initF: EventController => Either[String, EventController],
                       var element: Option[HTMLElement] = None,

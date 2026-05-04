@@ -1,13 +1,12 @@
 package io.github.ondeoma.scalactive.utils
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import org.scalajs.dom.document.body
-import io.github.ondeoma.scalactive.syntax.All.*
-import TypeAlias.*
 import io.github.ondeoma.scalactive.enums.EventType
 import io.github.ondeoma.scalactive.models.{AddMethod, Selector}
 import io.github.ondeoma.scalactive.reactive.Reactive
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
+import org.scalajs.dom.*
+import org.scalajs.dom.document.body
 
 import scala.language.implicitConversions
 import scala.scalajs.js
@@ -106,7 +105,7 @@ object DomUtil {
   }
 
   implicit def sToET(s: String): EventType = {
-    CustomEventType(s)
+    EventType.CustomEventType(s)
   }
 
   def withComment[A](root: HTMLElement = body)
@@ -217,7 +216,7 @@ object DomUtil {
 
   object Ext {
 
-    extension (e: Element) {
+    extension (e: Node) {
       def toHtml: Option[HTMLElement] = {
         e match {
           case e: HTMLElement => Some(e)
@@ -272,6 +271,12 @@ object DomUtil {
         }
       }
 
+      def childrenHtmlElements: List[HTMLElement] = {
+        e.childNodes.toList.toHtmlElements
+      }
+    }
+
+    extension (e: Element) {
       def addClass(c: String): Unit = {
         e.classList.add(c)
       }
@@ -310,11 +315,6 @@ object DomUtil {
       def rmClasses(clss: List[String]): Unit = {
         clss.foreach(e.classList.remove)
       }
-      
-      def childrenHtmlElements: List[HTMLElement] = {
-        e.childNodes.toList.toHtmlElements
-      }
-
     }
 
     extension (et: EventTarget) {

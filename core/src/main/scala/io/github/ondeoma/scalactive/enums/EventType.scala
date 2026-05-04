@@ -1,6 +1,6 @@
 package io.github.ondeoma.scalactive.enums
 
-import EventType.*
+import io.github.ondeoma.scalactive.enums.EventType.*
 
 sealed abstract class EventType(name: String) {
   override def toString: String = name

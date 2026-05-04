@@ -1,12 +1,11 @@
 package io.github.ondeoma.scalactive.components.inputs.checkboxes
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.components.BaseComponent
-import io.github.ondeoma.scalactive.controllers.HtmlElementsComponentController
+import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.reactive.{RV, Reactive}
+import org.scalajs.dom.*
 
 object CheckboxGroupPartComponent extends BaseComponent {
 
@@ -16,7 +15,7 @@ object CheckboxGroupPartComponent extends BaseComponent {
             values: RV[List[String]],
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): HtmlElementsComponentController = {
+           ): NodesComponentController = {
     CheckboxGeneralComponent[List[String]](root, am, values, value,
       ele =>
         if (ele.checked) (ele.value :: values.v).distinct
@@ -31,7 +30,7 @@ object CheckboxGroupPartComponent extends BaseComponent {
             values: RV[List[String]],
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): (HTMLElement, AddMethod) => HtmlElementsComponentController = {
+           ): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, value, values, attrs, attrRVs)
   }
 

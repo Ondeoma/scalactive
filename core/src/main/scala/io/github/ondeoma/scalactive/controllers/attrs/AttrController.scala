@@ -1,10 +1,9 @@
 package io.github.ondeoma.scalactive.controllers.attrs
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.controllers.ComponentController
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
+import org.scalajs.dom.*
 
 class AttrController(val initF: AttrController => Either[String, AttrController],
                      var element: Option[HTMLElement] = None,

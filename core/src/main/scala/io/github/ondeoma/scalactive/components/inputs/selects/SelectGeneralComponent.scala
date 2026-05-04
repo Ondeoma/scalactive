@@ -1,11 +1,11 @@
 package io.github.ondeoma.scalactive.components.inputs.selects
 
 import cats.syntax.all.*
+import io.github.ondeoma.scalactive.controllers.*
+import io.github.ondeoma.scalactive.models.*
+import io.github.ondeoma.scalactive.reactive.*
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
-import io.github.ondeoma.scalactive.controllers.HtmlElementsComponentController
-import io.github.ondeoma.scalactive.models.AddMethod
-import io.github.ondeoma.scalactive.reactive.{RV, Reactive}
 
 object SelectGeneralComponent extends SelectComponentBase {
 
@@ -17,7 +17,7 @@ object SelectGeneralComponent extends SelectComponentBase {
                toSV: A => SelectValue,
                attrs: Map[AttrName, String | Boolean],
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-              ): HtmlElementsComponentController = {
+              ): NodesComponentController = {
     mkSimpleHtmlEsInputCC(
       rv,
       genElement(selects, rv, toSV, fromSV),
@@ -33,7 +33,7 @@ object SelectGeneralComponent extends SelectComponentBase {
                toSelected: A => SelectValue,
                attrs: Map[AttrName, String | Boolean],
                attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-              ): (HTMLElement, AddMethod) => HtmlElementsComponentController = {
+              ): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, selects, rv, fromSelected, toSelected, attrs, attrRVs)
   }
 

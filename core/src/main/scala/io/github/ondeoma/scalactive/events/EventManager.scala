@@ -1,6 +1,9 @@
 package io.github.ondeoma.scalactive.events
 
-import io.github.ondeoma.scalactive.syntax.All.*
+
+import io.github.ondeoma.scalactive.facades.Crypto.randomUUID
+import io.github.ondeoma.scalactive.utils.DomUtil.*
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
 
 import scala.collection.mutable
 
@@ -22,6 +25,7 @@ object EventManager {
 
   inline def registerCM(id: ID): Unit = {
     import io.github.ondeoma.scalactive.components.ComponentManager
+
     import scala.compiletime.summonFrom
 
     summonFrom {

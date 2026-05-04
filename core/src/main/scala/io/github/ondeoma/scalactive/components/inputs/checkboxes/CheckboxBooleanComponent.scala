@@ -1,12 +1,11 @@
 package io.github.ondeoma.scalactive.components.inputs.checkboxes
 
 import cats.syntax.all.*
-import org.scalajs.dom.*
-import io.github.ondeoma.scalactive.syntax.All.*
 import io.github.ondeoma.scalactive.components.BaseComponent
-import io.github.ondeoma.scalactive.controllers.HtmlElementsComponentController
+import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.reactive.{RV, Reactive}
+import org.scalajs.dom.*
 
 object CheckboxBooleanComponent extends BaseComponent {
 
@@ -15,14 +14,14 @@ object CheckboxBooleanComponent extends BaseComponent {
             rv: RV[Boolean],
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): HtmlElementsComponentController = {
+           ): NodesComponentController = {
     CheckboxGeneralComponent[Boolean](root, am, rv, "", _.checked, identity, attrs, attrRVs)
   }
 
   def apply(rv: RV[Boolean],
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-           ): (HTMLElement, AddMethod) => HtmlElementsComponentController = {
+           ): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, rv, attrs, attrRVs)
   }
 
