@@ -13,7 +13,7 @@ trait BaseComponent {
   val ComponentManager = io.github.ondeoma.scalactive.components.ComponentManager(_)
 
   export io.github.ondeoma.scalactive.components.ComponentManager.*
-  
+
   type HtmlEsCC = NodesComponentController
 
   protected def addNodesErrorMessage: String = {
@@ -44,7 +44,7 @@ trait BaseComponent {
         // (ns, children, tmpRs, eIds) <- gen
         t4 <- gen
         (ns, children, tmpRs, eIds) = t4
-        fixedNs = ns.orDummyNode 
+        fixedNs = ns.orDummyNode
         _ <- addNodes(root)(am, fixedNs *).toRight(addNodesErrorMessage)
       } yield {
         c.nodes = fixedNs
@@ -74,6 +74,7 @@ trait BaseComponent {
         _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
       } yield {
         c.nodes = ns
+        c.watchInfos = watch(c) ::: attrRs.map(_._2.addWatcher(_ => setAttrs(ele, attrs, attrRs))).toList
         c.children = children
         c.tmpReactives = tmpRs
         c.eventHandlers = eIds
