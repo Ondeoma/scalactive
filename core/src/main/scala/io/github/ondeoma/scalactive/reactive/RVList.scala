@@ -3,7 +3,7 @@ package io.github.ondeoma.scalactive.reactive
 import io.github.ondeoma.scalactive.components.ComponentManager
 import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.*
-import io.github.ondeoma.scalactive.reactive.ListRV.ext.*
+import io.github.ondeoma.scalactive.reactive.RVList.ext.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 
 // Scala 3.4.0~
@@ -11,8 +11,8 @@ import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-// class ListRV[A] @publicInBinary(private var value: List[RV[A]]) extends Reactive[List[A]] {
-class ListRV[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
+// class RVList[A] @publicInBinary(private var value: List[RV[A]]) extends Reactive[List[A]] {
+class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
   val rowLevelWatchingIdPrefix = "RLW-"
 
@@ -127,24 +127,24 @@ class ListRV[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
 }
 
-object ListRV {
+object RVList {
 
   import Reactive.*
 
-  inline def apply[A](value: List[RV[A]]): ListRV[A] = {
-    val rv = new ListRV[A](value)
+  inline def apply[A](value: List[RV[A]]): RVList[A] = {
+    val rv = new RVList[A](value)
     registerCM(rv)
     rv
   }
 
   def toRVs[A](as: List[A]): List[RV[A]] = as.map(a => RV(a))
 
-  def toListRV[A](as: List[A]): ListRV[A] = ListRV(toRVs(as))
+  def toRVList[A](as: List[A]): RVList[A] = RVList(toRVs(as))
 
   object ext {
     extension [A](list: List[A]) {
       def toRVs: List[RV[A]] = list.map(a => RV(a))
-      def toListRV: ListRV[A] = ListRV(toRVs)
+      def toRVList: RVList[A] = RVList(toRVs)
     }
   }
 }

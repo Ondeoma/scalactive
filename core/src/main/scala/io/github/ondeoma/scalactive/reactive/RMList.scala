@@ -11,8 +11,8 @@ import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-// class ListRM[A, RM <: ReactiveModel[A, RM]] @publicInBinary(private var value: List[RM]) extends Reactive[List[A]] {
-class ListRM[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends Reactive[List[A]] {
+// class RMList[A, RM <: ReactiveModel[A, RM]] @publicInBinary(private var value: List[RM]) extends Reactive[List[A]] {
+class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends Reactive[List[A]] {
 
   val rowLevelWatchingIdPrefix = "RLW-"
 
@@ -150,12 +150,12 @@ class ListRM[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
 
 }
 
-object ListRM {
+object RMList {
 
   import Reactive.*
 
-  inline def apply[A, RM <: ReactiveModel[A, RM]](value: List[RM]): ListRM[A, RM] = {
-    val rv = new ListRM[A, RM](value)
+  inline def apply[A, RM <: ReactiveModel[A, RM]](value: List[RM]): RMList[A, RM] = {
+    val rv = new RMList[A, RM](value)
     registerCM(rv)
     rv
   }

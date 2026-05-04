@@ -16,9 +16,9 @@ object RMCompatible {
     as.map(toRM)
   }
 
-  def toListRM[A, M <: ReactiveModel[A, M]](as: List[A])
-                                           (using rmc: RMCompatible[A, M]): ListRM[A, M] = {
-    ListRM(toRMs(as))
+  def toRMList[A, M <: ReactiveModel[A, M]](as: List[A])
+                                           (using rmc: RMCompatible[A, M]): RMList[A, M] = {
+    RMList(toRMs(as))
   }
 
   object ext {
@@ -36,8 +36,8 @@ object RMCompatible {
         as.map(toRM)
       }
 
-      def toListRM: ListRM[A, M] = {
-        ListRM(toRMs)
+      def toRMList: RMList[A, M] = {
+        RMList(toRMs)
       }
     }
 

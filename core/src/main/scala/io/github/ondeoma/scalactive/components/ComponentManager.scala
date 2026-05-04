@@ -119,8 +119,9 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.models.WatchInfo
 
   export io.github.ondeoma.scalactive.reactive.CRV
-  export io.github.ondeoma.scalactive.reactive.ListRM
-  export io.github.ondeoma.scalactive.reactive.ListRV
+  export io.github.ondeoma.scalactive.reactive.ReactiveList
+  export io.github.ondeoma.scalactive.reactive.RMList
+  export io.github.ondeoma.scalactive.reactive.RVList
   export io.github.ondeoma.scalactive.reactive.Reactive
   export io.github.ondeoma.scalactive.reactive.ReactiveModel
   export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro
@@ -225,13 +226,13 @@ object ComponentManager {
     %(ForStaticComponent(forV)(genHtml))
   }
 
-  def forC[A](forV: ListRV[A])
+  def forC[A](forV: RVList[A])
              (genHtml: (ComponentManager, RV[A], IDX) => HTML)
              (using ComponentManager): HTML = {
     %(ForRVComponent(forV)(genHtml))
   }
 
-  def forC[A, RM <: ReactiveModel[A, RM]](forV: ListRM[A, RM])
+  def forC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM])
                                          (genHtml: (ComponentManager, RM, IDX) => HTML)
                                          (using ComponentManager): HTML = {
     %(ForRMComponent(forV)(genHtml))
@@ -244,6 +245,12 @@ object ComponentManager {
   }
 
   def forC[A](forV: RV[List[A]])
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV)(genHtml))
+  }
+  
+  def forC[A](forV: ReactiveList[A])
              (genHtml: (ComponentManager, A, IDX) => HTML)
              (using ComponentManager): HTML = {
     %(ForLRComponent(forV)(genHtml))

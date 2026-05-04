@@ -9,7 +9,7 @@ object ReactiveModelMacro {
 
   private val basePackage = "io.github.ondeoma.scalactive.reactive"
   private val RMCompatible = s"${basePackage}.RMCompatible"
-  private val ListRV = s"${basePackage}.ListRV"
+  private val RVList = s"${basePackage}.RVList"
 
   val collectReactivesPF: PartialFunction[Any, Reactive[?]] = {
     case r: Reactive[?] => r
@@ -133,7 +133,7 @@ object ReactiveModelMacro {
     val orgType: TypeRepr = TypeRepr.of[O].dealias
     val orgFields: List[Symbol] = orgType.typeSymbol.caseFields
     val rmCompatible: Ref = Ref(Symbol.requiredModule(RMCompatible))
-    val listRV: Ref = Ref(Symbol.requiredModule(ListRV))
+    val rvList: Ref = Ref(Symbol.requiredModule(RVList))
 
     val argsForConstructor: List[Term] = rmFields.flatMap { rmField =>
       val name = rmField.name
@@ -148,10 +148,10 @@ object ReactiveModelMacro {
         } else if (isListRM) {
           val orgTypeInList = orgFieldType.dealias.typeArgs.head // List[ここ]
           val rnTypeInListRM2 = rmFType.dealias.typeArgs(1) // ListRM[?, ここ]
-          Select.overloaded(rmCompatible, "toListRM", List(orgTypeInList, rnTypeInListRM2), List(orgFieldSelect))
+          Select.overloaded(rmCompatible, "toRMList", List(orgTypeInList, rnTypeInListRM2), List(orgFieldSelect))
         } else if (isListRV) {
           val orgTypeInList = orgFieldType.dealias.typeArgs.head // List[ここ]
-          Select.overloaded(listRV, "toListRV", List(orgTypeInList), List(orgFieldSelect))
+          Select.overloaded(rvList, "toRVList", List(orgTypeInList), List(orgFieldSelect))
         } else if (isRV) {
           Select.overloaded(New(TypeTree.of[RV]), "<init>", List(orgFieldType), List(orgFieldSelect))
         } else {
@@ -178,8 +178,8 @@ object ReactiveModelMacro {
     val s = t.typeSymbol
     val isRV = s == TypeRepr.of[RV[?]].typeSymbol
     val isRM = t <:< TypeRepr.of[ReactiveModel[?, ?]]
-    val isListRV = s == TypeRepr.of[ListRV[?]].typeSymbol
-    val isListRM = s == TypeRepr.of[ListRM[?, ?]].typeSymbol
+    val isListRV = s == TypeRepr.of[RVList[?]].typeSymbol
+    val isListRM = s == TypeRepr.of[RMList[?, ?]].typeSymbol
     (isRV, isRM, isListRV, isListRM)
   }
 
