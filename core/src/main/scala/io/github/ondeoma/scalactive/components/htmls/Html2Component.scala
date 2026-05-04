@@ -12,9 +12,9 @@ object Html2Component extends BaseComponent {
                   m: AddMethod,
                   rv1: Reactive[A],
                   rv2: Reactive[B],
-                  formatter: (A, B) => String): NodesComponentController = {
+                  formatter: (A, B) => HTML): NodesComponentController = {
     NodesComponentController { c =>
-      val nodes = addHtml(root)(m, formatter(rv1.v, rv2.v))
+      val nodes = addHtml(root)(m, formatter(rv1.v, rv2.v)).orDummyNode
       val wis = List(
         rv1.addWatcher(_ => c.reload()),
         rv2.addWatcher(_ => c.reload()),

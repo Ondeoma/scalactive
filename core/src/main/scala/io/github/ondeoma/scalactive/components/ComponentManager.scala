@@ -33,7 +33,8 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 
   def gen(): GenResult = {
     val tmpDiv = mkDiv()
-    val nodes = html.toNodes
+    // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
+    val nodes = html.toNodes.orDummyNode 
     for {
       _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
       children = genChildren(tmpDiv)

@@ -50,7 +50,7 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
 
   private def saveParent(): Unit = {
     parent = for {
-      h <- elements.headOption
+      h <- nodes.headOption
       p = h.parentNode
       h <- p.toHtml
     } yield h

@@ -403,6 +403,11 @@ object DomUtil {
           case e: HTMLElement => e
         }
       }
+      
+      def orDummyNode: List[Node] = {
+        if (nodes.isEmpty) List(new Comment)
+        else nodes
+      }
     }
 
     extension (eles: List[HTMLElement]) {

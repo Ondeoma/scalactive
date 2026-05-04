@@ -15,7 +15,7 @@ object ForGeneralComponent extends BaseComponent {
     NodesComponentController { c =>
       for {
         e_cs <- toList(values).zipWithIndex.traverse { (rv, i) => ComponentManager(genHtml(_, rv, i)) }
-        ns = e_cs.flatMap(_._1)
+        ns = e_cs.flatMap(_._1).orDummyNode // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
         children = e_cs.flatMap(_._2)
         tmpRs = e_cs.flatMap(_._3)
         _ <- addNodes(c.parent.getOrElse(root))(am, ns *).toRight(addNodesErrorMessage)

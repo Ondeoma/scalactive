@@ -13,7 +13,7 @@ object HtmlComponent extends BaseComponent {
                rv1: Reactive[A],
                formatter: A => HTML = (a: A) => a.toString): NodesComponentController = {
     NodesComponentController { c =>
-      val nodes = addHtml(root)(m, formatter(rv1.v))
+      val nodes = addHtml(root)(m, formatter(rv1.v)).orDummyNode
       val wis = List(
         rv1.addWatcher(_ => c.reload()),
       )

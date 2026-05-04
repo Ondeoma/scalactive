@@ -28,7 +28,15 @@ object IfComponent extends BaseComponent {
           c.eventHandlers = eIds
           c
         }
-      } else Right(c)
+      } else {
+        val ns = List(new Comment)
+        for {
+          _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
+        } yield {
+          c.nodes = ns
+          c
+        }
+      }
     }
   }
 
