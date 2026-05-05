@@ -2,8 +2,6 @@ package io.github.ondeoma.scalactive.components.htmls
 
 import io.github.ondeoma.scalactive.components.BaseComponent
 import io.github.ondeoma.scalactive.controllers.NodesComponentController
-import io.github.ondeoma.scalactive.models.AddMethod
-import io.github.ondeoma.scalactive.reactive.Reactive
 import org.scalajs.dom.HTMLElement
 
 object HtmlComponent extends BaseComponent {
@@ -13,7 +11,8 @@ object HtmlComponent extends BaseComponent {
                rv1: Reactive[A],
                formatter: A => HTML = (a: A) => a.toString): NodesComponentController = {
     NodesComponentController { c =>
-      val nodes = addHtml(c.parent.getOrElse(root))(m, formatter(rv1.v)).orDummyNode
+      val nodes = formatter(rv1.v).toNodes.orDummyNode
+      addNodes(c.parent.getOrElse(root))(m, nodes *)
       val wis = List(
         rv1.addWatcher(_ => c.reload()),
       )

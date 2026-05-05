@@ -14,7 +14,8 @@ object Html2Component extends BaseComponent {
                   rv2: Reactive[B],
                   formatter: (A, B) => HTML): NodesComponentController = {
     NodesComponentController { c =>
-      val nodes = addHtml(c.parent.getOrElse(root))(m, formatter(rv1.v, rv2.v)).orDummyNode
+      val nodes = formatter(rv1.v, rv2.v).toNodes.orDummyNode
+      addNodes(c.parent.getOrElse(root))(m, nodes *)
       val wis = List(
         rv1.addWatcher(_ => c.reload()),
         rv2.addWatcher(_ => c.reload()),
