@@ -13,6 +13,7 @@ object IfComponent extends BaseComponent {
             conditionV: Reactive[Boolean])
            (genHtml: ComponentManager => HTML): NodesComponentController = {
     NodesComponentController { c =>
+      val parent = c.parent.getOrElse(root)
       c.watchInfos = List(conditionV.addWatcher(_ => c.reload()))
       if (conditionV.v) {
         for {
@@ -20,7 +21,7 @@ object IfComponent extends BaseComponent {
           // (ns, children, tmpRs, eIds) <- ComponentManager(genHtml)
           t4 <- ComponentManager(genHtml)
           (ns, children, tmpRs, eIds) = t4
-          _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
+          _ <- addNodes(parent)(am, ns *).toRight(addNodesErrorMessage)
         } yield {
           c.nodes = ns
           c.children = children
@@ -31,7 +32,7 @@ object IfComponent extends BaseComponent {
       } else {
         val ns = List(new Comment)
         for {
-          _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
+          _ <- addNodes(parent)(am, ns *).toRight(addNodesErrorMessage)
         } yield {
           c.nodes = ns
           c

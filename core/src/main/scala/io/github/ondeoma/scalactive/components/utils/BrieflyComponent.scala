@@ -23,7 +23,7 @@ object BrieflyComponent extends BaseComponent {
           // (eles, children, tmpRs, eIds) <- ComponentManager(genHtml)
           t4 <- ComponentManager(genHtml)
           (ns, children, tmpRs, eIds) = t4
-          _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
+          _ <- addNodes(c.parent.getOrElse(root))(am, ns *).toRight(addNodesErrorMessage)
         } yield {
           c.nodes = ns
           c.children = children

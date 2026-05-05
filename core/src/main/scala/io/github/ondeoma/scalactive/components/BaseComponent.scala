@@ -69,7 +69,7 @@ trait BaseComponent {
         (ns, children, tmpRs, eIds) = t4
         eles = ns.toHtmlElements
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
-        _ <- addNodes(root)(am, ns *).toRight(addNodesErrorMessage)
+        _ <- addNodes(c.parent.getOrElse(root))(am, ns *).toRight(addNodesErrorMessage)
       } yield {
         c.nodes = ns
         c.watchInfos = watch(c) ::: attrRs.map(_._2.addWatcher(_ => setAttrs(ele, attrs, attrRs))).toList
@@ -98,7 +98,7 @@ trait BaseComponent {
         (ns, children, tmpRs, eIds) = t4
         eles = ns.toHtmlElements
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
-        _ <- addNodes(root)(am, eles *).toRight(addNodesErrorMessage)
+        _ <- addNodes(c.parent.getOrElse(root))(am, eles *).toRight(addNodesErrorMessage)
       } yield {
         c.nodes = List(ele)
         c.watchInfos = value.addWatcher(_ => setToElement(ele)) ::
