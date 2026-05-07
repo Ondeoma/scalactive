@@ -1,6 +1,6 @@
 ThisBuild / description := "A frontend framework for Scala.js"
 ThisBuild / organization := "io.github.ondeoma"
-ThisBuild / version := "0.1.9"
+ThisBuild / version := "0.1.10"
 ThisBuild / scalaVersion := "3.3.7"
 ThisBuild / homepage := Some(url("https://github.com/Ondeoma/scalactive"))
 ThisBuild / licenses := List("MIT" -> url("https://opensource.org/licenses/MIT"))
@@ -45,5 +45,6 @@ lazy val core = project.in(file("core"))
 lazy val root = (project in file("."))
   .aggregate(core)
   .settings(
+    name := "scalactive-root",
     publish / skip := true
   )
