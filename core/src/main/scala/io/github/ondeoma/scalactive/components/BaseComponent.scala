@@ -43,7 +43,7 @@ trait BaseComponent {
         t4 <- gen
         (ns, children, tmpRs, eIds) = t4
         fixedNs = ns.orDummyNode
-        _ <- addNodes(root)(am, fixedNs *).toRight(addNodesErrorMessage)
+        _ <- addNodes(c.parent.getOrElse(root))(am, fixedNs *).toRight(addNodesErrorMessage)
       } yield {
         c.nodes = fixedNs
         c.children = children
