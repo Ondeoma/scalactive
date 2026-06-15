@@ -1,26 +1,43 @@
 package io.github.ondeoma.scalactive.routes
 
+import io.github.ondeoma.scalactive.ScalactiveConfig
 import io.github.ondeoma.scalactive.reactive.RV
+import org.scalajs.dom.window.{history, location}
 import org.scalajs.dom.{document, window}
-import org.scalajs.dom.window.location
-import org.scalajs.dom.window.history
 
 import scala.concurrent.duration.DurationInt
 import scala.scalajs.js
 import scala.util.Try
 
 object Router {
-  
+
   val href = RV(location.href)
 
   window.addEventListener("popstate", _ => href := location.href)
-  
+
   def go(url: String): Try[Unit] = {
     Try {
       val now = location.href
-      history.pushState(js.Object.apply(), "", url)
+      val fixedUrl = fixUrl(url)
+      history.pushState(js.Object.apply(), "", fixedUrl)
       startCheckHref(now)
     }
+  }
+
+  def fixUrl(url: String): String = {
+    lazy val relPath = !url.startsWith("http")
+    lazy val isSameOrigin = url.startsWith(location.origin)
+    lazy val base = ScalactiveConfig.fixedBasePath
+    if (relPath) joinSlash(base, url)
+    else if (isSameOrigin) joinSlash(base, url.replace(location.origin, ""))
+    else url
+  }
+
+  def joinSlash(a: String,
+                b: String): String = {
+    if (a.endsWith("/") && b.startsWith("/")) s"$a${b.tail}"
+    else if (!a.endsWith("/") && !b.startsWith("/")) s"$a/$b"
+    else s"$a$b"
   }
 
   def setHash(hash: String): Try[Unit] = {
@@ -38,15 +55,15 @@ object Router {
       Option(document.getElementById(id)).foreach(_.scrollIntoView())
     }
   }
-  
+
   /**
    * pushStateは非同期処理なので完了後にhref値を書き換えるための措置
    */
   def startCheckHref(old: String): Unit = {
-    
+
     val maxCount = 10
     val interval = 50.milliseconds
-    
+
     def check(count: Int = 1): Unit = {
       window.setTimeout(() => {
         if (old != location.href) {
@@ -59,5 +76,5 @@ object Router {
 
     check()
   }
-  
+
 }
