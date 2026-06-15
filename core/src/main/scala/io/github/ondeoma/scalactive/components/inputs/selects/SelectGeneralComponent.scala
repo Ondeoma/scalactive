@@ -11,14 +11,14 @@ object SelectGeneralComponent extends SelectComponentBase {
 
   def apply[A](root: HTMLElement,
                am: AddMethod,
-               selects: Reactive[List[Select]] | List[Select],
                rv: RV[A],
+               selects: Reactive[List[Select]] | List[Select],
                fromSV: SelectValue => A,
                toSV: A => SelectValue,
                attrs: Map[AttrName, String | Boolean],
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
               ): NodesComponentController = {
-    mkSimpleHtmlEsInputCC(
+    mkInputCC(
       rv,
       genElement(selects, rv, toSV, fromSV),
       ele => setValue(ele, toSV(rv.v)),
@@ -27,14 +27,14 @@ object SelectGeneralComponent extends SelectComponentBase {
     )(root, am)
   }
 
-  def apply[A](selects: Reactive[List[Select]] | List[Select],
-               rv: RV[A],
+  def apply[A](rv: RV[A],
+               selects: Reactive[List[Select]] | List[Select],
                fromSelected: SelectValue => A,
                toSelected: A => SelectValue,
                attrs: Map[AttrName, String | Boolean],
                attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
               ): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, selects, rv, fromSelected, toSelected, attrs, attrRVs)
+    apply(_, _, rv, selects, fromSelected, toSelected, attrs, attrRVs)
   }
 
 }

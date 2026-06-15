@@ -11,20 +11,20 @@ object RadioStringComponent extends BaseComponent {
 
   def apply(root: HTMLElement,
             am: AddMethod,
-            value: String,
             rv: RV[String],
+            value: String,
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
            ): NodesComponentController = {
-    RadioGeneralComponent(root, am, value, rv, _.value, _ == value, attrs, attrRVs)
+    RadioGeneralComponent(root, am, rv, value, _.value, _ == value, attrs, attrRVs)
   }
 
-  def apply(value: String,
-            rv: RV[String],
+  def apply(rv: RV[String],
+            value: String,
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
            ): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, value, rv, attrs, attrRVs)
+    apply(_, _, rv, value, attrs, attrRVs)
   }
 
 }

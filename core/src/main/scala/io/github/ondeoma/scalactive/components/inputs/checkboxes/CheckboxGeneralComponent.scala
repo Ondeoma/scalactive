@@ -17,7 +17,7 @@ object CheckboxGeneralComponent extends BaseComponent {
                toChecked: A => Boolean,
                attrs: Map[AttrName, String | Boolean],
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]]): NodesComponentController = {
-    mkSimpleHtmlEsInputCC(
+    mkInputCC(
       rv,
       genElement(rv, value, fromElement),
       ele => ele.toInput.foreach(_.checked = toChecked(rv.v)),

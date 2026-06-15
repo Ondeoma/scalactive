@@ -11,8 +11,8 @@ object CheckboxGroupPartComponent extends BaseComponent {
 
   def apply(root: HTMLElement,
             am: AddMethod,
-            value: String,
             values: RV[List[String]],
+            value: String,
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
            ): NodesComponentController = {
@@ -26,12 +26,12 @@ object CheckboxGroupPartComponent extends BaseComponent {
     )
   }
 
-  def apply(value: String,
-            values: RV[List[String]],
+  def apply(values: RV[List[String]],
+            value: String,
             attrs: Map[AttrName, String | Boolean],
             attrRVs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
            ): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, value, values, attrs, attrRVs)
+    apply(_, _, values, value, attrs, attrRVs)
   }
 
 }

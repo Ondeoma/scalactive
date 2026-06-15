@@ -1,5 +1,6 @@
 package io.github.ondeoma.scalactive.components.inputs.links
 
+import io.github.ondeoma.scalactive.components.inputs.links.LinkComponent.ComponentManager
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
 import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
@@ -15,7 +16,7 @@ object LinkStaticComponent extends BaseComponent {
             attrs: Map[AttrName, String | Boolean],
             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
            ): NodesComponentController = {
-    mkSimpleHtmlEsWithAttrsCC(genElement(text, onClick, attrs), attrs, attrRs)(root, am)
+    mkNCCwAttrs(genElement(text, onClick, attrs), attrs, attrRs)(root, am)
   }
 
   def apply(text: String,
@@ -28,11 +29,10 @@ object LinkStaticComponent extends BaseComponent {
 
   private def genElement(text: String,
                          onClick: Event => Unit,
-                         attrs: Map[AttrName, String | Boolean]) = {
-    ComponentManager { implicit cm =>
-      // language=html
-      s"<a ${expandAttrs(attrs)} ${ev(EventType.click, onClick)}>$text</a>"
-    }
+                         attrs: Map[AttrName, String | Boolean])
+                        (implicit cm: ComponentManager) = {
+    // language=html
+    s"<a ${expandAttrs(attrs)} ${ev(EventType.click, onClick)}>$text</a>"
   }
 
 }

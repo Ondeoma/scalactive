@@ -11,14 +11,14 @@ object RadioGeneralComponent extends BaseComponent {
 
   def apply[A](root: HTMLElement,
                am: AddMethod,
-               value: String,
                rv: RV[A],
+               value: String,
                fromElement: HTMLInputElement => A,
                toChecked: A => Boolean,
                attrs: Map[AttrName, String | Boolean],
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
               ): NodesComponentController = {
-    mkSimpleHtmlEsInputCC(
+    mkInputCC(
       rv,
       genElement(rv, value, fromElement),
       ele => ele.toInput.foreach(_.checked = toChecked(rv.v)),
@@ -28,14 +28,14 @@ object RadioGeneralComponent extends BaseComponent {
 
   }
 
-  def apply[A](value: String,
-               rv: RV[A],
+  def apply[A](rv: RV[A],
+               value: String,
                fromElement: HTMLInputElement => A,
                toChecked: A => Boolean,
                attrs: Map[AttrName, String | Boolean],
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
               ): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, value, rv, fromElement, toChecked, attrs, attrRs)
+    apply(_, _, rv, value, fromElement, toChecked, attrs, attrRs)
   }
 
 

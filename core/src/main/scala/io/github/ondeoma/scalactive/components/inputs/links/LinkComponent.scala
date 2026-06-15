@@ -1,5 +1,6 @@
 package io.github.ondeoma.scalactive.components.inputs.links
 
+import io.github.ondeoma.scalactive.components.inputs.links.LinkComponent.ComponentManager
 import io.github.ondeoma.scalactive.components.texts.TextComponent
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
 import io.github.ondeoma.scalactive.controllers.NodesComponentController
@@ -11,15 +12,15 @@ object LinkComponent extends BaseComponent {
 
   def apply(root: HTMLElement,
             am: AddMethod,
-            text: Reactive[String],
+            text: String | Reactive[String],
             onClick: Event => Unit,
             attrs: Map[AttrName, String | Boolean],
             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
            ): NodesComponentController = {
-    mkSimpleHtmlEsWithAttrsCC(genElement(text, onClick, attrs), attrs, attrRs)(root, am)
+    mkNCCwAttrs(genElement(text, onClick, attrs), attrs, attrRs)(root, am)
   }
 
-  def apply(text: Reactive[String],
+  def apply(text: String | Reactive[String],
             onClick: Event => Unit,
             attrs: Map[AttrName, String | Boolean],
             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
@@ -27,13 +28,17 @@ object LinkComponent extends BaseComponent {
     apply(_, _, text, onClick, attrs, attrRs)
   }
 
-  private def genElement(text: Reactive[String],
+  private def genElement(text: String | Reactive[String],
                          onClick: Event => Unit,
-                         attrs: Map[AttrName, String | Boolean]): GenResult = {
-    ComponentManager { implicit cm =>
-      // language=html
-      s"<a ${expandAttrs(attrs)} ${ev(EventType.click, onClick)}>${c(TextComponent(text)(identity))}</a>"
+                         attrs: Map[AttrName, String | Boolean])
+                        (implicit cm: ComponentManager): HTML = {
+    val txt = text match {
+      case t: String => t
+      case t: Reactive[String] => c(TextComponent(t)(identity))
     }
+    // language=html
+    s"<a ${expandAttrs(attrs)} ${ev(EventType.click, onClick)}>$txt</a>"
   }
+
 
 }
