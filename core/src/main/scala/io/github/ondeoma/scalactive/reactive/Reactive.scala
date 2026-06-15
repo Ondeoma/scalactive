@@ -16,7 +16,7 @@ abstract class Reactive[A] {
 
   def v: A
 
-  def apply: A = v
+  def apply(): A = v
 
   def addWatcher(w: Watcher): WatchInfo = {
     val id = randomUUID()
