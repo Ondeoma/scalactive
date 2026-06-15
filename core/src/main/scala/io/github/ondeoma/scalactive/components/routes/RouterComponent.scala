@@ -1,9 +1,12 @@
 package io.github.ondeoma.scalactive.components.routes
 
+import io.github.ondeoma.scalactive.ScalactiveConfig
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
 import io.github.ondeoma.scalactive.facades.URLPattern
 import org.scalajs.dom.*
 import org.scalajs.dom.window.location
+
+import scala.scalajs.js
 
 object RouterComponent extends BaseComponent {
 
@@ -25,21 +28,30 @@ object RouterComponent extends BaseComponent {
   }
 
   def apply(routes: PathPatternRoutes,
-            base: String): (HTMLElement, AddMethod) => NodesComponentController = {
+            base: String = ScalactiveConfig.fixedBasePath): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, routes, base)
   }
 
   def toURLPatterns(routes: PathPatternRoutes,
                     base: String): URLPatternRoutes = {
-    val fixedBase = {
-      val slashed = base.headOption match {
-        case None => ""
-        case Some('/') => base
-        case _ => s"/${base}"
+    val origin = location.origin
+    val (fixedBase, hasBaseSubPath) = {
+      if (base.isEmpty) (js.undefined, false)
+      else {
+        val path = 
+          if (base.startsWith("http")) s"${base.replaceAll("/$", "")}/"
+          else s"$origin/${base.replaceAll("^/", "").replaceAll("/$", "")}/"
+        (path, path != s"$origin/")  
       }
-      s"${location.origin}${slashed}"
     }
-    routes.map(r => URLPattern(r._1, fixedBase) -> r._2)
+    routes.map(r => {
+      // サブパスが指定されている場合パターンは相対パスとして認識したいはずなので、
+      // 先頭にスラッシュがある場合は取り除く.
+      val fixedPattern =
+        if (hasBaseSubPath && r._1.headOption.contains('/')) r._1.tail
+        else r._1  
+      URLPattern(fixedPattern, fixedBase) -> r._2
+    })
   }
 
   private def genElement(routes: URLPatternRoutes)

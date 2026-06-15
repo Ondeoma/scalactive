@@ -18,7 +18,7 @@ object RoutingComponent extends StatelessComponent {
          |  ("/a", matchResult => AComponent()),
          |  ("/b", matchResult => BComponent()),
          |)
-         |s\"\"\"<main>$${%(RouterComponent(routes, ""))}</main>\"\"\"
+         |s\"\"\"<main>$${%(RouterComponent(routes))}</main>\"\"\"
          |""".stripMargin
 
     val code2 = // language=scala
@@ -26,6 +26,24 @@ object RoutingComponent extends StatelessComponent {
          |s\"\"\"<a $${evClick(go("/"))}>TOP</a>
          |   :<a $${evClick(go("/b"))}>B</a>
          |   :<a $${evClick(go("/a"))}>A</a>\"\"\".stripMargin(":")""".stripMargin
+
+
+    val code3 = // language=scala
+      s"""import io.github.ondeoma.scalactive.components.ComponentManager.*
+         |import org.scalajs.dom.*
+         |import org.scalajs.dom.document.body
+         |import io.github.ondeoma.scalactive.ScalactiveConfig
+         |
+         |object App {
+         |
+         |  @main
+         |  def main(): Unit = {
+         |    // "https://example.com/subpath/..."のような場合.
+         |    ScalactiveConfig.basePath = "subpath" 
+         |    
+         |    // MainComponent()(body, AddMethod.appendS(IdSelector("app"))).init()
+         |  }
+         |}""".stripMargin  
 
     // language=html
     s"""<h1>ルーティング</h1>
@@ -37,6 +55,7 @@ object RoutingComponent extends StatelessComponent {
        |<ul class="toc">
        |  <li><a ${evClick(setHash("RouterComponent"))}>RouterComponent</a></li>
        |  <li><a ${evClick(setHash("Router"))}>Router</a></li>
+       |  <li><a ${evClick(setHash("BasePath"))}>BasePath</a></li>
        |</ul>
        |
        |<h2 id="RouterComponent">RouterComponent</h2>
@@ -44,13 +63,6 @@ object RoutingComponent extends StatelessComponent {
        |<p>
        |  RouterComponentを使うことでパスに対し、<br>
        |  どのコンポーネントをレンダリングするかを選択することができます.
-       |</p>
-       |
-       |<p>
-       |  第1引数にパスに対するコンポーネントの設定リスト、<br>
-       |  第2引数にはベースパスを設定して下さい.<br>
-       |  例えば、第2引数に"/base"を指定した場合、<br>
-       |  第1引数の全パスの先頭部分に"/base"が追加された形で判定されます.<br>
        |</p>
        |
        |<p>
@@ -81,6 +93,20 @@ object RoutingComponent extends StatelessComponent {
        |
        |<pre><code class="language-scala">${esc(code2)}</code></pre>
        |
+       |
+       |<h2 id="BasePath">BasePath</h2>
+       |
+       |<p>
+       |  Scalacitveがドメイン直下パスではなく、<br>
+       |  特定のサブパスにホスティングされる場合はベースパス設定を行ってください.<br>
+       |  以下はMain関数で設定する例です.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(code3)}</code></pre>
+       |
+       |<p>
+       |  Router.goで遷移する時と、RouterComponentのパス判定時にベースパスが考慮されます.
+       |</p>
        |""".stripMargin
   }
   

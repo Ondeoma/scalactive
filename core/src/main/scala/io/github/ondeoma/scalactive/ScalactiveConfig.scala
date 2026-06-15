@@ -18,4 +18,21 @@ object ScalactiveConfig {
    */
   var keepWindowScrollPositionWhenReload: Boolean = true
 
+  /**
+   * Router.goで遷移する時/RouterComponentのベースパス
+   */
+  var basePath: String = ""
+
+  /**
+   * basePathを以下のように整形した値
+   * 絶対パスの場合は末尾にスラッシュ付与.
+   * 相対パスの場合は先頭と末尾にスラッシュ付与.
+   */
+  def fixedBasePath: String = {
+    val p = basePath
+    if (p.startsWith("http")) {
+      if (!p.endsWith("/")) s"$p/" else p
+    } else s"/${p.replaceAll("^/", "").replaceAll("/$", "")}"
+  }
+
 }
