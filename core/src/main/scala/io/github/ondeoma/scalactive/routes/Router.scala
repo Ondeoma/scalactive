@@ -1,0 +1,63 @@
+package io.github.ondeoma.scalactive.routes
+
+import io.github.ondeoma.scalactive.reactive.RV
+import org.scalajs.dom.{document, window}
+import org.scalajs.dom.window.location
+import org.scalajs.dom.window.history
+
+import scala.concurrent.duration.DurationInt
+import scala.scalajs.js
+import scala.util.Try
+
+object Router {
+  
+  val href = RV(location.href)
+
+  window.addEventListener("popstate", _ => href := location.href)
+  
+  def go(url: String): Try[Unit] = {
+    Try {
+      val now = location.href
+      history.pushState(js.Object.apply(), "", url)
+      startCheckHref(now)
+    }
+  }
+
+  def setHash(hash: String): Try[Unit] = {
+    Try {
+      val to = location.origin + location.pathname + location.search + "#" + hash
+      history.replaceState(js.Object.apply(), "", to)
+      scrollToHash()
+    }
+  }
+
+  def scrollToHash(): Unit = {
+    val hash = location.hash
+    if (hash.nonEmpty && hash.startsWith("#")) {
+      val id = js.Dynamic.global.decodeURIComponent(hash.drop(1)).asInstanceOf[String]
+      Option(document.getElementById(id)).foreach(_.scrollIntoView())
+    }
+  }
+  
+  /**
+   * pushStateは非同期処理なので完了後にhref値を書き換えるための措置
+   */
+  def startCheckHref(old: String): Unit = {
+    
+    val maxCount = 10
+    val interval = 50.milliseconds
+    
+    def check(count: Int = 1): Unit = {
+      window.setTimeout(() => {
+        if (old != location.href) {
+          href := location.href
+        } else if (count < maxCount) {
+          check(count + 1)
+        }
+      }, interval.toMillis.toDouble)
+    }
+
+    check()
+  }
+  
+}
