@@ -42,8 +42,19 @@ lazy val core = project.in(file("core"))
     )
   )
 
+lazy val doc = project.in(file("doc"))
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(core)
+  .settings(
+    name := "scalactive-doc",
+    scalaJSUseMainModuleInitializer := true,
+    scalaJSLinkerConfig ~= {
+      _.withModuleKind(ModuleKind.ESModule)
+    }
+  )
+
 lazy val root = (project in file("."))
-  .aggregate(core)
+  .aggregate(core, doc)
   .settings(
     name := "scalactive-root",
     publish / skip := true
