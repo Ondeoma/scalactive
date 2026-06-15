@@ -8,10 +8,16 @@ sealed abstract class EventType(name: String) {
 
 object EventType {
 
+  case object beforetoggle extends EventType("beforetoggle")
+  
   case object blur extends EventType("blur")
 
-  case object click extends EventType("click")
+  case object change extends EventType("change")
 
+  case object command extends EventType("command")
+  
+  case object click extends EventType("click")
+  
   case object compositionend extends EventType("compositionend")
 
   case object compositionstart extends EventType("compositionstart")
@@ -22,6 +28,22 @@ object EventType {
 
   case object dblclick extends EventType("dblclick")
 
+  case object drag extends EventType("drag")
+
+  case object dragend extends EventType("dragend")
+  
+  case object dragenter extends EventType("dragenter")
+  
+  case object dragleave extends EventType("dragleave")
+  
+  case object dragover extends EventType("dragover")
+  
+  case object dragstart extends EventType("dragstart")
+  
+  case object drop extends EventType("drop")
+  
+  case object error extends EventType("error")
+  
   case object focus extends EventType("focus")
 
   case object focusin extends EventType("focusin")
@@ -33,6 +55,8 @@ object EventType {
   case object keydown extends EventType("keydown")
 
   case object keyup extends EventType("keyup")
+
+  case object load extends EventType("load")
 
   case object mousedown extends EventType("mousedown")
 
@@ -52,6 +76,8 @@ object EventType {
 
   case object scrollend extends EventType("scrollend")
 
+  case object toggle extends EventType("toggle")
+  
   case object touchcancel extends EventType("touchcancel")
 
   case object touchend extends EventType("touchend")
