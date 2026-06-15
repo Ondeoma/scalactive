@@ -12,7 +12,7 @@ object HeaderComponent extends StatelessComponent {
     s"""<header>
        |  <div class="title">
        |    <a ${evClick(go("/"))}>Scalactive</a>
-       |    <span class="version">v0.1.11</span>
+       |    <span class="version">v0.1.12</span>
        |  </div>
        |  <div class="icons">
        |    <a href="https://github.com/Ondeoma/scalactive">$githubIcon</a>
