@@ -1,10 +1,11 @@
 package io.github.ondeoma.scalactive.reactive
 
-import io.github.ondeoma.scalactive.components.ComponentManager
 import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.*
 import io.github.ondeoma.scalactive.reactive.RVList.ext.*
-import io.github.ondeoma.scalactive.utils.TypeAlias.*
+import io.github.ondeoma.scalactive.utils.ListBufferUtil.*
+
+import scala.annotation.targetName
 
 // Scala 3.4.0~
 // import scala.annotation.publicInBinary
@@ -38,7 +39,7 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
   def rv: List[RV[A]] = innerV.toList
 
-  def updated(isDetail: Boolean): Unit = {
+  private def updated(isDetail: Boolean): Unit = {
     watchers.foreach { (id, wf) =>
       if (isDetail && id.startsWith(rowLevelWatchingIdPrefix)) ()
       else wf(oldV, v)
@@ -79,23 +80,53 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
     updated(false)
   }
+  
+  def apply(newV: List[A]): List[RV[A]] = {
+    val rvs = newV.toRVs 
+    apply(rvs)
+    rvs
+  }
+  
+  def applyV(i: Int): A = {
+    v(i)
+  }
 
+  def liftV(i: Int): Option[A] = {
+    v.lift(i)
+  }
+
+  @targetName("applyByRVs")
   def :=(v: List[RV[A]]): Unit = {
     apply(v)
   }
 
+  @targetName("applyByRaws")
+  def :=(v: List[A]): Unit = {
+    apply(v)
+  }
+  
   def v_=(v: List[RV[A]]): Unit = {
     apply(v)
   }
-
-  def ::=(v: List[A]): Unit = {
-    apply(v.toRVs)
+  
+  def v_=(v: List[A]): List[RV[A]] = {
+    apply(v)
   }
 
   def update(i: Int,
              v: A): Unit = {
     innerV(i) := v
     updated(true)
+  }
+  
+  def up(idx: Int): Unit = {
+    innerV.up(idx)
+    updated(false)
+  }
+
+  def down(idx: Int): Unit = {
+    innerV.down(idx)
+    updated(false)
   }
 
   def add(rv: RV[A]): Unit = {
@@ -104,6 +135,12 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
     updated(false)
   }
 
+  def add(a: A): RV[A] = {
+    val rv = RV(a)
+    add(rv)
+    rv
+  }
+  
   def rm(idx: Int): Unit = {
     innerV.lift(idx).foreach { rv =>
       // ウォッチ解除
@@ -131,10 +168,16 @@ object RVList {
 
   import Reactive.*
 
+  @targetName("applyByRVs")
   inline def apply[A](value: List[RV[A]]): RVList[A] = {
     val rv = new RVList[A](value)
     registerCM(rv)
     rv
+  }
+
+  @targetName("applyByRaws")
+  inline def apply[A](value: List[A]): RVList[A] = {
+    apply(toRVs(value))
   }
 
   def toRVs[A](as: List[A]): List[RV[A]] = as.map(a => RV(a))

@@ -18,7 +18,7 @@ object TextInputGeneralComponent extends BaseComponent {
                attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
                updateEvents: List[EventType],
               ): NodesComponentController = {
-    mkSimpleHtmlEsInputCC(
+    mkInputCC(
       value,
       genElement(value, fromS, inputType, updateEvents),
       ele => setValue(ele, toS(value.v)),

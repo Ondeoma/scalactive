@@ -11,8 +11,14 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
                                var watchInfos: WatchInfos = Nil,
                                var abortControllers: List[AbortController] = Nil,
                                var eventHandlers: List[ID] = Nil,
-                               var tmpReactives: List[Reactive[?]] = Nil) extends NodesController[NodesComponentController] {
+                               var tmpReactives: List[Reactive[?]] = Nil,
+                               var onInit: NodesComponentController => Unit = _ => ()) extends NodesController[NodesComponentController] {
 
-  def init(): Either[String, NodesComponentController] = initF(this)
+  def init(): Either[String, NodesComponentController] = {
+    initF(this).map { c =>
+      onInit(c)
+      c
+    }
+  }
 
 }

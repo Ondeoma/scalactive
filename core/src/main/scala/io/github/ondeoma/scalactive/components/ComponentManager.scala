@@ -1,12 +1,6 @@
 package io.github.ondeoma.scalactive.components
 
 import cats.syntax.all.*
-import io.github.ondeoma.scalactive.components.*
-import io.github.ondeoma.scalactive.components.fors.*
-import io.github.ondeoma.scalactive.components.ifs.*
-import io.github.ondeoma.scalactive.components.inputs.*
-import io.github.ondeoma.scalactive.components.texts.*
-import io.github.ondeoma.scalactive.components.utils.*
 import io.github.ondeoma.scalactive.controllers.*
 import io.github.ondeoma.scalactive.controllers.attrs.*
 import io.github.ondeoma.scalactive.controllers.events.*
@@ -34,7 +28,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   def gen(): GenResult = {
     val tmpDiv = mkDiv()
     // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
-    val nodes = html.toNodes.orDummyNode 
+    val nodes = html.toNodes.orDummyNode
     for {
       _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
       children = genChildren(tmpDiv)
@@ -101,7 +95,7 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.components.texts.Text4Component
   export io.github.ondeoma.scalactive.components.texts.Text5Component
   export io.github.ondeoma.scalactive.components.texts.Text6Component
-  
+
   export io.github.ondeoma.scalactive.controllers.NodesComponentController
   export io.github.ondeoma.scalactive.controllers.TextComponentController
   export io.github.ondeoma.scalactive.controllers.events.EventController
@@ -130,6 +124,8 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.reactive.RMCompatible.*
   export io.github.ondeoma.scalactive.reactive.RV
 
+  export io.github.ondeoma.scalactive.routes.Router
+
   export io.github.ondeoma.scalactive.utils.ConsoleUtil.*
   export io.github.ondeoma.scalactive.utils.DomUtil.*
   export io.github.ondeoma.scalactive.utils.TypeAlias.*
@@ -156,9 +152,9 @@ object ComponentManager {
     s"<!--$id-->"
   }
 
-  def el(f: ElementEffectF)
+  def el(fs: ElementEffectF*)
         (using cc: ComponentManager): ATTR = {
-    elementByDataAttr(f)
+    elementByDataAttr(fs *)
   }
 
   def elementByDataAttr(fs: ElementEffectF*)
@@ -172,46 +168,87 @@ object ComponentManager {
   def clsIf(rv: Reactive[Boolean],
             vs: String*)
            (using cc: ComponentManager): ATTR = {
-    classReactiveBoolean(rv, vs *)
+    el(ClassBooleanController(rv, vs.toList))
   }
 
-  def classReactiveBoolean(rv: Reactive[Boolean],
-                           vs: String*)
-                          (using cc: ComponentManager): ATTR = {
-    elementByDataAttr(ClassBooleanController(rv, vs.toList))
+  def clsS(rv: Reactive[String])
+          (using cc: ComponentManager): ATTR = {
+    el(ClassStringController(rv))
   }
 
+  def clsSs(rv: Reactive[List[String]])
+           (using cc: ComponentManager): ATTR = {
+    el(ClassStringsController(rv))
+  }
+
+  def clsTgl(rv: Reactive[Boolean],
+             ifTrue: String,
+             ifFalse: String)
+            (using cc: ComponentManager): ATTR = {
+    clsTgl(rv, List(ifTrue), List(ifFalse))
+  }
+
+  def clsTgl(rv: Reactive[Boolean],
+             ifTrue: List[String],
+             ifFalse: List[String])
+            (using cc: ComponentManager): ATTR = {
+    el(ClassToggleController(rv, ifTrue, ifFalse))
+  }
+
+  def styleIf(rv: Reactive[Boolean],
+              name: String,
+              value: String)
+             (using cc: ComponentManager): ATTR = {
+    el(StyleBooleanController(rv, name, value))
+  }
+
+  def styleS(name: String,
+             rv: Reactive[String])
+            (using cc: ComponentManager): ATTR = {
+    el(StyleStringController(name, rv))
+  }
+
+  def styleTgl(rv: Reactive[Boolean],
+               name: String,
+               ifTrue: String,
+               ifFalse: String)
+              (using cc: ComponentManager): ATTR = {
+    el(StyleToggleController(rv, name, ifTrue, ifFalse))
+  }
+
+  def attrIf(rv: Reactive[Boolean],
+             name: String)
+            (using cc: ComponentManager): ATTR = {
+    el(AttrBooleanController(name, rv, ""))
+  }
+
+  def attrS(name: String,
+            rv: Reactive[String])
+           (using cc: ComponentManager): ATTR = {
+    el(AttrStringController(name, rv))
+  }
+  
   def showIf(rv: Reactive[Boolean],
              showStyle: String = "block")
             (using cc: ComponentManager): ATTR = {
-    elementByDataAttr(StyleToggleController(rv, "display", showStyle, "none"))
+    el(StyleToggleController(rv, "display", showStyle, "none"))
+  }
+
+  def showFlexIf(rv: Reactive[Boolean])
+                (using cc: ComponentManager): ATTR = {
+    showIf(rv, "flex")
+  }
+
+  def showGridIf(rv: Reactive[Boolean])
+                (using cc: ComponentManager): ATTR = {
+    showIf(rv, "grid")
   }
 
   def showIfBriefly(rv: Reactive[Boolean],
                     duration: FiniteDuration,
                     showStyle: String = "block")
                    (using cc: ComponentManager): ATTR = {
-    elementByDataAttr(StyleBrieflyController(rv, duration, "display", showStyle, "none"))
-  }
-
-  def clsS(rv: Reactive[String])
-          (using cc: ComponentManager): ATTR = {
-    classReactiveString(rv)
-  }
-
-  def classReactiveString(rv: Reactive[String])
-                         (using cc: ComponentManager): ATTR = {
-    elementByDataAttr(ClassStringController(rv))
-  }
-
-  def clsSs(rv: Reactive[List[String]])
-           (using cc: ComponentManager): ATTR = {
-    classReactiveStrings(rv)
-  }
-
-  def classReactiveStrings(rv: Reactive[List[String]])
-                          (using cc: ComponentManager): ATTR = {
-    elementByDataAttr(ClassStringsController(rv))
+    el(StyleBrieflyController(rv, duration, "display", showStyle, "none"))
   }
 
   def ifC(ifV: Reactive[Boolean])
@@ -249,7 +286,7 @@ object ComponentManager {
              (using ComponentManager): HTML = {
     %(ForLRComponent(forV)(genHtml))
   }
-  
+
   def forC[A](forV: ReactiveList[A])
              (genHtml: (ComponentManager, A, IDX) => HTML)
              (using ComponentManager): HTML = {
@@ -261,9 +298,9 @@ object ComponentManager {
         (using cc: ComponentManager): ATTR = {
     et match {
       case et: EventType =>
-        elementByDataAttr(EventController(et, handler))
+        el(EventController(et, handler))
       case ets: List[EventType] =>
-        elementByDataAttr(ets.map(EventController(_, handler)) *)
+        el(ets.map(EventController(_, handler)) *)
     }
   }
 
@@ -273,9 +310,9 @@ object ComponentManager {
     val fixedHandler = (e: Event) => handler
     et match {
       case et: EventType =>
-        elementByDataAttr(EventController(et, fixedHandler))
+        el(EventController(et, fixedHandler))
       case ets: List[EventType] =>
-        elementByDataAttr(ets.map(EventController(_, fixedHandler)) *)
+        el(ets.map(EventController(_, fixedHandler)) *)
     }
   }
 

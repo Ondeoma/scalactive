@@ -13,7 +13,7 @@ trait BaseComponent {
   val ComponentManager = io.github.ondeoma.scalactive.components.ComponentManager(_)
 
   export io.github.ondeoma.scalactive.components.ComponentManager.*
-  
+
   protected def addNodesErrorMessage: String = {
     val e = s"${this.getClass.getSimpleName} Add Nodes Error!"
     ConsoleUtil.error(e)
@@ -32,15 +32,16 @@ trait BaseComponent {
     e
   }
 
-  protected def mkSimpleHtmlEsCC(gen: => GenResult,
-                                 watch: NodesComponentController => WatchInfos = _ => Nil)
-                                (implicit root: HTMLElement,
-                                 am: AddMethod): NodesComponentController = {
+  protected def mkNCC(gen: ComponentManager => HTML,
+                      watch: NodesComponentController => WatchInfos = _ => Nil,
+                      onInit: NodesComponentController => Unit = _ => ())
+                     (implicit root: HTMLElement,
+                      am: AddMethod): NodesComponentController = {
     NodesComponentController { c =>
       for {
         // scala 3.4.0~
-        // (ns, children, tmpRs, eIds) <- gen
-        t4 <- gen
+        // (ns, children, tmpRs, eIds) <- ComponentManager(gen)
+        t4 <- ComponentManager(gen)
         (ns, children, tmpRs, eIds) = t4
         fixedNs = ns.orDummyNode
         _ <- addNodes(c.parent.getOrElse(root))(am, fixedNs *).toRight(addNodesErrorMessage)
@@ -50,22 +51,23 @@ trait BaseComponent {
         c.tmpReactives = tmpRs
         c.eventHandlers = eIds
         c.watchInfos = watch(c)
+        c.onInit = onInit
         c
       }
     }
   }
 
-  protected def mkSimpleHtmlEsWithAttrsCC(gen: => GenResult,
-                                          attrs: Map[AttrName, String | Boolean],
-                                          attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-                                          watch: NodesComponentController => WatchInfos = _ => Nil)
-                                         (implicit root: HTMLElement,
-                                          am: AddMethod): NodesComponentController = {
+  protected def mkNCCwAttrs(gen: ComponentManager => HTML,
+                            attrs: Map[AttrName, String | Boolean],
+                            attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
+                            watch: NodesComponentController => WatchInfos = _ => Nil)
+                           (implicit root: HTMLElement,
+                            am: AddMethod): NodesComponentController = {
     NodesComponentController { c =>
       for {
         // Scala 3.4.0~
-        // (ns, children, tmpRs, eIds) <- gen
-        t4 <- gen
+        // (ns, children, tmpRs, eIds) <- ComponentManager(gen)
+        t4 <- ComponentManager(gen)
         (ns, children, tmpRs, eIds) = t4
         eles = ns.toHtmlElements
         ele <- eles.headOption.toRight(notFoundHeadElementErrorMessage)
@@ -82,14 +84,14 @@ trait BaseComponent {
     }
   }
 
-  protected def mkSimpleHtmlEsInputCC[V](value: RV[V],
-                                         gen: => GenResult,
-                                         setToElement: HTMLElement => Unit,
-                                         attrs: Map[AttrName, String | Boolean],
-                                         attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
-                                         watch: NodesComponentController => WatchInfos = _ => Nil)
-                                        (implicit root: HTMLElement,
-                                         am: AddMethod): NodesComponentController = {
+  protected def mkInputCC[V](value: RV[V],
+                             gen: => GenResult,
+                             setToElement: HTMLElement => Unit,
+                             attrs: Map[AttrName, String | Boolean],
+                             attrRs: Map[AttrName, Reactive[String] | Reactive[Boolean]],
+                             watch: NodesComponentController => WatchInfos = _ => Nil)
+                            (implicit root: HTMLElement,
+                             am: AddMethod): NodesComponentController = {
     NodesComponentController { c =>
       for {
         // Scala 3.4.0~

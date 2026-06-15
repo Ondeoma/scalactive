@@ -8,8 +8,8 @@ import org.scalajs.dom.*
 object StyleStringController {
 
   def apply(ele: HTMLElement,
-            rv: Reactive[String],
-            name: String): StyleController = {
+            name: String,
+            rv: Reactive[String]): StyleController = {
     StyleController { sc =>
       val set = () => ele.setStyle(name, rv.v)
       sc.element = ele.some
@@ -21,10 +21,9 @@ object StyleStringController {
     }
   }
 
-  def apply(rv: Reactive[String],
-            name: String): HTMLElement => StyleController = {
-    apply(_, rv, name)
+  def apply(name: String, 
+            rv: Reactive[String]): HTMLElement => StyleController = {
+    apply(_, name, rv)
   }
-
-
+  
 }

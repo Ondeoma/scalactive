@@ -2,22 +2,23 @@ package io.github.ondeoma.scalactive.reactive
 
 import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.WatchInfo
-import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.toRMs
+import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.*
 import io.github.ondeoma.scalactive.utils.ListBufferUtil.*
-import io.github.ondeoma.scalactive.utils.TypeAlias.*
+
+import scala.annotation.targetName
 
 // Scala 3.4.0~
 // import scala.annotation.publicInBinary
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-// class RMList[A, RM <: ReactiveModel[A, RM]] @publicInBinary(private var value: List[RM]) extends Reactive[List[A]] {
-class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends Reactive[List[A]] {
+// class RMList[Org, RM <: ReactiveModel[A, RM]] @publicInBinary(private var value: List[RM]) extends Reactive[List[A]] {
+class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) extends Reactive[List[Org]] {
 
   val rowLevelWatchingIdPrefix = "RLW-"
 
   private val innerV: ListBuffer[RM] = ListBuffer.from(value)
-  private val watchInfos: mutable.Map[Int, WatchInfos] = mutable.Map()
+  private val watchInfos: mutable.Map[Int, WatchInfo] = mutable.Map()
 
   watchAll()
 
@@ -31,14 +32,14 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
 
   private def fix(v: ListBuffer[RM]) = v.toList.map(_.toOrigin)
 
-  override def v: List[A] = fix(innerV)
+  override def v: List[Org] = fix(innerV)
 
   def rv: List[RM] = innerV.toList
 
   private def watchAll(): Unit = {
     // 子要素に変化があってもウォッチャーに通知
     innerV.zipWithIndex.foreach { (rmw, i) =>
-      watchInfos.addOne(i -> rmw.addWatcher(() => updated(true)))
+      watchInfos.addOne(i -> rmw.addWatcher(_ => updated(true)))
     }
   }
 
@@ -52,7 +53,7 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
   }
 
   def apply(newRM: List[RM]): Unit = {
-    watchInfos.foreach(_._2.foreach(_.abort()))
+    watchInfos.foreach(_._2.abort())
     watchInfos.clear()
 
     innerV.clear()
@@ -62,11 +63,18 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
     updated(false)
   }
 
-  def applyV(i: Int): A = {
+  def apply(news: List[Org])
+           (using rmc: RMCompatible[Org, RM]): List[RM] = {
+    val rms = news.toRMs
+    apply(rms)
+    rms
+  }
+
+  def applyV(i: Int): Org = {
     v(i)
   }
 
-  def liftV(i: Int): Option[A] = {
+  def liftV(i: Int): Option[Org] = {
     v.lift(i)
   }
 
@@ -82,22 +90,35 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
     apply(v)
   }
 
-  def ::=(v: List[A])
-         (using rmc: RMCompatible[A, RM]): Unit = {
-    apply(v.toRMs)
+  def :=(v: List[Org])
+        (using rmc: RMCompatible[Org, RM]): List[RM] = {
+    apply(v)
+  }
+  
+  def v_=(v: List[RM]): Unit = {
+    apply(v)
   }
 
-  def v_=(v: List[RM]): Unit = {
+  def v_=(v: List[Org])
+         (using rmc: RMCompatible[Org, RM]): List[RM] = {
     apply(v)
   }
 
   def update(idx: Int,
              rm: RM): Unit = {
-    watchInfos.get(idx).foreach(_.foreach(_.abort()))
+    watchInfos.get(idx).foreach(_.abort())
     innerV.remove(idx)
     innerV.insert(idx, rm)
-    watchInfos.addOne(idx -> rm.addWatcher(() => updated(true)))
+    watchInfos.addOne(idx -> rm.addWatcher(_ => updated(true)))
     updated(true)
+  }
+
+  def update(idx: Int,
+             org: Org)
+            (using rmc: RMCompatible[Org, RM]): RM = {
+    val rm = org.toRM
+    update(idx, rm)
+    rm
   }
 
   def up(idx: Int): Unit = {
@@ -112,13 +133,13 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
 
   def add(rm: RM): Unit = {
     innerV.addOne(rm)
-    watchInfos.addOne((innerV.length - 1) -> rm.addWatcher(() => updated(true)))
+    watchInfos.addOne((innerV.length - 1) -> rm.addWatcher(_ => updated(true)))
     updated(false)
   }
 
-  def add(a: A)
-         (using rmc: RMCompatible[A, RM]): RM = {
-    val rm = RMCompatible.toRM(a)
+  def add(org: Org)
+         (using rmc: RMCompatible[Org, RM]): RM = {
+    val rm = RMCompatible.toRM(org)
     add(rm)
     rm
   }
@@ -126,7 +147,7 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
   def rm(idx: Int): Unit = {
     innerV.lift(idx).foreach { rv =>
       // ウォッチ解除
-      watchInfos.get(idx).foreach(_.foreach(_.abort()))
+      watchInfos.get(idx).foreach(_.abort())
       watchInfos.remove(idx)
       watchInfos.filter((cidx, _) => cidx > idx).foreach { (cidx, id) =>
         watchInfos.remove(cidx)
@@ -144,7 +165,7 @@ class RMList[A, RM <: ReactiveModel[A, RM]](private var value: List[RM]) extends
   override def abort(): Unit = {
     watchers.clear()
     innerV.clear()
-    watchInfos.foreach(_._2.foreach(_.abort()))
+    watchInfos.foreach(_._2.abort())
     watchInfos.clear()
   }
 
@@ -154,10 +175,17 @@ object RMList {
 
   import Reactive.*
 
-  inline def apply[A, RM <: ReactiveModel[A, RM]](value: List[RM]): RMList[A, RM] = {
-    val rv = new RMList[A, RM](value)
+  @targetName("applyByRVs")
+  inline def apply[Org, RM <: ReactiveModel[Org, RM]](value: List[RM]): RMList[Org, RM] = {
+    val rv = new RMList[Org, RM](value)
     registerCM(rv)
     rv
+  }
+
+  @targetName("applyByRaws")
+  inline def apply[Org, RM <: ReactiveModel[Org, RM]](values: List[Org])
+                                                     (using RMCompatible[Org, RM]): RMList[Org, RM] = {
+    apply(values.map(RMCompatible.toRM))
   }
 
 }

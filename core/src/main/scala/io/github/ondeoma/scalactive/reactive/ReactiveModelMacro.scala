@@ -104,11 +104,11 @@ object ReactiveModelMacro {
           val orgTypeInList = orgFieldType.dealias.typeArgs.head // List[ここ]
           val rnTypeInListRM2 = rmFType.dealias.typeArgs(1) // ListRM[?, ここ]
           val toRMsT = Select.overloaded(rmCompatible, "toRMs", List(orgTypeInList, rnTypeInListRM2), List(orgFieldSelect))
-          Apply(Select.unique(rmFTerm, ":="), List(toRMsT)).asExprOf[Unit]
+          Select.overloaded(rmFTerm, ":=", Nil, List(toRMsT)).asExprOf[Unit]
         } else if (isListRV) {
-          Apply(Select.unique(rmFTerm, "::="), List(oFTerm)).asExprOf[Unit]
+          Select.overloaded(rmFTerm, ":=", Nil, List(oFTerm)).asExprOf[Unit]
         } else if (isRV) {
-          Apply(Select.unique(rmFTerm, ":="), List(oFTerm)).asExprOf[Unit]
+          Select.overloaded(rmFTerm, ":=", Nil, List(oFTerm)).asExprOf[Unit]
         } else {
           '{ () }
         }
