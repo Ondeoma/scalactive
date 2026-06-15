@@ -40,7 +40,7 @@ object QuickStartComponent extends StatelessComponent {
        |  sbtコマンドで取得できます.
        |</p>
        |
-       |<pre><code class="shell">sbt new scala/scala-seed.g8</code></pre>
+       |<pre><code class="shell">sbt new Ondeoma/scalactive-seed.g8</code></pre>
        |
        |<p>
        |  起動方法等はダウンロードしたプロジェクト内の
