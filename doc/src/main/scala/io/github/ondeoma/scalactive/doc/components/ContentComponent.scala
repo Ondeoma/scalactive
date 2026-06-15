@@ -26,7 +26,7 @@ object ContentComponent extends StatelessComponent {
 
     // language=html
     s"""<main>
-       |    ${%(RouterComponent(routes, ""))}
+       |    ${%(RouterComponent(routes))}
        |</main>
        |""".stripMargin
   }

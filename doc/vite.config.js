@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 export default defineConfig({
+  base: '/scalactive/',
   plugins: [
     scalaJSPlugin({
       cwd: "..", // sbtプロジェクトのルート（build.sbtがある場所）を指定
