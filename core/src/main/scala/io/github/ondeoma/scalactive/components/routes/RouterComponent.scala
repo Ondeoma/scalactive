@@ -23,7 +23,7 @@ object RouterComponent extends BaseComponent {
           p.scrollLeft = 0
         }
       }),
-      _ => window.setTimeout(() => Router.scrollToHash(), 0)
+      c => window.setTimeout(() => Router.scrollToHash(c.parent), 0)
     )(root, am)
   }
 

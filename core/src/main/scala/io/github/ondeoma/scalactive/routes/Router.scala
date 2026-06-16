@@ -3,7 +3,7 @@ package io.github.ondeoma.scalactive.routes
 import io.github.ondeoma.scalactive.ScalactiveConfig
 import io.github.ondeoma.scalactive.reactive.RV
 import org.scalajs.dom.window.{history, location}
-import org.scalajs.dom.{document, window}
+import org.scalajs.dom.{HTMLElement, document, window}
 
 import scala.concurrent.duration.DurationInt
 import scala.scalajs.js
@@ -44,15 +44,20 @@ object Router {
     Try {
       val to = location.origin + location.pathname + location.search + "#" + hash
       history.replaceState(js.Object.apply(), "", to)
-      scrollToHash()
+      scrollToHash(None)
     }
-  }
+  } 
 
-  def scrollToHash(): Unit = {
+  def scrollToHash(target: Option[HTMLElement]): Unit = {
     val hash = location.hash
     if (hash.nonEmpty && hash.startsWith("#")) {
       val id = js.Dynamic.global.decodeURIComponent(hash.drop(1)).asInstanceOf[String]
       Option(document.getElementById(id)).foreach(_.scrollIntoView())
+    } else {
+      target.foreach { e =>
+        e.scrollTop = 0
+        e.scrollLeft = 0
+      }
     }
   }
 
