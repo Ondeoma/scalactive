@@ -30,7 +30,8 @@ object ScalactiveConfig {
    */
   def fixedBasePath: String = {
     val p = basePath
-    if (p.startsWith("http")) {
+    if (p.isEmpty) ""
+    else if (p.startsWith("http")) {
       if (!p.endsWith("/")) s"$p/" else p
     } else s"/${p.replaceAll("^/", "").replaceAll("/$", "")}"
   }

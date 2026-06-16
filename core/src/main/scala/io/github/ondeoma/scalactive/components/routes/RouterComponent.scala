@@ -36,7 +36,7 @@ object RouterComponent extends BaseComponent {
                     base: String): URLPatternRoutes = {
     val origin = location.origin
     val (fixedBase, hasBaseSubPath) = {
-      if (base.isEmpty) (js.undefined, false)
+      if (base.isEmpty) (origin, false)
       else {
         val path = 
           if (base.startsWith("http")) s"${base.replaceAll("/$", "")}/"
