@@ -19,6 +19,7 @@ object Router {
     Try {
       val now = location.href
       val fixedUrl = fixUrl(url)
+      window.scrollTo(0, 0)
       history.pushState(js.Object.apply(), "", fixedUrl)
       startCheckHref(now)
     }
@@ -46,7 +47,7 @@ object Router {
       history.replaceState(js.Object.apply(), "", to)
       scrollToHash(None)
     }
-  } 
+  }
 
   def scrollToHash(target: Option[HTMLElement]): Unit = {
     val hash = location.hash
