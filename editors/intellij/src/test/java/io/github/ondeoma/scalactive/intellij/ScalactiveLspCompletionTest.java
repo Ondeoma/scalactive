@@ -32,6 +32,7 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
         VirtualFile sample = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(SAMPLE);
         assertNotNull(sample);
         PsiTestUtil.addContentRoot(getModule(), docDir);
+        byte[] originalBytes = Files.readAllBytes(SAMPLE);
         try {
             myFixture.configureFromExistingVirtualFile(sample);
             LspServerManager manager = LspServerManager.getInstance(getProject());
@@ -76,6 +77,9 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
                     () -> { com.intellij.psi.codeStyle.CodeStyleManager.getInstance(getProject()).reformat(myFixture.getFile()); });
             waitUntil("formatting", () -> original.equals(document.getText()));
         } finally {
+            // 編集したドキュメントは保存せず、ファイルも元に戻す(リポジトリのサンプルを変えないため)
+            com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().reloadFiles(sample);
+            Files.write(SAMPLE, originalBytes);
             LspServerManager.getInstance(getProject()).stopServers(ScalactiveLspServerSupportProvider.class);
             PsiTestUtil.removeContentEntry(getModule(), docDir);
         }

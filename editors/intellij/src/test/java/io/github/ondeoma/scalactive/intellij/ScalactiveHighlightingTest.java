@@ -32,6 +32,13 @@ public class ScalactiveHighlightingTest extends BasePlatformTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         TextMateService.getInstance().reloadEnabledBundles();
+        // バンドルの読み込みは非同期に終わることがあるため、.stの文法が登録されるまで待つ
+        long end = System.currentTimeMillis() + 30_000;
+        while (TextMateService.getInstance().getLanguageDescriptorByExtension("st") == null
+                && System.currentTimeMillis() < end) {
+            com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+            Thread.sleep(100);
+        }
     }
 
     public void testBundlesAreProvided() {
