@@ -162,6 +162,11 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(compileError("<template>\n<Child ref=\"x\" /></template>").line, 2)
   }
 
+  test("class/style/id/data-*/aria-* on component fall through to its root element") {
+    val c = compile("""<template><Btn label="ok" class="primary" :style="s.st" id="b1" :data-n="s.n" aria-label="a" :aria-busy="s.busy" /></template>""").code
+    assert(c.contains("""__st.component(Btn(label = "ok"), __st.rootCls("primary"), __st.rootStyle((/* Foo.st:1 */ s.st)), __st.rootAttr("id", "b1"), __st.rootAttr("data-n", (/* Foo.st:1 */ s.n)), __st.rootAttr("aria-label", "a"), __st.rootAttr("aria-busy", (/* Foo.st:1 */ s.busy)))"""), c)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>
@@ -350,7 +355,6 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(compileError("<template>\n<input v-model.number=\"x\"></template>").line, 2)
     assertEquals(compileError("<template>\n<input @keyup.foo=\"x\"></template>").line, 2)
     assertEquals(compileError("<template>\n<Child a=\"1\" :a=\"2\" /></template>").line, 2)
-    assertEquals(compileError("<template>\n<Child class=\"x\" /></template>").line, 2)
     assert(compileError("<script>\ndef initState(p: Int) = 1\n</script><template></template>").message.contains("Props"))
   }
 

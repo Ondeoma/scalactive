@@ -279,8 +279,39 @@ final class TemplateCodegen(src: SourceText,
    * ケバブケースの名前はキャメルケースに変換します(`on-close` → `onClose`).
    * 子要素は `slot = __st.slotOf { ... }` として渡します.
    */
+  /** 子コンポーネントのルート要素に引き継ぐ属性か(propsにはしない) */
+  private def isFallthrough(raw: String): Boolean = {
+    raw == "class" || raw == "style" || raw == "id" || raw == "role" || raw.startsWith("data-") || raw.startsWith("aria-")
+  }
+
+  /** 属性名から先頭の : / v-bind: を除いたもの(束縛でなければNone) */
+  private def boundName(n: String): Option[String] = {
+    if (n.startsWith(":")) Some(n.drop(1))
+    else if (n.startsWith("v-bind:")) Some(n.drop("v-bind:".length))
+    else None
+  }
+
+  /** 子コンポーネントのルート要素に付け加える属性(class・style・id・role・data-*・aria-*) */
+  private def genFallthrough(a: Attr): Option[String] = {
+    val bound = boundName(a.name)
+    val raw = bound.getOrElse(a.name)
+    if (!isFallthrough(raw)) None
+    else {
+      val value = bound match {
+        case Some(_) => attrExpr(a)
+        case None => decodedValue(a).map(v => StringLiteral(v.text)).getOrElse("true")
+      }
+      Some(raw match {
+        case "class" => s"__st.rootCls($value)"
+        case "style" => s"__st.rootStyle($value)"
+        case _ => s"__st.rootAttr(${StringLiteral(raw)}, $value)"
+      })
+    }
+  }
+
   private def genComponent(e: Element): List[Part] = {
-    val attrArgs = e.attrs.filterNot(a => structuralDirectives.contains(a.name)).map { a =>
+    val fallthrough = e.attrs.filterNot(a => structuralDirectives.contains(a.name)).flatMap(genFallthrough)
+    val attrArgs = e.attrs.filterNot(a => structuralDirectives.contains(a.name) || isFallthrough(boundName(a.name).getOrElse(a.name))).map { a =>
       val n = a.name
       val (raw, value) =
         if (n.startsWith(":") || n.startsWith("v-bind:")) {
@@ -306,9 +337,6 @@ final class TemplateCodegen(src: SourceText,
       val name = propName(raw)
       if (name == "ref") src.fail(a.offset, s"'ref' on component <${e.name}> is not supported; set it on an element")
       if (!name.matches("""[A-Za-z_][A-Za-z0-9_]*""")) src.fail(a.offset, s"invalid prop name '$raw'")
-      if (name == "class" || name == "style") {
-        src.fail(a.offset, s"'$raw' on component <${e.name}> is not supported; set it on an element inside the component")
-      }
       // 名前を変換していない場合は、引数名を.stの属性名に対応付ける(ホバーや定義ジャンプのため)
       val prefix = if (n.startsWith(":")) 1 else if (n.startsWith("v-bind:")) "v-bind:".length else 0
       val nameCode = if (name == raw && n.length == prefix + raw.length) marks.mark(name, a.offset + prefix) else name
@@ -346,7 +374,8 @@ final class TemplateCodegen(src: SourceText,
       case (n, offset) => src.fail(offset, s"duplicate prop or slot '$n' on component <${e.name}>")
     }
     val argList = args.map { case (_, n, v, _) => s"$n = $v" }.mkString(", ")
-    List(Code(s"__st.component(${marks.mark(e.name, e.offset + 1)}($argList))"))
+    val extra = fallthrough.map(", " + _).mkString
+    List(Code(s"__st.component(${marks.mark(e.name, e.offset + 1)}($argList)$extra)"))
   }
 
   private def propName(s: String): String = {

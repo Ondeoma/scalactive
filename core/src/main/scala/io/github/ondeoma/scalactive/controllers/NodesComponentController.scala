@@ -29,9 +29,13 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
     }
   }
 
+  /** initのたびに(onInitの後に)呼ばれる処理. 親が付け加えた属性(属性の引き継ぎ)などに使います. */
+  var afterInit: List[NodesComponentController => Unit] = Nil
+
   def init(): Either[String, NodesComponentController] = {
     initF(this).map { c =>
       onInit(c)
+      afterInit.foreach(_(c))
       c
     }
   }

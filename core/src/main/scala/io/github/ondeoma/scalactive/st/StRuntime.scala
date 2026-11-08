@@ -3,7 +3,7 @@ package io.github.ondeoma.scalactive.st
 import io.github.ondeoma.scalactive.components.{ComponentManager, Slot}
 import io.github.ondeoma.scalactive.components.htmls.HtmlComponent
 import io.github.ondeoma.scalactive.components.texts.TextComponent
-import io.github.ondeoma.scalactive.controllers.attrs.AttrController
+import io.github.ondeoma.scalactive.controllers.attrs.{AttrBooleanController, AttrController, AttrStringController, ClassStringsController}
 import io.github.ondeoma.scalactive.controllers.events.EventController
 import io.github.ondeoma.scalactive.enums.EventType
 import io.github.ondeoma.scalactive.reactive.*
@@ -201,6 +201,12 @@ object StRuntime {
 
   def cls(v: Any)
          (using cm: ComponentManager): ATTR = {
+    ComponentManager.clsSs(classesOf(v))
+  }
+
+  /** :classの値(文字列・リスト・組・Map)から、付与するクラスのリストを求めます. */
+  private def classesOf(v: Any)
+                       (using cm: ComponentManager): Reactive[List[String]] = {
     // 文字列の要素はそのまま、組の要素は条件付き
     val entries: List[Either[String, (String, Any)]] = v match {
       case s: String => List(Left(s))
@@ -213,12 +219,12 @@ object StRuntime {
     }
     val static = entries.collect { case Left(s) => splitClasses(s) }.flatten
     val pairs = entries.collect { case Right(p) => p }
-    if (pairs.isEmpty) ComponentManager.clsSs(new RV(static))
+    if (pairs.isEmpty) new RV(static)
     else {
       val reactives = pairs.collect { case (_, r: Reactive[?]) => r }
       val calc = () => static ++ pairs.collect { case (k, c) if truthy(c) => splitClasses(k) }.flatten
-      if (reactives.isEmpty) ComponentManager.clsSs(new RV(calc()))
-      else ComponentManager.clsSs(derived(reactives, calc))
+      if (reactives.isEmpty) new RV(calc())
+      else derived(reactives, calc)
     }
   }
 
@@ -280,18 +286,44 @@ object StRuntime {
   def style(rv: Reactive[Map[String, String]])
            (using d: DummyImplicit,
             cm: ComponentManager): ATTR = {
-    ComponentManager.el(ele => AttrController { ac =>
-      var current = Map.empty[String, String]
-      val set = (m: Map[String, String]) => {
-        (current.keySet -- m.keySet).foreach(k => ele.style.removeProperty(cssName(k)))
-        m.foreach((k, v) => setStyleProp(ele, k, v))
-        current = m
+    ComponentManager.el(styleMapEffect(rv))
+  }
+
+  private def styleMapEffect(rv: Reactive[Map[String, String]]): ElementEffectF = ele => AttrController { ac =>
+    var current = Map.empty[String, String]
+    val set = (m: Map[String, String]) => {
+      (current.keySet -- m.keySet).foreach(k => ele.style.removeProperty(cssName(k)))
+      m.foreach((k, v) => setStyleProp(ele, k, v))
+      current = m
+    }
+    ac.element = Some(ele)
+    set(rv.v)
+    ac.watchInfos = List(rv.addWatcher { case (_, n) => set(n) })
+    Right(ac)
+  }
+
+  private def stylePairsEffect(ps: List[(String, Any)]): ElementEffectF = ele => AttrController { ac =>
+    ac.element = Some(ele)
+    ps.foreach((k, x) => setStyleProp(ele, k, x))
+    ac.watchInfos = ps.collect { case (k, r: Reactive[?]) => r.addWatcher(_ => setStyleProp(ele, k, r)) }
+    Right(ac)
+  }
+
+  private def stylePairs(v: Any): Option[List[(String, Any)]] = v match {
+    case (k: String, x) => Some(List((k, x)))
+    case xs: Iterable[?] if xs.nonEmpty && xs.forall { case (_: String, _) => true; case _ => false } =>
+      Some(xs.toList.map { case (k: String, x) => (k, x); case _ => throw new IllegalStateException })
+    case _ => None
+  }
+
+  /** "color: red; font-size: 12px" をプロパティ名と値の組にします. */
+  private def parseStyle(s: String): List[(String, String)] = {
+    s.split(";").toList.flatMap { d =>
+      d.indexOf(':') match {
+        case -1 => None
+        case i => Some((d.take(i).trim, d.drop(i + 1).trim)).filter(_._1.nonEmpty)
       }
-      ac.element = Some(ele)
-      set(rv.v)
-      ac.watchInfos = List(rv.addWatcher { case (_, n) => set(n) })
-      Right(ac)
-    })
+    }
   }
 
   def style[A](rv: Reactive[A])
@@ -308,22 +340,91 @@ object StRuntime {
    */
   def style(v: Any)
            (using cm: ComponentManager): ATTR = {
-    val pairs: Option[List[(String, Any)]] = v match {
-      case (k: String, x) => Some(List((k, x)))
-      case xs: Iterable[?] if xs.nonEmpty && xs.forall { case (_: String, _) => true; case _ => false } =>
-        Some(xs.toList.map { case (k: String, x) => (k, x); case _ => throw new IllegalStateException })
-      case _ => None
-    }
-    pairs match {
+    stylePairs(v) match {
       case None => attr("style", v)
-      case Some(ps) =>
-        ComponentManager.el(ele => AttrController { ac =>
-          ac.element = Some(ele)
-          ps.foreach((k, x) => setStyleProp(ele, k, x))
-          ac.watchInfos = ps.collect { case (k, r: Reactive[?]) => r.addWatcher(_ => setStyleProp(ele, k, r)) }
-          Right(ac)
-        })
+      case Some(ps) => ComponentManager.el(stylePairsEffect(ps))
     }
+  }
+
+  // <Child class="..." :style="..." id="..." data-x="..." />
+  // 子コンポーネントのルート要素に付け加える属性(属性の引き継ぎ). classとstyleは子のものと合わせます.
+  // Scalaからは c(Child(), rootCls("primary"), rootAttr("id", "x")) のように使えます.
+
+  def rootCls(rv: Reactive[String])
+             (using cm: ComponentManager): ElementEffectF = {
+    ClassStringsController(CRV(rv, splitClasses))
+  }
+
+  def rootCls(rv: Reactive[List[String]])
+             (using d: DummyImplicit,
+              cm: ComponentManager): ElementEffectF = {
+    ClassStringsController(rv)
+  }
+
+  def rootCls(rv: Reactive[Map[String, Boolean]])
+             (using d1: DummyImplicit,
+              d2: DummyImplicit,
+              cm: ComponentManager): ElementEffectF = {
+    ClassStringsController(CRV(rv, (m: Map[String, Boolean]) => m.toList.collect { case (k, true) => splitClasses(k) }.flatten))
+  }
+
+  def rootCls(v: Any)
+             (using cm: ComponentManager): ElementEffectF = {
+    ClassStringsController(classesOf(v))
+  }
+
+  /** 文字列のstyleも、プロパティごとに子のstyleへ合わせます. */
+  def rootStyle(rv: Reactive[String])
+               (using cm: ComponentManager): ElementEffectF = {
+    styleMapEffect(CRV(rv, (s: String) => parseStyle(s).toMap))
+  }
+
+  def rootStyle(rv: Reactive[Map[String, String]])
+               (using d: DummyImplicit,
+                cm: ComponentManager): ElementEffectF = {
+    styleMapEffect(rv)
+  }
+
+  def rootStyle(v: Any)
+               (using cm: ComponentManager): ElementEffectF = {
+    stylePairs(v) match {
+      case Some(ps) => stylePairsEffect(ps)
+      case None => stylePairsEffect(parseStyle(if (v == null) "" else String.valueOf(v)))
+    }
+  }
+
+  def rootAttr(name: String,
+               rv: Reactive[String])
+              (using cm: ComponentManager): ElementEffectF = {
+    AttrStringController(name, rv)
+  }
+
+  def rootAttr(name: String,
+               rv: Reactive[Boolean])
+              (using d: DummyImplicit,
+               cm: ComponentManager): ElementEffectF = {
+    AttrBooleanController(name, rv, "")
+  }
+
+  def rootAttr[A](name: String,
+                  rv: Reactive[A])
+                 (using d1: DummyImplicit,
+                  d2: DummyImplicit,
+                  cm: ComponentManager): ElementEffectF = {
+    AttrStringController(name, CRV(rv, (a: A) => String.valueOf(a)))
+  }
+
+  def rootAttr(name: String,
+               v: Any)
+              (using cm: ComponentManager): ElementEffectF = ele => AttrController { ac =>
+    ac.element = Some(ele)
+    v match {
+      case true => ele.setAttribute(name, "")
+      case false | null | None => ele.removeAttribute(name)
+      case Some(x) => ele.setAttribute(name, String.valueOf(x))
+      case x => ele.setAttribute(name, String.valueOf(x))
+    }
+    Right(ac)
   }
 
   // @event="stmt"
@@ -537,6 +638,13 @@ object StRuntime {
   def component(f: GenComponentF)
                (using cm: ComponentManager): HTML = {
     ComponentManager.c(f)
+  }
+
+  /** 子コンポーネントを展開し、ルート要素にattrs(rootCls/rootStyle/rootAttr)を付け加えます. */
+  def component(f: GenComponentF,
+                attrs: ElementEffectF*)
+               (using cm: ComponentManager): HTML = {
+    ComponentManager.c(f, attrs *)
   }
 
 }

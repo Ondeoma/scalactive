@@ -204,6 +204,35 @@ object ComponentManager {
     componentWithComment(f)
   }
 
+  /**
+   * 子コンポーネントを展開し、そのルート要素(最初の要素)にattrsを付け加えます(属性の引き継ぎ).
+   * 子が描き直されたときも、新しいルート要素に付け直します.
+   * attrsにはStRuntimeのrootCls/rootStyle/rootAttrや、要素に効果を付けるコントローラーを渡します.
+   */
+  def c(f: GenComponentF,
+        attrs: ElementEffectF*)
+       (using cc: ComponentManager): HTML = {
+    if (attrs.isEmpty) componentWithComment(f)
+    else componentWithComment((parent, am) => {
+      val ctrl = f(parent, am)
+      ctrl match {
+        case n: NodesComponentController =>
+          n.afterInit = n.afterInit :+ { (nc: NodesComponentController) =>
+            nc.elements.headOption match {
+              case Some(root) =>
+                attrs.map(_(root)).toList.traverse(_.init()) match {
+                  case Right(cs) => nc.children = nc.children ++ cs
+                  case Left(e) => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e)
+                }
+              case None => io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on a component without a root element are ignored")
+            }
+          }
+        case _ => io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on this component are ignored")
+      }
+      ctrl
+    })
+  }
+
   def componentWithComment(f: GenComponentF)
                           (using cc: ComponentManager): HTML = {
     val id = "cm-" + randomUUID()

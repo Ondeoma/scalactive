@@ -26,7 +26,7 @@ def add(s: State): Unit = {
 
 <template>
   <div class="st-sample">
-    <h3>Counter <StBadge /> <StBadge label="props" :count="Some(s.count)" /></h3>
+    <h3>Counter <StBadge /> <StBadge label="props" :count="Some(s.count)" :class='"big-badge" -> s.count.mapC(_ >= 3)' data-demo="fallthrough" /></h3>
     <p>mounted: {{ s.mountedAt }}</p>
     <p>count: <b>{{ s.count }}</b></p>
     <button @click="s.count := s.count.v + s.step.v">+{{ s.step }}</button>
@@ -103,6 +103,7 @@ def add(s: State): Unit = {
 .even { color: seagreen; }
 .odd { color: royalblue; }
 .agreed { color: seagreen; }
+.big-badge { font-size: 16px !important; }
 .st-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .st-modal-body { background: #fff; color: #222; padding: 16px; border-radius: 6px; }
 </style>

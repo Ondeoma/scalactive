@@ -148,6 +148,7 @@ object ComponentComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("Use"))}>コンポーネントの呼出し</a></li>
        |  <li><a ${evClick(setHash("Lifecycle"))}>ライフサイクルフック</a></li>
        |  <li><a ${evClick(setHash("Ref"))}>テンプレート参照</a></li>
+       |  <li><a ${evClick(setHash("Attrs"))}>属性の引き継ぎ</a></li>
        |</ul>
        |
        |
@@ -258,6 +259,22 @@ object ComponentComponent extends StatelessComponent {
        |
        |<p>
        |  単一ファイルコンポーネント(.st)では、Stateに <code>ElementRef()</code> を持たせ、<code>ref="s.input"</code> と書きます.
+       |</p>
+       |
+       |<h2 id="Attrs">属性の引き継ぎ</h2>
+       |
+       |<p>
+       |  <code>c(コンポーネント, 属性...)</code> のように、子コンポーネントのルート要素(最初の要素)に属性を付け加えられます(Vueのフォールスルー属性).
+       |  属性は <code>StRuntime</code> の <code>rootCls</code> / <code>rootStyle</code> / <code>rootAttr</code> で作ります.
+       |  classとstyleは子のものと合わされ、子が描き直されたときも付け直されます. 値にはReactiveも使えます.
+       |</p>
+       |
+       |<pre><code class="language-scala">import io.github.ondeoma.scalactive.st.StRuntime.{rootAttr, rootCls, rootStyle}
+       |
+       |c(ButtonComponent(...), rootCls("primary" -&gt; isActive), rootStyle(Map("width" -&gt; "100%")), rootAttr("aria-label", "送信"))</code></pre>
+       |
+       |<p>
+       |  単一ファイルコンポーネント(.st)では、子コンポーネントのタグに書いた <code>class</code>・<code>style</code>・<code>id</code>・<code>role</code>・<code>data-*</code>・<code>aria-*</code> が自動的に引き継がれます.
        |</p>
        |
        |""".stripMargin

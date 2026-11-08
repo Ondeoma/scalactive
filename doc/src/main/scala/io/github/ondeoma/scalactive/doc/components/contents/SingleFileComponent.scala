@@ -283,6 +283,11 @@ object SingleFileComponent extends StatelessComponent {
        |  <li>
        |    <code>v-model="rv"</code> はpropsの <code>model</code> に、<code>v-model:name="rv"</code> はpropsの <code>name</code> にRVを渡します(後述).
        |  </li>
+       |  <li>
+       |    <code>class</code>・<code>style</code>・<code>id</code>・<code>role</code>・<code>data-*</code>・<code>aria-*</code>(<code>:</code>付きも可)はpropsにならず、
+       |    子コンポーネントのルート要素(最初の要素)に付け加えられます(属性の引き継ぎ). classとstyleは子のものと合わされます.
+       |    子が描き直されたときも付け直され、Reactiveな値は変化に追従します.
+       |  </li>
        |  <li>デフォルト値のあるpropsは省略できます. すべて省略可能なら <code>&lt;Badge /&gt;</code> と書けます.</li>
        |  <li>
        |    propsは生成時に1度だけ渡されます. 値の変化を子に伝えたい場合はReactiveを渡してください.
@@ -383,7 +388,7 @@ object SingleFileComponent extends StatelessComponent {
        |<h2 id="limitations">制限事項</h2>
        |
        |<ul>
-       |  <li>子コンポーネントへの <code>class</code>・<code>style</code> の指定、スコープ付きslotは未対応です.</li>
+       |  <li>スコープ付きslotは未対応です.</li>
        |  <li><code>{{ }}</code> は属性値の中では使えません. <code>:name="expr"</code> を使ってください.</li>
        |  <li>
        |    sbtのコンパイルエラーは生成ソースの位置で報告されます. 埋め込まれた式には元ファイルの行番号コメントが付与されます.
