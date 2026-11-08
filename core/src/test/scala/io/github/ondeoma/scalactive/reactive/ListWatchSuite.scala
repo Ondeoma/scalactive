@@ -134,6 +134,43 @@ class ListWatchSuite extends munit.FunSuite {
     assertEquals(rowLevel, 0)
   }
 
+  // ---- 同じ値の代入 ----
+
+  test("RV: 同じ値の代入では通知せず、triggerで明示的に通知できる") {
+    val rv = new Counted(1)
+    var calls = List.empty[(Int, Int)]
+    rv.addWatcher { case (o, n) => calls = calls :+ (o, n) }
+    rv := 1
+    assertEquals(calls, Nil)
+    rv := 2
+    rv := 2
+    assertEquals(calls, List((1, 2)))
+    rv.trigger()
+    assertEquals(calls, List((1, 2), (2, 2)))
+  }
+
+  test("CRV: 計算結果が変わらなければ通知しない") {
+    val rv = new RV(0)
+    val big = CRV(rv, (_: Int) > 3)
+    var calls = 0
+    big.addWatcher(_ => calls += 1)
+    (1 to 3).foreach(rv := _)
+    assertEquals(calls, 0)
+    rv := 4
+    rv := 5
+    assertEquals(calls, 1)
+    assertEquals(big.v, true)
+  }
+
+  test("RVList: 同じ値の代入では変わった行にだけ通知する") {
+    val rvs = counted(3)
+    val list = RVList(rvs)
+    var rowChanges = 0
+    rvs.foreach(_.addWatcher(_ => rowChanges += 1))
+    list := List(0, 10, 2)
+    assertEquals(rowChanges, 1)
+  }
+
   // ---- RMList ----
 
   private final case class Item(n: Int)

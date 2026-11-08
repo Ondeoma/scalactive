@@ -22,6 +22,14 @@ object ReactiveComponent extends StatelessComponent {
          |// 値の取得
          |val rvV: Int = rv.v
          |//             rv()
+         |
+         |// 前の値と等しい(==)値を代入しても、監視している側(画面など)には通知されません
+         |rv := 20
+         |
+         |// 可変なオブジェクトの中身を直接書き換えた場合などは、triggerで明示的に通知できます
+         |val buf = RV(scala.collection.mutable.ListBuffer(1, 2))
+         |buf.v += 3
+         |buf.trigger()
          |""".stripMargin
 
     val codeListRV = // language=scala
@@ -228,7 +236,8 @@ object ReactiveComponent extends StatelessComponent {
        |<h2 id="RV">RV[A] extends Reactive[A]</h2>
        |
        |<p>
-       |  RV[A]は最もシンプルなリアクティブな型です。
+       |  RV[A]は最もシンプルなリアクティブな型です。<br>
+       |  前の値と等しい値を代入した場合は、監視している側に通知されません(v0.1.xまでは通知されていました).
        |</p>
        |
        |<pre><code class="language-scala">${esc(codeRV)}</code></pre>
@@ -281,7 +290,9 @@ object ReactiveComponent extends StatelessComponent {
        |
        |<p>
        |  他のリアクティブな値が変化した時に自動追従するリアクティブ型です.<br>
-       |  Vue.jsにおけるComputedの概念に近いものです. 読取専用です.
+       |  Vue.jsにおけるComputedの概念に近いものです. 読取専用です.<br>
+       |  計算し直した値が前の値と等しい場合は通知されません. 例えば <code>count.mapC(_ > 3)</code> を条件にしたifCは、
+       |  countが変わるたびではなく、真偽が切り替わった時だけ描き直されます.
        |</p>
        |
        |<pre><code class="language-scala">${esc(codeCRV)}</code></pre>

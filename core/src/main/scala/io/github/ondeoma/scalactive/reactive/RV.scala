@@ -9,10 +9,22 @@ class RV[A](private var value: A) extends Reactive[A] {
 
   override def v: A = value
 
+  /**
+   * 値を更新します. 前の値と等しい(==)場合はウォッチャーに通知しません.
+   * (以前は同じ値でも通知し、ifCなどが不要に描き直されていました)
+   */
   def apply(v: A): Unit = {
     val old = value
     value = v
-    watchers.foreach(_._2(old, v))
+    if (old != v) watchers.foreach(_._2(old, v))
+  }
+
+  /**
+   * 値を変えずにウォッチャーに通知します.
+   * 可変なオブジェクトの中身を直接書き換えた後に、画面へ反映させたい場合などに使います.
+   */
+  def trigger(): Unit = {
+    watchers.foreach(_._2(value, value))
   }
 
   def :=(v: A): Unit = {

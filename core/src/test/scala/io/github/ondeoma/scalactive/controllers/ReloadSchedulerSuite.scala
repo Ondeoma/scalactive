@@ -98,8 +98,10 @@ class ReloadSchedulerSuite extends munit.FunSuite {
       }</div>"
     }
     assertEquals(innerRenders, 1)
-    // 子を先に予約してから親を予約する(どちらも値は同じだが、代入で通知される)
+    // 子を先に予約してから親を予約する(どちらも最終的な値は同じだが、途中で変化して通知される)
+    inner := false
     inner := true
+    outer := false
     outer := true
     afterMicrotasks().map { _ =>
       assertEquals(innerRenders, 2)
