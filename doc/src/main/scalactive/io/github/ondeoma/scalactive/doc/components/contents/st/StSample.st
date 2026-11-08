@@ -8,7 +8,8 @@ case class State(count: RV[Int] = RV(0),
                  tags: RV[List[String]] = RV(List("scala")),
                  cardOpen: RV[Boolean] = RV(true),
                  mountedAt: RV[String] = RV("-"),
-                 todoInput: ElementRef[HTMLInputElement] = ElementRef())
+                 todoInput: ElementRef[HTMLInputElement] = ElementRef(),
+                 modal: RV[Boolean] = RV(false))
 
 def initState() = State()
 
@@ -82,6 +83,17 @@ def add(s: State): Unit = {
     </StCard>
     <button v-else @click="s.cardOpen := true">カードを再表示</button>
     <StCard title="slotなし" />
+
+    <h3>Teleport</h3>
+    <button @click="s.modal := true">モーダルを開く</button>
+    <Teleport v-if="s.modal" to="body">
+      <div class="st-modal" @click.self="s.modal := false">
+        <div class="st-modal-body">
+          <p>bodyの直下に描画されています. count = {{ s.count }}</p>
+          <button @click="s.modal := false">閉じる</button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -91,4 +103,6 @@ def add(s: State): Unit = {
 .even { color: seagreen; }
 .odd { color: royalblue; }
 .agreed { color: seagreen; }
+.st-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.st-modal-body { background: #fff; color: #222; padding: 16px; border-radius: 6px; }
 </style>

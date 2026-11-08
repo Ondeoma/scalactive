@@ -259,6 +259,16 @@ object BuiltinComponentsComponent extends StatelessComponent {
 
     //////////
     
+    val codeTeleport = // language=scala
+      s"""val open = RV(false)
+         |// 中身をbodyの末尾に描画する. 元の位置には目印のコメントだけが残る
+         |val modal = ifC(open) { implicit cm =>
+         |  teleportC("body") { implicit cm =>
+         |    s"<div class='modal'>...<button $${evClick(open := false)}>閉じる</button></div>"
+         |  }
+         |}
+         |""".stripMargin
+
     // language=html
     s"""<h1>組込コンポーネント</h1>
        |
@@ -320,10 +330,17 @@ object BuiltinComponentsComponent extends StatelessComponent {
        |    セレクトボックス系
        |    <ul> 
        |      <li><a ${evClick(setHash("SelectS"))}>SelectStringComponent</a></li> 
-       |      <li><a ${evClick(setHash("SelectG"))}>SelectGeneralComponent</a></li> 
+       |      <li><a ${evClick(setHash("SelectG"))}>SelectGeneralComponent</a></li>
        |    </ul>
-       |  </li> 
-       |  
+       |  </li>
+       |
+       |  <li>
+       |    その他
+       |    <ul>
+       |      <li><a ${evClick(setHash("Teleport"))}>Teleport</a></li>
+       |    </ul>
+       |  </li>
+       |
        |</ul>
        | 
        |<h2 id="Text">TextComponent</h2>
@@ -1223,6 +1240,22 @@ object BuiltinComponentsComponent extends StatelessComponent {
        |<div class="rendered">
        |  ${%(selectN(selectGV, selectsN))} => ${%(TextComponent(selectGV)(_.toString))}
        |</div>
+       |
+       |<h2 id="Teleport">Teleport</h2>
+       |
+       |<p>
+       |  中身を別の要素(CSSセレクターで指定)の末尾に描画します(VueのTeleport、ReactのPortal).
+       |  モーダル・トースト・ツールチップなどを、親要素のoverflowやz-indexの影響を受けない場所に描く場合に使います.<br>
+       |  元の位置には目印のコメントだけが残ります. 中身はこのコンポーネントのものとして扱われるので、
+       |  リアクティブな表示やイベントはそのまま動き、片付けられると描画先から取り除かれます.
+       |  <code>disabled = true</code> の場合は元の位置に描画します.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeTeleport)}</code></pre>
+       |
+       |<p>
+       |  単一ファイルコンポーネント(.st)では <code>&lt;Teleport to="body"&gt;...&lt;/Teleport&gt;</code> と書きます.
+       |</p>
        |""".stripMargin
   }
 

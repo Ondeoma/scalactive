@@ -85,6 +85,7 @@ object ComponentManager {
 
   export io.github.ondeoma.scalactive.components.Slot
   export io.github.ondeoma.scalactive.components.ElementRef
+  export io.github.ondeoma.scalactive.components.Teleport
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
   export io.github.ondeoma.scalactive.components.fors.ForLRComponent
   export io.github.ondeoma.scalactive.components.fors.ForRMComponent
@@ -308,6 +309,17 @@ object ComponentManager {
                     showStyle: String = "block")
                    (using cc: ComponentManager): ATTR = {
     el(StyleBrieflyController(rv, duration, "display", showStyle, "none"))
+  }
+
+  /**
+   * 中身を別の要素(toのセレクター)の末尾に描画します(VueのTeleport、ReactのPortal).
+   * 例: `teleportC("body") { implicit cm => "<div class='modal'>...</div>" }`
+   */
+  def teleportC(to: String,
+                disabled: Boolean = false)
+               (genHtml: ComponentManager => HTML)
+               (using ComponentManager): HTML = {
+    %(Teleport(to, disabled, Slot(genHtml))(_, _))
   }
 
   def ifC(ifV: Reactive[Boolean])
