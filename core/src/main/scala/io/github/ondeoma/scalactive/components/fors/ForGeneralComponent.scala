@@ -18,12 +18,15 @@ object ForGeneralComponent extends BaseComponent {
         ns = e_cs.flatMap(_._1).orDummyNode // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
         children = e_cs.flatMap(_._2)
         tmpRs = e_cs.flatMap(_._3)
+        eIds = e_cs.flatMap(_._4)
         _ <- addNodes(c.parent.getOrElse(root))(am, ns *).toRight(addNodesErrorMessage)
       } yield {
         c.nodes = ns
         c.children = children
         c.watchInfos = watch(c)
         c.tmpReactives = tmpRs
+        // 行の中で登録したEventManagerのハンドラーも、描き直し・片付けのときに解除する
+        c.eventHandlers = eIds
         c 
       }
     }

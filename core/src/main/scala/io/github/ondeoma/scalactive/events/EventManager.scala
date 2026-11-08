@@ -34,9 +34,16 @@ object EventManager {
     }
   }
 
-  def addHandler(h: Handler): ID = {
+  private def add(h: Handler): ID = {
     val id = randomUUID()
     State.handlers.addOne(id -> h)
+    id
+  }
+
+  // inlineにすることで、呼び出し側のComponentManagerにハンドラーが登録され、
+  // コンポーネントのクリア時に解除されます(以前はinlineでなかったため登録されず、解除されませんでした).
+  inline def addHandler(h: Handler): ID = {
+    val id = add(h)
     registerCM(id)
     id
   }

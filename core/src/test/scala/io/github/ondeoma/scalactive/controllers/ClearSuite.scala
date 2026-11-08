@@ -118,6 +118,29 @@ class ClearSuite extends munit.FunSuite {
     }
   }
 
+  test("forC: 行の中で登録したEventManagerのハンドラーを、描き直しで解除する") {
+    import io.github.ondeoma.scalactive.events.EventManager
+    case object Ping extends EventManager.TypedEvent
+    val list = RVList(List(1, 2, 3))
+    var calls = 0
+    mount { implicit cm =>
+      val items = ComponentManager.forC(list) { (rowCm, rv, _) =>
+        given ComponentManager = rowCm
+        EventManager.addHandler { case Ping => calls += 1 }
+        s"<li>${rv.v}</li>"
+      }
+      s"""<ul>$items</ul>"""
+    }
+    EventManager.fire(Ping)
+    assertEquals(calls, 3)
+    list := List(1)
+    settle().map { _ =>
+      calls = 0
+      EventManager.fire(Ping)
+      assertEquals(calls, 1, "描き直し前の3行分のハンドラーが残っていない")
+    }
+  }
+
   test("親を片付けた後に、子の予約済みのreloadで監視が残らない") {
     val b = new Counted(true)
     val (root, parent) = mount { implicit cm =>
