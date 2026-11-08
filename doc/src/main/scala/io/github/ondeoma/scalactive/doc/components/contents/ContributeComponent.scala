@@ -33,6 +33,18 @@ object ContributeComponent extends StatelessComponent {
        |  エディタ拡張(editors/)のテスト方法は、リポジトリの <code>editors/README.md</code> を参照してください.
        |</p>
        |
+       |<h2>性能計測</h2>
+       |
+       |<p>
+       |  描画やリアクティブ値の性能に関わる変更では、変更の前後でベンチマークを実行して比較してください.
+       |  ヘッドレスのChrome(インストール済みのGoogle Chrome)で計測します. 詳しくは <code>bench/README.md</code> を参照してください.
+       |</p>
+       |
+       |<pre><code class="language-bash">sbt bench/fullLinkJS
+       |cd bench && npm install
+       |node run.mjs --out results/before.json      # 変更前
+       |node run.mjs --compare results/before.json  # 変更後(sbt bench/fullLinkJSしてから)</code></pre>
+       |
        |""".stripMargin
   }
   

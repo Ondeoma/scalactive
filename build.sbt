@@ -128,8 +128,21 @@ lazy val doc = project.in(file("doc"))
     }
   )
 
+// 性能計測用のアプリ(bench/README.md). fullLinkJSの出力をbench/run.mjsがヘッドレスChromeで実行します.
+lazy val bench = project.in(file("bench"))
+  .enablePlugins(ScalaJSPlugin, ScalactivePlugin)
+  .dependsOn(core)
+  .settings(
+    name := "scalactive-bench",
+    publish / skip := true,
+    scalaJSUseMainModuleInitializer := true,
+    scalaJSLinkerConfig ~= {
+      _.withModuleKind(ModuleKind.ESModule)
+    }
+  )
+
 lazy val root = (project in file("."))
-  .aggregate(core, compiler, sbtScalactive, languageServer, doc)
+  .aggregate(core, compiler, sbtScalactive, languageServer, doc, bench)
   .settings(
     name := "scalactive-root",
     publish / skip := true
