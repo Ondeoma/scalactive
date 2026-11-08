@@ -1,6 +1,5 @@
 package io.github.ondeoma.scalactive.reactive
 
-import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.WatchInfo
 import io.github.ondeoma.scalactive.utils.TypeAlias.ID
 
@@ -19,7 +18,7 @@ abstract class Reactive[A] {
   def apply(): A = v
 
   def addWatcher(w: Watcher): WatchInfo = {
-    val id = randomUUID()
+    val id = io.github.ondeoma.scalactive.utils.IdGen.next()
     watchers.addOne(id -> w)
     WatchInfo(this, id)
   }

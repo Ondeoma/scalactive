@@ -1,6 +1,5 @@
 package io.github.ondeoma.scalactive.reactive
 
-import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.WatchInfo
 import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.*
 import io.github.ondeoma.scalactive.utils.ListBufferUtil.*
@@ -23,7 +22,7 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   watchAll()
 
   def addWatcherRowLevel(w: Watcher): WatchInfo = {
-    val id = rowLevelWatchingIdPrefix + randomUUID()
+    val id = rowLevelWatchingIdPrefix + io.github.ondeoma.scalactive.utils.IdGen.next()
     watchers.addOne(id -> w)
     WatchInfo(this, id)
   }

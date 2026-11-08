@@ -1,7 +1,6 @@
 package io.github.ondeoma.scalactive.events
 
 
-import io.github.ondeoma.scalactive.facades.Crypto.randomUUID
 import io.github.ondeoma.scalactive.utils.DomUtil.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 
@@ -35,7 +34,7 @@ object EventManager {
   }
 
   private def add(h: Handler): ID = {
-    val id = randomUUID()
+    val id = io.github.ondeoma.scalactive.utils.IdGen.next()
     State.handlers.addOne(id -> h)
     id
   }
