@@ -342,6 +342,76 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  private val childFile = write(srcRoot.resolve("ren/Child.st"),
+    """<script lang="scala">
+      |case class Props(title: String,
+      |                 onClose: Unit => Unit = _ => (),
+      |                 footerArea: Slot = Slot.empty)
+      |</script>
+      |<template>
+      |  <div :title="props.title">
+      |    <b>{{ props.title }}</b>
+      |    <slot name="footer-area" />
+      |  </div>
+      |</template>
+      |""".stripMargin)
+  private val parentText =
+    """<script lang="scala">
+      |def x = 1
+      |</script>
+      |<template>
+      |  <div>
+      |    <Child title="a" @close="()"><template #footer-area>f</template></Child>
+      |    <Child :title="x.toString" />
+      |  </div>
+      |</template>
+      |""".stripMargin
+  private val parentFile = write(srcRoot.resolve("ren/Parent.st"), parentText)
+
+  test("参照の検索: propの定義・属性・スロットと、定義した.stの中のScalaの参照") {
+    val parentUri = parentFile.toUri.toString
+    val locs = service.references(parentUri, pos(parentText, "title=\"a\"", 1), includeDeclaration = true)
+    val childText = new String(Files.readAllBytes(childFile), StandardCharsets.UTF_8)
+    val inChild = locs.filter(_.getUri.endsWith("Child.st")).map(_.getRange.getStart)
+    val inParent = locs.filter(_.getUri.endsWith("Parent.st")).map(_.getRange.getStart)
+    assertEquals(inParent.toSet, Set(pos(parentText, "title=\"a\""), pos(parentText, ":title")))
+    assert(inChild.contains(pos(childText, "title: String")), inChild)
+    assert(inChild.contains(pos(childText, "title\">", 0)) && inChild.contains(pos(childText, "title }}")), "Scalaの参照: " + inChild)
+    val noDecl = service.references(parentUri, pos(parentText, ":title", 2), includeDeclaration = false)
+    assertEquals(noDecl.size, locs.size - 1)
+    // コンポーネントのタグ
+    val tags = service.references(parentUri, pos(parentText, "<Child", 2), includeDeclaration = true)
+    assertEquals(tags.size, 3, "開始タグ2つと終了タグ1つ")
+  }
+
+  test("名前の変更: propの名前を変えると、属性・スロット・イベントの書き方に合わせて書き換える") {
+    val parentUri = parentFile.toUri.toString
+    val childUri = childFile.toUri.toString
+    val childText = new String(Files.readAllBytes(childFile), StandardCharsets.UTF_8)
+    def applyEdits(text: String, es: List[org.eclipse.lsp4j.TextEdit]): String = {
+      val index = new LineIndex(text)
+      es.sortBy(e => -index.offset(e.getRange.getStart)).foldLeft(text) { (t, e) =>
+        t.substring(0, index.offset(e.getRange.getStart)) + e.getNewText + t.substring(index.offset(e.getRange.getEnd))
+      }
+    }
+    def renamed(at: Position, name: String): Map[String, String] = {
+      val changes = service.rename(parentUri, at, name).fold(e => fail(e), identity)
+      changes.map { case (u, es) => (if (u.endsWith("Child.st")) "child" else "parent") -> applyEdits(if (u.endsWith("Child.st")) childText else parentText, es) }
+    }
+    assertEquals(service.prepareRename(parentUri, pos(parentText, ":title", 2)).map(_._2), Some("title"))
+    val r1 = renamed(pos(parentText, "title=\"a\"", 1), "heading")
+    assert(r1("parent").contains("<Child heading=\"a\"") && r1("parent").contains("<Child :heading=\"x.toString\""), r1("parent"))
+    assert(r1("child").contains("heading: String") && r1("child").contains("{{ props.heading }}") && r1("child").contains(":title=\"props.heading\""), r1("child"))
+    val r2 = renamed(pos(parentText, "#footer-area", 2), "bottomBar")
+    assert(r2("parent").contains("<template #bottom-bar>"), r2("parent"))
+    assert(r2("child").contains("bottomBar: Slot") && r2("child").contains("<slot name=\"bottom-bar\" />"), r2("child"))
+    val r3 = renamed(pos(parentText, "@close", 2), "onDismiss")
+    assert(r3("parent").contains("@dismiss=\"()\""), r3("parent"))
+    assert(service.rename(parentUri, pos(parentText, "@close", 2), "dismiss").isLeft, "イベントのpropはonXxxの名前だけ")
+    assert(service.rename(parentUri, pos(parentText, "def x", 4), "y").isLeft, "propでなければ変更しない")
+    assert(service.prepareRename(childUri, pos(childText, "footerArea", 3)).isDefined, "定義の上からも変更できる")
+  }
+
   test("整形: 変わる場合は全体を置き換える編集を返し、整形済みなら返さない") {
     val messy = counter.replace("    <p v-if", "<p v-if")
     withText(counterUri, messy) {

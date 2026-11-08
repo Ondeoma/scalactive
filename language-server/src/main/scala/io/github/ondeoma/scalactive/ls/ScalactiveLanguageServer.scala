@@ -75,6 +75,8 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
     caps.setDefinitionProvider(true)
     caps.setDocumentHighlightProvider(true)
     caps.setDocumentFormattingProvider(true)
+    caps.setReferencesProvider(true)
+    caps.setRenameProvider(LspEither.forRight[java.lang.Boolean, RenameOptions](new RenameOptions(true)))
     caps.setSignatureHelpProvider(new SignatureHelpOptions(List("(", ",").asJava))
     CompletableFuture.completedFuture(new InitializeResult(caps, new ServerInfo("scalactive-language-server", BuildInfo.version)))
   }
@@ -136,6 +138,34 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
       async[java.util.List[_ <: TextEdit]](java.util.Collections.emptyList()) {
         service.formatting(params.getTextDocument.getUri).asJava
       }
+    }
+
+    override def references(params: ReferenceParams): CompletableFuture[java.util.List[_ <: Location]] = {
+      async[java.util.List[_ <: Location]](java.util.Collections.emptyList()) {
+        val include = Option(params.getContext).forall(_.isIncludeDeclaration)
+        service.references(params.getTextDocument.getUri, params.getPosition, include).asJava
+      }
+    }
+
+    override def prepareRename(params: PrepareRenameParams)
+    : CompletableFuture[org.eclipse.lsp4j.jsonrpc.messages.Either3[Range, PrepareRenameResult, PrepareRenameDefaultBehavior]] = {
+      type R = org.eclipse.lsp4j.jsonrpc.messages.Either3[Range, PrepareRenameResult, PrepareRenameDefaultBehavior]
+      async[R](null) {
+        service.prepareRename(params.getTextDocument.getUri, params.getPosition).map { case (r, name) =>
+          org.eclipse.lsp4j.jsonrpc.messages.Either3.forSecond[Range, PrepareRenameResult, PrepareRenameDefaultBehavior](new PrepareRenameResult(r, name))
+        }.orNull
+      }
+    }
+
+    override def rename(params: RenameParams): CompletableFuture[WorkspaceEdit] = {
+      CompletableFuture.supplyAsync(() => {
+        service.rename(params.getTextDocument.getUri, params.getPosition, params.getNewName) match {
+          case Right(changes) => new WorkspaceEdit(changes.map { case (u, es) => u -> es.asJava }.asJava)
+          case Left(msg) =>
+            throw new org.eclipse.lsp4j.jsonrpc.ResponseErrorException(
+              new org.eclipse.lsp4j.jsonrpc.messages.ResponseError(org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode.InvalidParams, msg, null))
+        }
+      }, requests)
     }
 
     override def documentHighlight(params: DocumentHighlightParams): CompletableFuture[java.util.List[_ <: DocumentHighlight]] = {

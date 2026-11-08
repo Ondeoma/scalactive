@@ -18,7 +18,7 @@ object TemplateNavigation {
   private def isNameChar(c: Char): Boolean = c.isLetterOrDigit || c == '-' || c == '_' || c == ':' || c == '.' || c == '@' || c == '#'
 
   /** offsetを含む名前の範囲 */
-  private def wordAt(text: String, offset: Int): Option[(Int, Int)] = {
+  private[ls] def wordAt(text: String, offset: Int): Option[(Int, Int)] = {
     var s = offset
     while (s > 0 && isNameChar(text.charAt(s - 1))) s -= 1
     var e = offset
@@ -32,7 +32,7 @@ object TemplateNavigation {
   }
 
   /** 属性名 → Propsのパラメータ名 */
-  private def propName(attr: String): Option[String] = {
+  private[ls] def propName(attr: String): Option[String] = {
     val raw =
       if (attr == "v-model") Some("model")
       else if (attr.startsWith("v-model:")) Some(attr.drop("v-model:".length))
@@ -47,7 +47,7 @@ object TemplateNavigation {
     raw.map(kebabToCamel).filter(_.nonEmpty)
   }
 
-  private def componentFile(name: String, file: Path): Option[Path] = {
+  private[ls] def componentFile(name: String, file: Path): Option[Path] = {
     Option(file.getParent).map(_.resolve(name + ".st")).filter(p => Files.exists(p))
   }
 

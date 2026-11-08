@@ -322,6 +322,108 @@ final class StLanguageService(log: String => Unit) {
     }.getOrElse(Nil)
   }
 
+  // ---- 参照の検索・名前の変更 ----
+
+  private def pathOf(uri: String): Path = Paths.get(new URI(uri)).toAbsolutePath.normalize
+
+  /** 開いている.stは編集中の内容、それ以外はファイルの内容 */
+  private def fileText(p: Path): String = {
+    val uri = p.toUri.toString
+    Option(texts.get(uri)).orElse(texts.asScala.collectFirst {
+      case (u, t) if scala.util.Try(pathOf(u)).toOption.contains(p) => t
+    }).getOrElse(new String(Files.readAllBytes(p), StandardCharsets.UTF_8))
+  }
+
+  private def uriOf(p: Path): String = {
+    texts.asScala.keys.find(u => scala.util.Try(pathOf(u)).toOption.contains(p)).getOrElse(p.toUri.toString)
+  }
+
+  /** 定義した.stの中のScalaの参照(presentation compilerのハイライト) */
+  private def scalaRefsOf(t: PropRefs.Target): List[PropRefs.Occurrence] = {
+    val text = fileText(t.componentFile)
+    val index = new LineIndex(text)
+    documentHighlight(uriOf(t.componentFile), index.position(t.declOffset)).map { h =>
+      PropRefs.Occurrence(t.componentFile, index.offset(h.getRange.getStart), index.offset(h.getRange.getEnd), PropRefs.Plain)
+    }
+  }
+
+  private def propOccurrences(t: PropRefs.Target): List[PropRefs.Occurrence] = {
+    val all = PropRefs.occurrences(t, fileText) ++ scalaRefsOf(t)
+    all.groupBy(o => (o.file, o.start)).values.map(_.head).toList.sortBy(o => (o.file.toString, o.start))
+  }
+
+  private def toLocation(o: PropRefs.Occurrence): Location = {
+    val index = new LineIndex(fileText(o.file))
+    new Location(uriOf(o.file), index.range(o.start, o.end))
+  }
+
+  /**
+   * 参照の検索. 子コンポーネントのprop(定義・属性・スロット)とコンポーネントのタグは同じパッケージの.stから、
+   * それ以外のScalaの名前はこの.stの中から探します.
+   */
+  def references(uri: String, pos: Position, includeDeclaration: Boolean): List[Location] = {
+    try {
+      val path = pathOf(uri)
+      val text = textOf(uri, path)
+      val offset = new LineIndex(text).offset(pos)
+      PropRefs.target(text, offset, path, fileText) match {
+        case Some(t) =>
+          propOccurrences(t).filter(o => includeDeclaration || !(o.file == t.componentFile && o.start == t.declOffset)).map(toLocation)
+        case None =>
+          val tag = TemplateNavigation.wordAt(text, offset).filter { case (s, _) =>
+            (s >= 1 && text.charAt(s - 1) == '<') || (s >= 2 && text.startsWith("</", s - 2))
+          }.map { case (s, e) => text.substring(s, e) }
+          tag.filter(_.headOption.exists(_.isUpper)).flatMap(c => TemplateNavigation.componentFile(c, path).map(c -> _)) match {
+            case Some((c, cf)) => PropRefs.componentOccurrences(c, cf.getParent, fileText).map(toLocation)
+            case None => documentHighlight(uri, pos).map(h => new Location(uri, h.getRange))
+          }
+      }
+    } catch {
+      case NonFatal(e) =>
+        log(s"references failed: $e")
+        Nil
+    }
+  }
+
+  /** 名前を変えられる位置なら、その範囲と今の名前 */
+  def prepareRename(uri: String, pos: Position): Option[(Range, String)] = {
+    try {
+      val path = pathOf(uri)
+      val text = textOf(uri, path)
+      val index = new LineIndex(text)
+      val offset = index.offset(pos)
+      for {
+        t <- PropRefs.target(text, offset, path, fileText)
+        (s, e) <- TemplateNavigation.wordAt(text, offset)
+      } yield (index.range(s, e), t.prop)
+    } catch {
+      case NonFatal(_) => None
+    }
+  }
+
+  /** 子コンポーネントのpropの名前の変更. 定義・属性・スロット・定義した.stの中のScalaの参照を書き換えます */
+  def rename(uri: String, pos: Position, newName: String): Either[String, Map[String, List[TextEdit]]] = {
+    if (!newName.matches("[A-Za-z_][A-Za-z0-9_]*")) Left(s"'$newName' is not a valid prop name")
+    else {
+      val path = pathOf(uri)
+      val text = textOf(uri, path)
+      PropRefs.target(text, new LineIndex(text).offset(pos), path, fileText) match {
+        case None => Left("only props of .st components can be renamed")
+        case Some(t) =>
+          val occs = propOccurrences(t)
+          val edits = occs.map(o => PropRefs.renamed(o.kind, newName).map(n => (o, n)))
+          edits.collectFirst { case Left(e) => e } match {
+            case Some(e) => Left(e)
+            case None =>
+              Right(edits.collect { case Right((o, n)) => o -> n }.groupBy(_._1.file).map { case (f, xs) =>
+                val index = new LineIndex(fileText(f))
+                uriOf(f) -> xs.map { case (o, n) => new TextEdit(index.range(o.start, o.end), n) }
+              })
+          }
+      }
+    }
+  }
+
   /** ドキュメントの整形. 変わる場合は全体を置き換える編集を1つ返します. */
   def formatting(uri: String): List[TextEdit] = {
     try {
