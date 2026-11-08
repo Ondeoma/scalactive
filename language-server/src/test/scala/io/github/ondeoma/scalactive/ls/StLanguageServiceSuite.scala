@@ -290,6 +290,29 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("ホバー: 子コンポーネントのタグ名でPropsの一覧、属性名でpropの型、HTMLのタグ・属性・イベントの説明") {
+    val text = counter.replace("<button @click", "<Card title=\"t\" :count=\"s.count\" @close=\"()\"></Card><input type=\"text\" @keydown=\"()\" /><button @click")
+    withText(counterUri, text) {
+      def hoverAt(marker: String, delta: Int): String = {
+        val h = service.hover(counterUri, pos(text, marker, delta))
+        assert(h.isDefined, marker)
+        h.get.getContents.getRight.getValue
+      }
+      val card = hoverAt("<Card title", 2)
+      assert(card.contains("Card.st") && card.contains("title: String") && card.contains("count: RV[Int] = …"), card)
+      val title = hoverAt("title=\"t\" :count", 1)
+      assert(title.contains("title: String") && title.contains("必須"), title)
+      val close = hoverAt("@close", 2)
+      assert(close.contains("onClose: Unit => Unit"), close)
+      assert(hoverAt("<input type", 2).contains("入力欄"))
+      val tpe = hoverAt("type=\"text\"", 1)
+      assert(tpe.contains("入力の種類") && tpe.contains("`checkbox`"), tpe)
+      assert(hoverAt("@keydown", 2).contains("キーを押した"))
+      // Scalaの部分は従来どおり型を表示する
+      assert(hoverAt("{{ s.count }}", 6).contains("RV[Int]"))
+    }
+  }
+
   test("整形: 変わる場合は全体を置き換える編集を返し、整形済みなら返さない") {
     val messy = counter.replace("    <p v-if", "<p v-if")
     withText(counterUri, messy) {

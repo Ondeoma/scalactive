@@ -1,7 +1,7 @@
 package io.github.ondeoma.scalactive.ls
 
 import io.github.ondeoma.scalactive.compiler.{SfcParser, SourceText}
-import org.eclipse.lsp4j.Location
+import org.eclipse.lsp4j.{Hover, Location, MarkupContent, MarkupKind}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -11,6 +11,7 @@ import scala.util.control.NonFatal
  * テンプレートからの定義ジャンプ.
  *  - 子コンポーネントのタグ名(`<Card>` / `</Card>`) → 同じパッケージの Card.st(Propsの定義の位置)
  *  - 子コンポーネントのタグの属性名(`title` / `:count` / `@close` / `v-model:count`) → Card.st のPropsのパラメータ
+ * とホバー(子コンポーネントのPropsの一覧・属性の型、HTMLのタグ・属性・イベントの説明).
  */
 object TemplateNavigation {
 
@@ -85,6 +86,78 @@ object TemplateNavigation {
               case _ => None
             }
           }
+        }
+      }
+    } catch {
+      case NonFatal(_) => None
+    }
+  }
+
+  // ---- ホバー ----
+
+  private def markdown(range: org.eclipse.lsp4j.Range, md: String): Hover = {
+    new Hover(new MarkupContent(MarkupKind.MARKDOWN, md), range)
+  }
+
+  private def propLine(p: TemplateCompletion.Prop): String = {
+    val default = p.hasDefault match {
+      case Some(true) => " = …"
+      case _ => ""
+    }
+    s"${p.name}: ${p.tpe}$default"
+  }
+
+  private def required(p: TemplateCompletion.Prop): String = if (p.hasDefault.contains(false)) "(必須)" else ""
+
+  /** コンポーネントのPropsの一覧 */
+  private def componentHover(name: String, file: Path): Option[String] = {
+    val where = TemplateCompletion.siblingComponents(file).get(name).map(p => s"`${p.getFileName}`")
+      .orElse(TemplateCompletion.builtins.get(name).map(_ => "組み込みのコンポーネント"))
+    where.map { w =>
+      val props = TemplateCompletion.propsOfComponent(name, file)
+      val body =
+        if (props.isEmpty) "Propsはありません"
+        else props.map(propLine).mkString("```scala\ncase class Props(\n  ", ",\n  ", "\n)\n```")
+      s"**<$name>** — $w\n\n$body"
+    }
+  }
+
+  def hover(text: String, offset: Int, file: Path): Option[Hover] = {
+    try {
+      val template = SfcParser.parse(new SourceText(text)).template
+      template.filter(t => offset >= t.contentStart && offset <= t.contentEnd).flatMap { t =>
+        wordAt(text, offset).flatMap { case (s, e) =>
+          val word = text.substring(s, e)
+          val index = new LineIndex(text)
+          val range = index.range(s, e)
+          val isTag = (s >= 1 && text.charAt(s - 1) == '<') || (s >= 2 && text.startsWith("</", s - 2))
+          val md =
+            if (isTag) {
+              if (word.headOption.exists(_.isUpper)) componentHover(word, file)
+              else HtmlData.tagDescriptions.get(word.toLowerCase).map(d => s"**<$word>** — $d")
+            } else {
+              TemplateCompletion.context(text, t.contentStart, s) match {
+                case TemplateCompletion.AttrName(tag, _, _) if tag.headOption.exists(_.isUpper) =>
+                  for {
+                    p <- propName(word)
+                    prop <- TemplateCompletion.propsOfComponent(tag, file).find(_.name == p)
+                  } yield s"```scala\n${propLine(prop)}\n```\n<$tag> のprop${required(prop)}"
+                case TemplateCompletion.AttrName(tag, _, _) =>
+                  if (word.startsWith("@") || word.startsWith("v-on:")) {
+                    val ev = (if (word.startsWith("@")) word.drop(1) else word.drop("v-on:".length)).takeWhile(_ != '.')
+                    HtmlData.events.toMap.get(ev).map(d => s"**$ev** イベント — $d")
+                  } else {
+                    val a = word.stripPrefix(":").stripPrefix("v-bind:")
+                    HtmlData.describeAttribute(tag, a).map { d =>
+                      val values = HtmlData.valuesOf(tag, a)
+                      val vs = if (values.isEmpty) "" else values.map(v => s"`$v`").mkString("\n\n値: ", " ", "")
+                      s"**$a** — $d$vs"
+                    }
+                  }
+                case _ => None
+              }
+            }
+          md.map(markdown(range, _))
         }
       }
     } catch {

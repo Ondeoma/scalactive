@@ -201,6 +201,19 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(StCompiler.propsOf("<template><p>a</p></template>"), Nil)
   }
 
+  test("propsInfo: デフォルト値の有無と、.stの中のパラメータ名の位置") {
+    val src =
+      """<script lang="scala">
+        |case class Props(title: String,
+        |                 count: Int = 1,
+        |                 onClose: Unit => Unit)
+        |</script>
+        |<template><p>a</p></template>""".stripMargin
+    val ps = StCompiler.propsInfo(src)
+    assertEquals(ps.map(p => (p.name, p.hasDefault)), List(("title", false), ("count", true), ("onClose", false)))
+    ps.foreach(p => assertEquals(src.substring(p.offset, p.offset + p.name.length), p.name))
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>

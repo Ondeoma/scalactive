@@ -116,7 +116,7 @@ object TemplateCompletion {
 
   // ---- 補完の候補 ----
 
-  private final case class Prop(name: String, tpe: String) {
+  private[ls] final case class Prop(name: String, tpe: String, hasDefault: Option[Boolean] = None) {
     def isSlot: Boolean = tpe.startsWith("Slot")
     def isScopedSlot: Boolean = tpe.startsWith("ScopedSlot")
     def isEvent: Boolean = name.length > 2 && name.startsWith("on") && name.charAt(2).isUpper && tpe.contains("=>")
@@ -124,7 +124,7 @@ object TemplateCompletion {
   }
 
   /** 組み込みのコンポーネントのprops */
-  private val builtins: Map[String, List[Prop]] = Map(
+  private[ls] val builtins: Map[String, List[Prop]] = Map(
     "Teleport" -> List(Prop("to", "String"), Prop("disabled", "Boolean"), Prop("slot", "Slot")),
     "ErrorBoundary" -> List(Prop("onError", "Throwable => Unit"), Prop("fallback", "ScopedSlot[ErrorInfo]"), Prop("slot", "Slot")),
     "Await" -> List(Prop("load", "() => Future[A]"), Prop("pending", "Slot"), Prop("error", "ScopedSlot[ErrorInfo]"), Prop("slot", "ScopedSlot[A]")),
@@ -142,17 +142,17 @@ object TemplateCompletion {
 
   private val componentDirectives = List("v-if", "v-else-if", "v-else", "v-for", ":key", "class", ":class", "style", ":style", "id")
 
-  private def kebab(s: String): String = s.flatMap(c => if (c.isUpper) "-" + c.toLower else c.toString)
+  private[ls] def kebab(s: String): String = s.flatMap(c => if (c.isUpper) "-" + c.toLower else c.toString)
 
-  private def readProps(file: Path): List[Prop] = {
-    try StCompiler.propsOf(new String(Files.readAllBytes(file), StandardCharsets.UTF_8)).map { case (n, t) => Prop(n, t) }
+  private[ls] def readProps(file: Path): List[Prop] = {
+    try StCompiler.propsInfo(new String(Files.readAllBytes(file), StandardCharsets.UTF_8)).map(p => Prop(p.name, p.tpe, Some(p.hasDefault)))
     catch {
       case NonFatal(_) => Nil
     }
   }
 
   /** 同じディレクトリ(同じパッケージ)の.stコンポーネント(名前 → ファイル) */
-  private def siblingComponents(file: Path): Map[String, Path] = {
+  private[ls] def siblingComponents(file: Path): Map[String, Path] = {
     try {
       val dir = file.getParent
       val s = Files.list(dir)
@@ -165,7 +165,7 @@ object TemplateCompletion {
     }
   }
 
-  private def propsOfComponent(name: String, file: Path): List[Prop] = {
+  private[ls] def propsOfComponent(name: String, file: Path): List[Prop] = {
     builtins.get(name).orElse(siblingComponents(file).get(name).map(readProps)).getOrElse(Nil)
   }
 

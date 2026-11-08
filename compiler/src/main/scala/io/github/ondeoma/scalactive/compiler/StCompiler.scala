@@ -7,6 +7,13 @@ import java.util.zip.CRC32
  * @param objectName  生成するobject名(通常はファイル名から拡張子を除いたもの)
  * @param packageName ディレクトリ構成から決まるパッケージ. <script>内のpackage宣言が優先されます.
  */
+/**
+ * Propsのパラメータ.
+ *
+ * @param offset .stの中のパラメータ名の位置
+ */
+final case class PropInfo(name: String, tpe: String, hasDefault: Boolean, offset: Int)
+
 final case class StInput(source: String,
                          fileName: String,
                          objectName: String,
@@ -42,15 +49,27 @@ object StCompiler {
    * .stの <script> の case class Props(...) のパラメータ(名前と型). Propsがない・読めない場合は空.
    * エディタの補完(子コンポーネントの属性・スロット名)に使います.
    */
-  def propsOf(source: String): List[(String, String)] = {
+  def propsOf(source: String): List[(String, String)] = propsInfo(source).map(p => (p.name, p.tpe))
+
+  /**
+   * .stの case class Props(...) のパラメータ(名前・型・デフォルト値の有無・名前の位置).
+   * エディタの補完・ホバー・propsの検査・名前の変更に使います.
+   */
+  def propsInfo(source: String): List[PropInfo] = {
     try {
       val src = new SourceText(source)
       SfcParser.parse(src).script.toList.flatMap { b =>
         val body = b.content(src)
         PropsDecl.findFirstMatchIn(body).toList.flatMap { m =>
           findClose(body, m.end - 1).toList.flatMap { close =>
-            splitTopLevel(body.substring(m.end, close), ',').filter(_.trim.nonEmpty).collect {
-              case PropParam(name, rest) => (name, typeOf(rest))
+            var cursor = m.end
+            splitTopLevel(body.substring(m.end, close), ',').flatMap { piece =>
+              val pieceStart = cursor
+              cursor += piece.length + 1
+              PropParam.findFirstMatchIn(piece).filter(_ => piece.trim.nonEmpty).map { pm =>
+                val (tpe, hasDefault) = typeAndDefault(pm.group(2))
+                PropInfo(pm.group(1), tpe, hasDefault, b.contentStart + pieceStart + pm.start(1))
+              }
             }
           }
         }
@@ -61,7 +80,7 @@ object StCompiler {
   }
 
   /** "Int = 1" から "Int" を取り出す(デフォルト値を除く). 関数型の => は区切りにしない */
-  private def typeOf(rest: String): String = {
+  private def typeAndDefault(rest: String): (String, Boolean) = {
     var depth = 0
     var i = 0
     while (i < rest.length) {
@@ -72,12 +91,12 @@ object StCompiler {
         case '=' if depth == 0 =>
           val next = if (i + 1 < rest.length) rest.charAt(i + 1) else ' '
           val prev = if (i > 0) rest.charAt(i - 1) else ' '
-          if (next != '>' && next != '=' && !"=!<>".contains(prev)) return rest.substring(0, i).trim
+          if (next != '>' && next != '=' && !"=!<>".contains(prev)) return (rest.substring(0, i).trim, true)
         case _ => ()
       }
       i += 1
     }
-    rest.trim
+    (rest.trim, false)
   }
 
   /** scoped CSS用の属性名. ファイルのパスから決まります. */

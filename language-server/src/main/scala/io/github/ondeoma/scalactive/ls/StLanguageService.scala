@@ -248,6 +248,21 @@ final class StLanguageService(log: String => Unit) {
   }
 
   def hover(uri: String, pos: Position): Option[Hover] = {
+    // 子コンポーネントやHTMLのタグ名・属性名ではテンプレートのホバー(Propsの一覧・説明)を優先する
+    templateHover(uri, pos).orElse(scalaHover(uri, pos))
+  }
+
+  private def templateHover(uri: String, pos: Position): Option[Hover] = {
+    try {
+      val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
+      val text = textOf(uri, path)
+      TemplateNavigation.hover(text, new LineIndex(text).offset(pos), path)
+    } catch {
+      case NonFatal(_) => None
+    }
+  }
+
+  private def scalaHover(uri: String, pos: Position): Option[Hover] = {
     at(uri, pos) { (d, params) =>
       val h = await(d.pc.hover(params))
       if (h.isPresent) {
