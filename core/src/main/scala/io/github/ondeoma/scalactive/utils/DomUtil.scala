@@ -54,6 +54,10 @@ object DomUtil {
                 tail.reverse.foreach(n => parent.insertBefore(n, h))
             }
           case replaceWith(element) => element.replaceWith(nodes *)
+          case afterNode(node) =>
+            val parent = node.parentNode
+            val next = node.nextSibling
+            nodes.foreach(n => parent.insertBefore(n, next))
         }
         nodes.toList.some
       case byS: AddMethodBySelector =>
@@ -376,6 +380,9 @@ object DomUtil {
         t.innerHTML = html
         t.content.childNodes.toList
       }
+
+      /** toNodesと同じ. 同じHTMLの解析結果を覚えておき、2回目からは複製します. */
+      def toNodesCached: List[Node] = TemplateCache.nodes(html)
 
       def toElement: Option[Element] = {
         toNodes.collectFirst {

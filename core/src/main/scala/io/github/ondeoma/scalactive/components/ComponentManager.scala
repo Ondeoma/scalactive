@@ -26,6 +26,15 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   private lazy val eventHandlerIds = ListBuffer[ID]()
   private var hooks: Option[LifecycleHooks] = None
 
+  // 目印(子コンポーネントのコメント・要素の効果の属性)のID. このComponentManagerの中で一意であればよい
+  // (挿入位置はコメントのノードそのもので覚えるため). 同じ形の描画は同じHTMLになり、解析結果を使い回せる.
+  private var idCounter = 0
+
+  private[scalactive] def nextId(): String = {
+    idCounter += 1
+    "cm-" + idCounter
+  }
+
   /** ライフサイクルフック(最初に使われたときに一時リアクティブ値として登録します) */
   private[scalactive] def lifecycle: LifecycleHooks = {
     hooks.getOrElse {
@@ -48,7 +57,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
     val inited = ListBuffer[ComponentController[?]]()
     try {
       // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
-      val nodes = html.toNodes.orDummyNode
+      val nodes = html.toNodesCached.orDummyNode
       for {
         _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
         children = genChildren(tmpDiv)
@@ -69,17 +78,54 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
     }
   }
 
+  /**
+   * 目印を1回の走査でまとめて探し、子コンポーネントと要素の効果を作ります.
+   * 子コンポーネントはコメントのノードの直後に挿入し、要素の効果の目印の属性(data-cm-N)は取り除きます.
+   */
   private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {
-    bufGC.toList.map { (commentId, gen) =>
-      gen(ele, AddMethod.afterC(commentId))
+    if (bufGC.isEmpty && bufEE.isEmpty) Nil
+    else {
+      val comments = scala.collection.mutable.HashMap[String, Node]()
+      val elements = scala.collection.mutable.HashMap[String, HTMLElement]()
+      val walker = document.createTreeWalker(ele, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null, false)
+      var n: Node = walker.nextNode()
+      while (n != null) {
+        n match {
+          case c: Comment =>
+            if (bufGC.nonEmpty && c.data.startsWith("cm-")) comments.update(c.data, c)
+          case e: HTMLElement if bufEE.nonEmpty =>
+            val attrs = e.attributes
+            var i = attrs.length - 1
+            while (i >= 0) {
+              val name = attrs(i).name
+              if (name.startsWith("data-cm-")) {
+                elements.update(name.drop("data-".length), e)
+                e.removeAttribute(name)
+              }
+              i -= 1
+            }
+          case _ => ()
+        }
+        n = walker.nextNode()
+      }
+      val gcs = bufGC.toList.flatMap { (commentId, gen) =>
+        comments.get(commentId) match {
+          case Some(c) => Some(gen(ele, AddMethod.afterNode(c)))
+          case None =>
+            io.github.ondeoma.scalactive.utils.ConsoleUtil.error(s"Not Found Comment: `$commentId`")
+            None
+        }
+      }
+      val ees = bufEE.toList.flatMap { (dataId, gen) =>
+        elements.get(dataId) match {
+          case Some(e) => Some(gen(e))
+          case None =>
+            io.github.ondeoma.scalactive.utils.ConsoleUtil.error(s"Not Found Element: `data-$dataId`")
+            None
+        }
+      }
+      gcs ::: ees
     }
-  } ::: bufEE.toList.flatMap { (dataId, gen) =>
-    val attr = s"data-$dataId"
-    if (ele.hasAttribute(attr)) {
-      Some(gen(ele))
-    } else withElement(ele)(AttrSelector(attr, SelectorAttributeOperator.Has), el => {
-      gen(el)
-    })
   }
 
   def addTmpReactive(rv: Reactive[?]): Unit = {
@@ -252,7 +298,7 @@ object ComponentManager {
 
   def componentWithComment(f: GenComponentF)
                           (using cc: ComponentManager): HTML = {
-    val id = "cm-" + randomUUID()
+    val id = cc.nextId()
     cc.bufGC.addOne(id -> f)
     // language=html
     s"<!--$id-->"
@@ -265,7 +311,7 @@ object ComponentManager {
 
   def elementByDataAttr(fs: ElementEffectF*)
                        (using cc: ComponentManager): ATTR = {
-    val id = "cm-" + randomUUID()
+    val id = cc.nextId()
     fs.foreach(f => cc.bufEE.addOne(id -> f))
     // language=html
     s""" data-$id"""
