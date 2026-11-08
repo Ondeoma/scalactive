@@ -28,7 +28,9 @@ abstract class Reactive[A] {
     watchers.remove(id)
   }
 
-  def mapC[B](f: A => B): CRV[B] = {
+  // inlineにすることで、呼び出し側のComponentManagerに一時リアクティブ値として登録され、
+  // コンポーネントのクリア時に監視が解除されます.
+  inline def mapC[B](f: A => B): CRV[B] = {
     CRV(this, f)
   }
 

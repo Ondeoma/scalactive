@@ -1,0 +1,119 @@
+{
+  "name": "scalactive-st",
+  "displayName": "Scalactive Single File Component (.st)",
+  "description": "Language support for Scalactive single file components (.st): syntax highlighting, completion, type errors, hover and go to definition",
+  "version": "0.1.0",
+  "publisher": "ondeoma",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ondeoma/scalactive.git",
+    "directory": "editors/vscode"
+  },
+  "homepage": "https://ondeoma.github.io/scalactive/sfc",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "scala",
+    "scala.js",
+    "scalactive",
+    "sfc"
+  ],
+  "extensionDependencies": [
+    "scala-lang.scala"
+  ],
+  "activationEvents": [
+    "onLanguage:scalactive"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "scalactive",
+        "aliases": [
+          "Scalactive",
+          "scalactive"
+        ],
+        "extensions": [
+          ".st"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "scalactive",
+        "scopeName": "source.scalactive",
+        "path": "./syntaxes/scalactive.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.scala": "scala",
+          "meta.embedded.inline.scala": "scala",
+          "meta.embedded.block.css": "css"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "scalactive.restartLanguageServer",
+        "title": "Restart Language Server",
+        "category": "Scalactive"
+      }
+    ],
+    "configuration": {
+      "title": "Scalactive",
+      "properties": {
+        "scalactive.languageServer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Scalactive language server (completion, type errors, hover and go to definition in .st files)."
+        },
+        "scalactive.languageServer.javaHome": {
+          "type": "string",
+          "default": "",
+          "description": "JDK used to run the language server (Java 11 or later). Defaults to JAVA_HOME, then java on PATH."
+        },
+        "scalactive.languageServer.jvmOptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "-Xss4m",
+            "-Xmx2G"
+          ],
+          "description": "JVM options for the language server."
+        },
+        "scalactive.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.js --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js",
+    "copy-server": "node scripts/copy-server.mjs",
+    "test": "node test/grammar.test.mjs",
+    "test:e2e": "npm run build && npm run copy-server && node test/e2e/run.mjs",
+    "package": "npm run build && npm run copy-server && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.0",
+    "shiki": "^4.0.0"
+  },
+  "main": "./dist/extension.js",
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

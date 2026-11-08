@@ -1,0 +1,26 @@
+<idea-plugin>
+  <id>io.github.ondeoma.scalactive-st</id>
+  <name>Scalactive Single File Component (.st)</name>
+  <vendor url="https://github.com/Ondeoma/scalactive">Ondeoma</vendor>
+  <description><![CDATA[
+    <p>Language support for <a href="https://ondeoma.github.io/scalactive/">Scalactive</a> single file components (<code>.st</code>).</p>
+    <ul>
+      <li><code>&lt;script lang="scala"&gt;</code> is highlighted as Scala, <code>&lt;style&gt;</code> as CSS.</li>
+      <li>In <code>&lt;template&gt;</code>, <code>{{ expr }}</code>, <code>v-if</code> / <code>v-else-if</code> / <code>v-show</code> / <code>v-model</code> / <code>v-for</code>,
+          <code>:attr</code> and <code>@event</code> values are highlighted as Scala.</li>
+      <li>Component tags (starting with an uppercase letter) are highlighted separately.</li>
+    </ul>
+    <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
+       the Scalactive language server (requires an IDE with LSP support and an sbt project that enables <code>ScalactivePlugin</code>;
+       run <code>sbt compile</code> once so that <code>target/scalactive-lsp.json</code> is written).</p>
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>org.jetbrains.plugins.textmate</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>
+    <!-- 補完・型エラーなど(言語サーバー). LSP APIはIntelliJ IDEA 2025.2以降のプラットフォームに含まれます. -->
+    <platform.lsp.serverSupportProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLspServerSupportProvider"/>
+  </extensions>
+</idea-plugin>

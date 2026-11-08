@@ -90,7 +90,7 @@ object CRV {
                                r2: Reactive[B],
                                r3: Reactive[C],
                                f: (A, B, C) => R): CRV[R] = {
-    val crv = apply(r1, r2, r3, f)
+    val crv = apply_(r1, r2, r3, f)
     registerCM(crv)
     crv
   }

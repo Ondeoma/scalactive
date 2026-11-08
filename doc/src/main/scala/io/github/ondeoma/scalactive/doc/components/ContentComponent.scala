@@ -20,6 +20,7 @@ object ContentComponent extends StatelessComponent {
       ("/event", _ => EventComponent()),
       ("/routing", _ => RoutingComponent()),
       ("/state", _ => StateComponent()),
+      ("/sfc", _ => SingleFileComponent()),
       ("/deploy", _ => DeployComponent()),
       ("/contribute", _ => ContributeComponent()),
     )

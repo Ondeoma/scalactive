@@ -1,0 +1,8 @@
+{
+  "name": "scalactive-core-test",
+  "private": true,
+  "description": "core(StRuntime)のテストをjsdom上で実行するための依存関係. sbtはリポジトリ直下から実行してください.",
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
