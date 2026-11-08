@@ -230,6 +230,12 @@ test("名前付きスロット #name / v-slot:name", () => {
   expectScopes(t, 1, "footer", ["entity.other.attribute-name.directive.scalactive"]);
 });
 
+test("テンプレート参照 ref", () => {
+  const t = tokenize(`<template>\n  <input ref="s.box">\n</template>\n`);
+  expectScopes(t, 1, "ref", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, "box", ["meta.embedded.inline.scala"]);
+});
+
 if (failures > 0) {
   console.log(`${failures} test(s) failed`);
   process.exit(1);

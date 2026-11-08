@@ -120,6 +120,20 @@ object ComponentComponent extends StatelessComponent {
          |}
          |""".stripMargin
 
+    val codeRef = // language=scala
+      s"""object SearchComponent extends StatelessComponent {
+         |
+         |  def genHtml(implicit cm: ComponentManager): HTML = {
+         |    val input = ElementRef[HTMLInputElement]()
+         |    // DOMに挿入された後にフォーカスする
+         |    onMounted(input.foreach(_.focus()))
+         |    s\"\"\"<input type="search" $${ref(input)}>
+         |       :<button $${evClick(input.foreach(_.select()))}>全選択</button>\"\"\".stripMargin(':')
+         |  }
+         |
+         |}
+         |""".stripMargin
+
     // language=html
     s"""<h1>コンポーネント</h1>
        |
@@ -133,6 +147,7 @@ object ComponentComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("BaseComponent"))}>BaseComponent</a></li>
        |  <li><a ${evClick(setHash("Use"))}>コンポーネントの呼出し</a></li>
        |  <li><a ${evClick(setHash("Lifecycle"))}>ライフサイクルフック</a></li>
+       |  <li><a ${evClick(setHash("Ref"))}>テンプレート参照</a></li>
        |</ul>
        |
        |
@@ -229,6 +244,20 @@ object ComponentComponent extends StatelessComponent {
        |
        |<p>
        |  単一ファイルコンポーネント(.st)では、<code>&lt;script&gt;</code> に <code>def mounted</code> / <code>def unmounted</code> を定義します.
+       |</p>
+       |
+       |<h2 id="Ref">テンプレート参照</h2>
+       |
+       |<p>
+       |  <code>ElementRef</code> を <code>ref(...)</code> で要素に結び付けると、その要素を直接参照できます(Vueのテンプレート参照、ReactのuseRef).
+       |  要素が作られたときに設定され、コンポーネントが片付けられると空(<code>get</code> がNone)に戻ります.
+       |  DOMに挿入された後の処理(フォーカスなど)は <code>onMounted</code> の中で行ってください.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeRef)}</code></pre>
+       |
+       |<p>
+       |  単一ファイルコンポーネント(.st)では、Stateに <code>ElementRef()</code> を持たせ、<code>ref="s.input"</code> と書きます.
        |</p>
        |
        |""".stripMargin

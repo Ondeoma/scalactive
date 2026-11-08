@@ -155,6 +155,13 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(compileError("<template><Card>\n<template #default>1</template><p>2</p></Card></template>").line, 2)
   }
 
+  test("template ref") {
+    val c = compile("""<template><input ref="s.input"><p :ref="s.p"></p></template>""").code
+    assert(c.contains("__CM.ref(/* Foo.st:1 */ s.input)"), c)
+    assert(c.contains("__CM.ref(/* Foo.st:1 */ s.p)"))
+    assertEquals(compileError("<template>\n<Child ref=\"x\" /></template>").line, 2)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>

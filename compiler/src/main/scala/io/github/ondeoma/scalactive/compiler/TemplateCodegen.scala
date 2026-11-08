@@ -304,6 +304,7 @@ final class TemplateCodegen(src: SourceText,
           (n, decodedValue(a).map(v => StringLiteral(v.text)).getOrElse("true"))
         }
       val name = propName(raw)
+      if (name == "ref") src.fail(a.offset, s"'ref' on component <${e.name}> is not supported; set it on an element")
       if (!name.matches("""[A-Za-z_][A-Za-z0-9_]*""")) src.fail(a.offset, s"invalid prop name '$raw'")
       if (name == "class" || name == "style") {
         src.fail(a.offset, s"'$raw' on component <${e.name}> is not supported; set it on an element inside the component")
@@ -382,7 +383,10 @@ final class TemplateCodegen(src: SourceText,
 
   private def genAttr(e: Element, a: Attr): List[Part] = {
     val n = a.name
-    if (n == "v-show") {
+    if (n == "ref" || n == ":ref" || n == "v-bind:ref") {
+      // テンプレート参照: 値はElementRefの式
+      List(Code(s"__CM.ref${attrExpr(a)}"))
+    } else if (n == "v-show") {
       List(Code(s"__CM.showIf(__st.cond${attrExpr(a)})"))
     } else if (n == "v-model" || n.startsWith("v-model.")) {
       val tag = e.name.toLowerCase

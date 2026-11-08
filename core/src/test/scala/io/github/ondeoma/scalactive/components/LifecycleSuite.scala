@@ -112,6 +112,24 @@ class LifecycleSuite extends munit.FunSuite {
     }.map(_ => assertEquals(log, List("u2", "m4")))
   }
 
+  test("ref: 要素が作られると設定され、onMountedではDOMに挿入済み. 片付けると空に戻る") {
+    val input = ElementRef[HTMLInputElement]()
+    val show = RV(true)
+    var connected = false
+    mount { implicit cm =>
+      s"<div>${ComponentManager.ifC(show) { implicit cm =>
+        ComponentManager.onMounted { connected = input.get.exists(_.isConnected) }
+        s"""<input value="x" ${ComponentManager.ref(input)}>"""
+      }}</div>"
+    }
+    assertEquals(input.get.map(_.value), Some("x"))
+    flush().flatMap { _ =>
+      assert(connected)
+      show := false
+      flush()
+    }.map(_ => assertEquals(input.get, None))
+  }
+
   test("挿入の直後に片付けられた場合はonMountedを実行しない. 親の片付けで子のonUnmountedも実行される") {
     var log = List.empty[String]
     val (_, controller) = mount { implicit cm =>

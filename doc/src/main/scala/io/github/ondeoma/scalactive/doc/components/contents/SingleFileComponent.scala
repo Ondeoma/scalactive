@@ -111,21 +111,20 @@ object SingleFileComponent extends StatelessComponent {
 
     val codeLifecycle = // language=html
       s"""<script lang="scala">
-         |case class State(input: RV[String] = RV(""))
+         |case class State(input: RV[String] = RV(""),
+         |                 search: ElementRef[HTMLInputElement] = ElementRef())
          |
          |def initState() = State()
          |
          |// DOMに挿入された後に実行される(引数はなし、またはProps・Stateを受け取れる)
-         |def mounted(s: State): Unit = {
-         |  Option(document.getElementById("search")).foreach(_.asInstanceOf[HTMLElement].focus())
-         |}
+         |def mounted(s: State): Unit = s.search.foreach(_.focus())
          |
          |// 片付けられた(DOMから取り除かれた)後に実行される
          |def unmounted(): Unit = println("unmounted")
          |</script>
          |
          |<template>
-         |  <input id="search" v-model="s.input">
+         |  <input ref="s.search" v-model="s.input">
          |</template>
          |""".stripMargin
 
@@ -202,6 +201,10 @@ object SingleFileComponent extends StatelessComponent {
        |  </td></tr>
        |  <tr><td><code>&lt;template v-if/v-for&gt;</code></td><td>要素自体は出力せず、中身の複数要素をまとめて条件分岐・繰り返しします.</td></tr>
        |  <tr><td><code>v-show="expr"</code></td><td>表示切替(showIf).</td></tr>
+       |  <tr><td><code>ref="expr"</code></td><td>
+       |    テンプレート参照. exprは <code>ElementRef[HTMLInputElement]</code> などで、要素が作られると設定され、片付けられると空に戻ります.
+       |    インスタンスごとの参照になるよう、Stateに <code>ElementRef()</code> を持たせてください(後述のライフサイクルフックの例を参照).
+       |  </td></tr>
        |  <tr><td><code>v-html="expr"</code></td><td>
        |    要素の中身を、式の値のHTMLで置き換えます(HtmlComponent). Reactiveの場合は値が変わるたびに展開し直します.
        |    要素の中身は空にしてください.<br>

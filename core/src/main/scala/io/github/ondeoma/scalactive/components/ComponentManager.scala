@@ -84,6 +84,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 object ComponentManager {
 
   export io.github.ondeoma.scalactive.components.Slot
+  export io.github.ondeoma.scalactive.components.ElementRef
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
   export io.github.ondeoma.scalactive.components.fors.ForLRComponent
   export io.github.ondeoma.scalactive.components.fors.ForRMComponent
@@ -157,6 +158,20 @@ object ComponentManager {
 
   private[scalactive] def genWithOwnLast(f: ComponentManager => HTML) = {
     new ComponentManager(f).genWithOwnLast()
+  }
+
+  /**
+   * 要素をElementRefに結び付けます(テンプレート参照). 例: `<input ${ref(input)}>`
+   * 要素が作られたときに設定され、コンポーネントが片付けられると空に戻ります.
+   */
+  def ref[E <: Element](r: ElementRef[E])
+                       (using cc: ComponentManager): ATTR = {
+    el(ele => AttrController { ac =>
+      ac.element = Some(ele)
+      r.set(Some(ele.asInstanceOf[E]))
+      ac.onClear = () => if (r.get.exists(_ eq ele)) r.set(None)
+      Right(ac)
+    })
   }
 
   /**

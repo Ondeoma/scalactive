@@ -7,7 +7,8 @@ case class State(count: RV[Int] = RV(0),
                  color: RV[String] = RV("red"),
                  tags: RV[List[String]] = RV(List("scala")),
                  cardOpen: RV[Boolean] = RV(true),
-                 mountedAt: RV[String] = RV("-"))
+                 mountedAt: RV[String] = RV("-"),
+                 todoInput: ElementRef[HTMLInputElement] = ElementRef())
 
 def initState() = State()
 
@@ -37,8 +38,9 @@ def add(s: State): Unit = {
 
     <h3>Todo</h3>
     <p>
-      <input type="text" v-model.trim="s.input" @keydown.enter="add(s)" placeholder="Enterで追加">
+      <input type="text" ref="s.todoInput" v-model.trim="s.input" @keydown.enter="add(s)" placeholder="Enterで追加">
       <button @click="add(s)">追加</button>
+      <button @click="s.todoInput.foreach(_.focus())">入力欄へ(ref)</button>
       入力中: {{ s.input }}
     </p>
     <ul>
