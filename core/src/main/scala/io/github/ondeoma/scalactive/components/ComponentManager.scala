@@ -344,6 +344,81 @@ object ComponentManager {
     %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
   }
 
+  // key付きのforC/forEachC: keyで行を対応付けます(Vueのv-forの:key).
+  // キーが同じでも値が変わった行は作り直します.
+
+  def forC[A](forV: List[A], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForStaticComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: RVList[A], key: RV[A] => Any)
+             (genHtml: (ComponentManager, RV[A], IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForRVComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM], key: RM => Any)
+                                         (genHtml: (ComponentManager, RM, IDX) => HTML)
+                                         (using ComponentManager): HTML = {
+    %(ForRMComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: CRV[List[A]], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: RV[List[A]], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: ReactiveList[A], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, true, key)(genHtml))
+  }
+
+  def forEachC[A](forV: List[A], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForStaticComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RVList[A], key: RV[A] => Any)
+                 (genHtml: (ComponentManager, RV[A]) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForRVComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM], key: RM => Any)
+                                             (genHtml: (ComponentManager, RM) => HTML)
+                                             (using ComponentManager): HTML = {
+    %(ForRMComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: CRV[List[A]], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RV[List[A]], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: ReactiveList[A], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
   def ev(et: EventType | List[EventType],
          handler: Event => Unit)
         (using cc: ComponentManager): ATTR = {

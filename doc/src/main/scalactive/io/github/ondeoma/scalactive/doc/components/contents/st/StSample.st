@@ -63,7 +63,7 @@ def add(s: State): Unit = {
 
     <h3>&lt;template&gt; / slot</h3>
     <dl>
-      <template v-for="todo in s.todos">
+      <template v-for="todo in s.todos" :key="todo.v">
         <dt>{{ todo }}</dt>
         <dd>{{ todo.mapC(_.length) }}文字</dd>
       </template>

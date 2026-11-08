@@ -31,6 +31,14 @@ object ListRenderingComponent extends StatelessComponent {
          |}
          |""".stripMargin
 
+    val codeKey = // language=scala
+      s"""case class Todo(id: Int, title: String)
+         |val todos = RV(List(Todo(1, "A"), Todo(2, "B")))
+         |// keyで行を対応付ける(Vueのv-forの:key)
+         |val loop = forEachC(todos, key = _.id) { implicit (cm, t) =>
+         |  s\"\"\"<p>$${t.title}</p>\"\"\"
+         |}
+         |""".stripMargin
 
     // language=html
     s"""<h1>リストレンダリング</h1>
@@ -64,6 +72,18 @@ object ListRenderingComponent extends StatelessComponent {
        |</p>
        |
        |<pre><code class="language-scala">${esc(codeForEachC)}</code></pre>
+       |
+       |<h2>key</h2>
+       |
+       |<p>
+       |  <code>forC(list, key = ...)</code> / <code>forEachC(list, key = ...)</code> のように、行を対応付けるキーを指定できます.<br>
+       |  例えば <code>RV[List[Todo]]</code> を新しいcase classのリストで置き換えた場合、
+       |  キーを指定しなければ値が変わった行はすべて作り直されますが、idをキーにすると並べ替えなどで行を使い回せます.
+       |  キーが同じでも値が変わった行(RVListでは別のRVになった行)は作り直されます.<br>
+       |  単一ファイルコンポーネント(.st)では <code>&lt;li v-for="t in todos" :key="t.id"&gt;</code> と書きます.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeKey)}</code></pre>
        |
        |<p>
        |  利用できるコレクションは以下です(forC・forEachC共通).

@@ -154,6 +154,12 @@ object SingleFileComponent extends StatelessComponent {
        |  <tr><td><code>{{ expr }}</code></td><td>テキスト展開. Reactiveの場合は値の変化に追従します(HTMLエスケープされます).</td></tr>
        |  <tr><td><code>v-if="expr"</code><br><code>v-else-if="expr"</code><br><code>v-else</code></td><td>条件付きレンダリング(ifC). exprはReactive[Boolean]またはBoolean. 各条件は1度だけ評価されます.</td></tr>
        |  <tr><td><code>v-for="item in expr"</code><br><code>v-for="(item, i) in expr"</code></td><td>リストレンダリング. 添字の変数を書かなければforEachC(行の削除や並べ替えで行を作り直さないので速い)、書けばforC. RVListの場合itemはRV、RMListの場合はReactiveModelになります.</td></tr>
+       |  <tr><td><code>v-for="..." :key="expr"</code></td><td>
+       |    行を対応付けるキー. exprはitemから計算します(例: <code>:key="item.id"</code>).
+       |    リストが変わったとき、キーが同じ行は(値が変わっていなければ)作り直さずに使い回されます.
+       |    指定しない場合は、RVList・RMListでは要素のオブジェクト、それ以外では要素の値で対応付けます.
+       |    <code>&lt;template v-for&gt;</code> にも指定できます.
+       |  </td></tr>
        |  <tr><td><code>&lt;template v-if/v-for&gt;</code></td><td>要素自体は出力せず、中身の複数要素をまとめて条件分岐・繰り返しします.</td></tr>
        |  <tr><td><code>v-show="expr"</code></td><td>表示切替(showIf).</td></tr>
        |  <tr><td><code>v-html="expr"</code></td><td>

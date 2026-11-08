@@ -91,6 +91,18 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(compileError("<template>\n<Child v-html=\"x\" /></template>").line, 2)
   }
 
+  test("v-for with :key") {
+    val c = compile(
+      """<template>
+        |<li v-for="x in xs" :key="x.id" class="a">{{ x }}</li>
+        |<template v-for="(y, i) in ys" v-bind:key="y.id"><dt>{{ y }}</dt></template>
+        |</template>""".stripMargin).code
+    assert(c.contains("__CM.forEachC((/* Foo.st:2 */ xs), key = x => (/* Foo.st:2 */ x.id)) { (__cm1, x) =>"), c)
+    assert(c.contains("__CM.forC((/* Foo.st:3 */ ys), key = y => (/* Foo.st:3 */ y.id)) { (__cm2, y, i) =>"), c)
+    assert(!c.contains("\"key\""), "keyは属性として出力しない")
+    assertEquals(compileError("<template>\n<p :key=\"k\"></p></template>").line, 2)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>

@@ -303,6 +303,51 @@ class ForDiffSuite extends munit.FunSuite {
     }.map(_ => assertEquals(div.textContent, "head234tailafter"))
   }
 
+  // ---- key ----
+
+  private case class Item(id: Int, label: String)
+
+  test("key: キーが同じ行は、新しいcase classのインスタンスでも使い回す(値が同じなら)") {
+    val list = RV(List(Item(1, "a"), Item(2, "b"), Item(3, "c")))
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forEachC(list, key = _.id)((_, it) => s"<li>${it.label}</li>")}</ul>")
+    val before = lis(root)
+    // 同じ値の新しいインスタンスで並べ替え
+    list := List(Item(3, "c"), Item(1, "a"), Item(2, "b"))
+    flush().flatMap { _ =>
+      assertEquals(texts(root), List("c", "a", "b"))
+      assert(lis(root).zip(List(before(2), before(0), before(1))).forall(_ eq _), "すべて使い回す")
+      // キーが同じで値が変わった行は作り直す
+      list := List(Item(3, "c"), Item(1, "A"), Item(2, "b"))
+      flush()
+    }.map { _ =>
+      assertEquals(texts(root), List("c", "A", "b"))
+      val after = lis(root)
+      assert(after(0) eq before(2))
+      assert(!(after(1) eq before(0)))
+    }
+  }
+
+  test("key: RVListでは、キーが同じでも別のRVになった行は作り直す") {
+    val list = RVList(List(Item(1, "a"), Item(2, "b")))
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forEachC(list, key = _.v.id)((_, rv) => s"<li>${rv.v.label}</li>")}</ul>")
+    val before = lis(root)
+    list.rm(0)
+    list.add(Item(1, "a"))
+    flush().map { _ =>
+      assertEquals(texts(root), List("b", "a"))
+      val after = lis(root)
+      assert(after(0) eq before(1))
+      assert(!(after(1) eq before(0)), "同じキーでも新しいRVの行")
+    }
+  }
+
+  test("key: forCでも使え、添字が変わった行は作り直す") {
+    val list = RV(List(Item(1, "a"), Item(2, "b")))
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forC(list, key = _.id)((_, it, i) => s"<li>$i:${it.label}</li>")}</ul>")
+    list := List(Item(2, "b"), Item(1, "a"))
+    flush().map(_ => assertEquals(texts(root), List("0:b", "1:a")))
+  }
+
   test("longestIncreasing: 値が増加する最長の部分列(負の値は除く)") {
     def run(xs: Int*): List[Int] = {
       val r = ForGeneralComponent.longestIncreasing(xs.toArray)

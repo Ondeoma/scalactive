@@ -161,18 +161,23 @@ final class TemplateCodegen(src: SourceText,
 
   private val ForPattern = """(?s)^\s*(?:\(\s*([A-Za-z_]\w*)\s*(?:,\s*([A-Za-z_]\w*)\s*)?\)|([A-Za-z_]\w*))\s+in\s+(.+)$""".r
 
+  private def isKeyAttr(a: Attr): Boolean = a.name == ":key" || a.name == "v-bind:key"
+
   private def genElement(e: Element): List[Part] = {
     e.attrs.find(_.name == "v-for") match {
-      case None => genElementCore(e)
+      case None =>
+        e.attrs.find(isKeyAttr).foreach(a => src.fail(a.offset, ":key can be used only on an element with v-for"))
+        genElementCore(e)
       case Some(a) =>
         if (e.attrs.exists(x => conditionalDirectives.contains(x.name))) {
           src.fail(a.offset, "v-for cannot be combined with v-if/v-else-if/v-else on the same element; wrap it with <template>")
         }
         val v = decodedValue(a).getOrElse(Located("", 0))
-        val (item, idx, listExpr) = ForPattern.findFirstMatchIn(v.text) match {
+        val (item, itemName, idx, listExpr) = ForPattern.findFirstMatchIn(v.text) match {
           case Some(m) =>
             def group(i: Int): Option[Located] = Option(m.group(i)).map(_ => v.substring(m.start(i), m.end(i)))
-            (marks.mark(group(1).orElse(group(3)).get), group(2).map(marks.mark), group(4).get)
+            val it = group(1).orElse(group(3)).get
+            (marks.mark(it), it.text, group(2).map(marks.mark), group(4).get)
           case None => src.fail(a.offset, "v-for must be in the form \"item in expr\" or \"(item, index) in expr\"")
         }
         val id = nextId()
@@ -181,9 +186,16 @@ final class TemplateCodegen(src: SourceText,
           case Some(i) => ("forC", s"__cm$id, $item, $i")
           case None => ("forEachC", s"__cm$id, $item")
         }
-        val body = render(genElementCore(e), "      ")
+        // :key="expr" は行を対応付けるキー関数になる(要素の属性としては出力しない)
+        val keyAttr = e.attrs.find(isKeyAttr)
+        val source = keyAttr match {
+          // (ラムダを括弧で囲むと、オーバーロードの解決で引数の型が推論できないため囲まない)
+          case Some(k) => s"(${userExpr(listExpr, a.offset)}, key = $itemName => ${attrExpr(k)})"
+          case None => userExpr(listExpr, a.offset)
+        }
+        val body = render(genElementCore(e.copy(attrs = e.attrs.filterNot(isKeyAttr))), "      ")
         List(Code(
-          s"__CM.$fn${userExpr(listExpr, a.offset)} { ($params) =>\n" +
+          s"__CM.$fn$source { ($params) =>\n" +
             s"      given __CM = __cm$id\n" +
             s"      $body\n" +
             "    }"
@@ -231,8 +243,8 @@ final class TemplateCodegen(src: SourceText,
 
   /** <template v-if/v-for>: 要素自体は出力せず、子要素だけを展開します. */
   private def genTemplateWrapper(e: Element): List[Part] = {
-    e.attrs.find(a => !structuralDirectives.contains(a.name)).foreach { a =>
-      src.fail(a.offset, s"'${a.name}' cannot be used on <template>; only v-if/v-else-if/v-else/v-for are allowed")
+    e.attrs.find(a => !structuralDirectives.contains(a.name) && !isKeyAttr(a)).foreach { a =>
+      src.fail(a.offset, s"'${a.name}' cannot be used on <template>; only v-if/v-else-if/v-else/v-for/:key are allowed")
     }
     genNodes(e.children)
   }
