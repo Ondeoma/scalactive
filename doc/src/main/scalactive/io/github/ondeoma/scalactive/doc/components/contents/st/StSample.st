@@ -10,9 +10,21 @@ case class State(count: RV[Int] = RV(0),
                  mountedAt: RV[String] = RV("-"),
                  todoInput: ElementRef[HTMLInputElement] = ElementRef(),
                  modal: RV[Boolean] = RV(false),
-                 crash: RV[Boolean] = RV(false))
+                 crash: RV[Boolean] = RV(false),
+                 failLoad: RV[Boolean] = RV(false),
+                 quoteOn: RV[Boolean] = RV(true))
 
 def initState() = State()
+
+// 0.8秒後に完了する非同期の処理(Awaitのデモ)
+def fetchQuote(fail: Boolean): scala.concurrent.Future[String] = {
+  val p = scala.concurrent.Promise[String]()
+  window.setTimeout(() => {
+    if (fail) p.failure(new RuntimeException("読み込みに失敗しました"))
+    else p.success("Scalactiveは、Scala.jsのリアクティブなフレームワークです.")
+  }, 800)
+  p.future
+}
 
 // 描画中に例外を起こす(エラーの境界のデモ)
 def boom(): String = throw new RuntimeException("描画中にエラーが起きました")
@@ -97,6 +109,18 @@ def add(s: State): Unit = {
         <p class="st-error">{{ err.message }} <button @click="s.crash := false; err.retry()">戻す</button></p>
       </template>
     </ErrorBoundary>
+
+    <h3>Await</h3>
+    <p>
+      <label><input type="checkbox" v-model="s.failLoad"> 失敗させる</label>
+      <!-- v-ifを付け直してAwaitを作り直す(もう1度読み込む) -->
+      <button @click="s.quoteOn := false; s.quoteOn := true">再読み込み</button>
+    </p>
+    <Await v-if="s.quoteOn" :load="() => fetchQuote(s.failLoad.v)">
+      <template #pending><p>読み込み中...</p></template>
+      <template #default="quote"><p>{{ quote }}</p></template>
+      <template #error="err"><p class="st-error">{{ err.message }} <button @click="err.retry()">再試行</button></p></template>
+    </Await>
 
     <h3>Teleport</h3>
     <button @click="s.modal := true">モーダルを開く</button>

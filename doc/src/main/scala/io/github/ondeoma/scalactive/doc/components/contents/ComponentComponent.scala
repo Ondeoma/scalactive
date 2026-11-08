@@ -150,6 +150,7 @@ object ComponentComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("Ref"))}>テンプレート参照</a></li>
        |  <li><a ${evClick(setHash("Attrs"))}>属性の引き継ぎ</a></li>
        |  <li><a ${evClick(setHash("ErrorBoundary"))}>エラーの境界</a></li>
+       |  <li><a ${evClick(setHash("Async"))}>非同期データ・遅延読み込み</a></li>
        |</ul>
        |
        |
@@ -298,6 +299,39 @@ object ComponentComponent extends StatelessComponent {
        |  <li>境界の外で起きた描き直しの例外はコンソールに出力され、ほかの描き直しは続けられます.</li>
        |  <li>単一ファイルコンポーネント(.st)では <code>&lt;ErrorBoundary&gt;...&lt;template #fallback="err"&gt;...&lt;/template&gt;&lt;/ErrorBoundary&gt;</code> と書きます.</li>
        |</ul>
+       |
+       |<h2 id="Async">非同期データ・遅延読み込み</h2>
+       |
+       |<p>
+       |  <code>awaitC</code> は、非同期の処理(Future)の状態に応じて表示を切り替えます(VueのSuspense).
+       |  完了するまでpending、完了したら結果を受け取った表示、失敗したらerrorの表示になります.
+       |</p>
+       |
+       |<pre><code class="language-scala">awaitC(api.fetchUser(id),
+       |  pending = _ =&gt; "&lt;p&gt;読み込み中...&lt;/p&gt;",
+       |  error = err =&gt; implicit cm =&gt; s&quot;&lt;p&gt;$${err.message} &lt;button $${evClick(err.retry())}&gt;再試行&lt;/button&gt;&lt;/p&gt;&quot;
+       |)(user =&gt; implicit cm =&gt; s&quot;&lt;p&gt;$${user.name}&lt;/p&gt;&quot;)</code></pre>
+       |
+       |<ul>
+       |  <li>Futureは描画されたときに評価されます. <code>err.retry()</code> でもう1度評価します.</li>
+       |  <li>完了する前にコンポーネントが片付けられた場合は、完了しても描き直しません.</li>
+       |  <li>
+       |    単一ファイルコンポーネント(.st)では <code>&lt;Await :load="() =&gt; fetchUser(id)"&gt;</code> と、
+       |    <code>&lt;template #pending&gt;</code> / <code>&lt;template #default="user"&gt;</code> / <code>&lt;template #error="err"&gt;</code> で書きます.
+       |  </li>
+       |</ul>
+       |
+       |<p>
+       |  <code>asyncComponent</code> は、読み込みが終わってから描画するコンポーネントを作ります(遅延読み込み).
+       |  Scala.jsの <code>js.dynamicImport</code> と組み合わせると、コンポーネントのコードを別のファイルに分割し、必要になったときに読み込めます.
+       |  (sbtで <code>scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule))</code> の設定が必要です.)
+       |</p>
+       |
+       |<pre><code class="language-scala">// ルートに使う例: /admin を開いたときに初めてAdminComponentのコードを読み込む
+       |val routes: PathPatternRoutes = List(
+       |  ("/", _ =&gt; HomeComponent()),
+       |  ("/admin", _ =&gt; asyncComponent(() =&gt; js.dynamicImport(AdminComponent()).toFuture, _ =&gt; "&lt;p&gt;読み込み中...&lt;/p&gt;")),
+       |)</code></pre>
        |
        |""".stripMargin
   }

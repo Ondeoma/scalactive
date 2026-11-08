@@ -100,6 +100,7 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.components.Teleport
   export io.github.ondeoma.scalactive.components.ErrorBoundary
   export io.github.ondeoma.scalactive.components.ErrorInfo
+  export io.github.ondeoma.scalactive.components.Await
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
   export io.github.ondeoma.scalactive.components.fors.ForLRComponent
   export io.github.ondeoma.scalactive.components.fors.ForRMComponent
@@ -374,6 +375,29 @@ object ComponentManager {
                     (genHtml: ComponentManager => HTML)
                     (using ComponentManager): HTML = {
     %(ErrorBoundary(ScopedSlot(fallback), onError, Slot(genHtml))(_, _))
+  }
+
+  /**
+   * 非同期の処理(Future)の状態に応じて表示を切り替えます(VueのSuspense).
+   * 完了するまでpending、完了したらdone、失敗したらerrorを表示します. errorのretryでfutureをもう1度評価します.
+   * 例: `awaitC(fetchUser(id), pending = _ => "読み込み中")(user => implicit cm => s"<p>${user.name}</p>")`
+   */
+  def awaitC[A](future: => scala.concurrent.Future[A],
+                pending: ComponentManager => HTML = _ => "",
+                error: ErrorInfo => ComponentManager => HTML = null)
+               (done: A => ComponentManager => HTML)
+               (using ComponentManager): HTML = {
+    val errorSlot = if (error == null) ScopedSlot.empty else ScopedSlot(error)
+    %(Await[A](() => future, Slot(pending), errorSlot, ScopedSlot(done))(_, _))
+  }
+
+  /**
+   * 読み込みが終わってから描画するコンポーネント(遅延読み込み). ルートなどにそのまま使えます.
+   * 例: `asyncComponent(() => js.dynamicImport(HeavyComponent()).toFuture)`
+   */
+  def asyncComponent(load: () => scala.concurrent.Future[GenComponentF],
+                     pending: ComponentManager => HTML = _ => ""): GenComponentF = {
+    Await.component(load, Slot(pending))
   }
 
   def ifC(ifV: Reactive[Boolean])
