@@ -8,6 +8,7 @@ import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor;
+import com.intellij.platform.lsp.api.customization.LspFormattingSupport;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Files;
@@ -38,6 +39,17 @@ public final class ScalactiveLspServerDescriptor extends ProjectWideLspServerDes
     @Override
     public @NotNull String getLanguageId(@NotNull VirtualFile file) {
         return "scalactive";
+    }
+
+    /** .stの「コードの整形」は言語サーバー(textDocument/formatting)に任せる */
+    @Override
+    public @NotNull LspFormattingSupport getLspFormattingSupport() {
+        return new LspFormattingSupport() {
+            @Override
+            public boolean shouldFormatThisFileExclusivelyByServer(@NotNull VirtualFile file, boolean ideCanFormatThisFileItself, boolean serverExplicitlyWantsToFormatThisFile) {
+                return isStFile(file);
+            }
+        };
     }
 
     /** プラグインに同梱した言語サーバーのjar */

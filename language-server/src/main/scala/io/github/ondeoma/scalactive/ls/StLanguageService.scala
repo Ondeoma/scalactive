@@ -215,7 +215,9 @@ final class StLanguageService(log: String => Unit) {
   }
 
   def completion(uri: String, pos: Position): CompletionList = {
-    scalaCompletion(uri, pos).orElse(templateCompletion(uri, pos))
+    // タグ名・属性名ではテンプレートの補完を優先する(コンパイルできる.stでは、子コンポーネントのタグ名が
+    // 生成コードのScalaの式に対応付けられているため、先にScalaの補完を試すとScalaの候補になってしまう)
+    templateCompletion(uri, pos).orElse(scalaCompletion(uri, pos))
       .getOrElse(new CompletionList(false, java.util.Collections.emptyList()))
   }
 

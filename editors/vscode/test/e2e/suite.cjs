@@ -66,6 +66,31 @@ async function run() {
   assert.ok(doc.lineAt(def.range.start.line).text.includes("count: RV[Int]"), doc.lineAt(def.range.start.line).text);
   console.log(`  + definition: line ${def.range.start.line + 1}`);
 
+  // テンプレートの補完: タグ名に同じパッケージのコンポーネント
+  const tagCompletion = await vscode.commands.executeCommand(
+    "vscode.executeCompletionItemProvider",
+    doc.uri,
+    positionOf(doc, "<StCard v-if", "<St".length),
+    "<",
+  );
+  const tagLabels = tagCompletion.items.map((i) => (typeof i.label === "string" ? i.label : i.label.label));
+  assert.ok(tagLabels.includes("StCard") && tagLabels.includes("StBadge"), tagLabels.join(", "));
+  console.log(`  + template completion: ${tagLabels.filter((l) => l.startsWith("St")).join(", ")}`);
+
+  // 子コンポーネントのタグ名から、その.stへの定義ジャンプ
+  const tagDefs = await vscode.commands.executeCommand(
+    "vscode.executeDefinitionProvider",
+    doc.uri,
+    positionOf(doc, "<StCard v-if", 2),
+  );
+  const tagDef = tagDefs[0].uri ? tagDefs[0] : { uri: tagDefs[0].targetUri };
+  assert.equal(path.basename(tagDef.uri.fsPath), "StCard.st");
+  console.log(`  + component definition: ${path.basename(tagDef.uri.fsPath)}`);
+
+  // 整形: 整形済みのファイルは変わらない. インデントを崩すと元に戻す
+  const noEdits = await vscode.commands.executeCommand("vscode.executeFormatDocumentProvider", doc.uri, { tabSize: 2, insertSpaces: true });
+  assert.equal((noEdits ?? []).length, 0);
+
   // 正しいファイルにはエラーがない
   const initial = await poll("initial diagnostics", async () => {
     await sleep(2000);
@@ -85,6 +110,16 @@ async function run() {
   );
   assert.equal(error.range.start.line, doc.positionAt(start).line);
   console.log(`  + diagnostics: line ${error.range.start.line + 1}: ${error.message.split("\n")[0]}`);
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+
+  // 整形: インデントを崩した行を元に戻す
+  const original = doc.getText();
+  const line = positionOf(doc, "<p>count: <b>").line;
+  await editor.edit((b) => b.replace(new vscode.Range(line, 0, line, doc.lineAt(line).firstNonWhitespaceCharacterIndex), ""));
+  assert.notEqual(doc.getText(), original);
+  await vscode.commands.executeCommand("editor.action.formatDocument");
+  await poll("formatting", async () => doc.getText() === original);
+  console.log("  + formatting: restored the indentation");
   await vscode.commands.executeCommand("workbench.action.files.revert");
 }
 

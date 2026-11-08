@@ -50,6 +50,31 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
                 return lookup[0] != null && lookup[0].stream().anyMatch(s -> s.startsWith("count"));
             });
             assertTrue(lookup[0].toString(), lookup[0].stream().anyMatch(s -> s.startsWith("cardOpen")));
+            myFixture.getLookup().hideLookup(true);
+
+            // テンプレートの補完: 子コンポーネントのタグ名
+            int tagOffset = text.indexOf("<StCard v-if") + "<St".length();
+            myFixture.getEditor().getCaretModel().moveToOffset(tagOffset);
+            waitUntil("template completion", () -> {
+                myFixture.completeBasic();
+                lookup[0] = myFixture.getLookupElementStrings();
+                return lookup[0] != null && lookup[0].contains("StCard");
+            });
+            assertTrue(lookup[0].toString(), lookup[0].contains("StBadge"));
+            myFixture.getLookup().hideLookup(true);
+
+            // 整形: インデントを崩した行を、IntelliJのコードの整形(言語サーバーのフォーマット)で元に戻す
+            com.intellij.openapi.editor.Document document = myFixture.getEditor().getDocument();
+            String original = document.getText();
+            int lineStart = original.indexOf("<p>count: <b>");
+            int indentStart = original.lastIndexOf('\n', lineStart) + 1;
+            com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
+                    () -> document.deleteString(indentStart, lineStart));
+            assertFalse(original.equals(document.getText()));
+            com.intellij.psi.PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+            com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
+                    () -> { com.intellij.psi.codeStyle.CodeStyleManager.getInstance(getProject()).reformat(myFixture.getFile()); });
+            waitUntil("formatting", () -> original.equals(document.getText()));
         } finally {
             LspServerManager.getInstance(getProject()).stopServers(ScalactiveLspServerSupportProvider.class);
             PsiTestUtil.removeContentEntry(getModule(), docDir);

@@ -217,6 +217,13 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assert(ls.contains("div"), ls)
   }
 
+  test("テンプレートの補完: コンパイルできる.stでも、既存の子コンポーネントのタグ名ではテンプレートの補完") {
+    val text = counter.replace("<button @click", "<Card title=\"t\" /><button @click")
+    val ls = labels(counterUri, text.replace("<Card title", "<Ca|rd title"))
+    assert(ls.contains("Card") && ls.contains("Teleport"), ls)
+    assert(!ls.exists(_.startsWith("StringBuilder")), ls)
+  }
+
   test("テンプレートの補完: 子コンポーネントの属性にprops・イベント・v-model") {
     val ls = labels(counterUri, counter.replace("<button @click", "<Card | /><button @click"))
     assert(ls.contains("title") && ls.contains(":title"), ls)
