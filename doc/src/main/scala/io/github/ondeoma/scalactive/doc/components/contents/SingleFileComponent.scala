@@ -181,7 +181,10 @@ object SingleFileComponent extends StatelessComponent {
        |    修飾子: <code>.prevent</code> / <code>.stop</code> / <code>.self</code>、
        |    キー <code>.enter</code> / <code>.esc</code> / <code>.tab</code> / <code>.space</code> / <code>.delete</code> / <code>.up</code> / <code>.down</code> / <code>.left</code> / <code>.right</code>、
        |    修飾キー <code>.ctrl</code> / <code>.shift</code> / <code>.alt</code> / <code>.meta</code>
-       |    (例: <code>@keydown.enter.ctrl="send()"</code>).
+       |    (例: <code>@keydown.enter.ctrl="send()"</code>).<br>
+       |    リスナーのオプション: <code>.once</code>(条件を満たした最初の1回だけ実行)、
+       |    <code>.capture</code>(子要素より先にキャプチャフェーズで実行)、
+       |    <code>.passive</code>(スクロールなどを妨げない. <code>.prevent</code> とは併用できません).
        |  </td></tr>
        |  <tr><td><code>&lt;Other /&gt;</code></td><td>大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます. 属性はprops、子要素はslotとして渡されます.</td></tr>
        |  <tr><td><code>&lt;slot&gt;</code></td><td>親から渡された子要素を展開します. 中身は子要素がない場合の既定の内容です.</td></tr>

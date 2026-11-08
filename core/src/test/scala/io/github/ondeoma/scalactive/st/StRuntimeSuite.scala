@@ -207,6 +207,28 @@ class StRuntimeSuite extends munit.FunSuite {
     assert(!StRuntime.key(new Event("click"), "Enter"))
   }
 
+  test("on: once(条件を満たした最初の1回だけ)・capture(子より先)・passive(preventDefaultが効かない)") {
+    var log = List.empty[String]
+    val enter: Event => Boolean = e => StRuntime.key(e, "Enter")
+    val root = mount { implicit cm =>
+      s"""<div ${StRuntime.on("click", _ => log :+= "outer-capture", capture = true, once = false, passive = false, guard = _ => true)}>
+         |  <input ${StRuntime.on("keydown", _ => log :+= "enter-once", capture = false, once = true, passive = false, guard = enter)}
+         |         ${StRuntime.on("click", _ => log :+= "inner")}
+         |         ${StRuntime.on("wheel", e => e.preventDefault(), capture = false, once = false, passive = true, guard = _ => true)}>
+         |</div>""".stripMargin
+    }
+    val input = q[HTMLInputElement](root, "input")
+    def press(k: String): Unit = input.dispatchEvent(new KeyboardEvent("keydown", new KeyboardEventInit { this.key = k }))
+    press("a")
+    press("Enter")
+    press("Enter")
+    fire(input, "click")
+    assertEquals(log, List("enter-once", "outer-capture", "inner"))
+    val wheel = new Event("wheel", new EventInit { cancelable = true })
+    input.dispatchEvent(wheel)
+    assert(!wheel.defaultPrevented, "passiveなリスナーのpreventDefaultは無視される")
+  }
+
   test("model: テキスト入力とRV[String]を双方向に同期し、trimは入力中の値を書き換えない") {
     val s = RV("a")
     val t = RV("")

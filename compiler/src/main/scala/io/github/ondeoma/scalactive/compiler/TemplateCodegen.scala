@@ -334,7 +334,10 @@ final class TemplateCodegen(src: SourceText,
 
   private val systemModifiers = Set("ctrl", "shift", "alt", "meta")
 
-  private val allModifiers = List("prevent", "stop", "self") ++ keyModifiers.keys.toList.sorted ++ List("ctrl", "shift", "alt", "meta")
+  /** addEventListenerのオプションになる修飾子 */
+  private val listenerModifiers = Set("once", "capture", "passive")
+
+  private val allModifiers = List("prevent", "stop", "self", "once", "capture", "passive") ++ keyModifiers.keys.toList.sorted ++ List("ctrl", "shift", "alt", "meta")
 
   private def genAttr(e: Element, a: Attr): List[Part] = {
     val n = a.name
@@ -363,9 +366,13 @@ final class TemplateCodegen(src: SourceText,
         case EventPattern(event, mods) =>
           val ms = mods.split('.').filter(_.nonEmpty).toList
           ms.foreach { m =>
-            if (!actionModifiers.contains(m) && !keyModifiers.contains(m) && !systemModifiers.contains(m) && m != "self") {
+            if (!actionModifiers.contains(m) && !keyModifiers.contains(m) && !systemModifiers.contains(m) &&
+              !listenerModifiers.contains(m) && m != "self") {
               src.fail(a.offset, s"unknown event modifier '.$m' (supported: ${allModifiers.mkString(", ")})")
             }
+          }
+          if (ms.contains("passive") && ms.contains("prevent")) {
+            src.fail(a.offset, ".passive and .prevent cannot be used together (preventDefault is ignored in passive listeners)")
           }
           val keys = ms.flatMap(m => keyModifiers.getOrElse(m, Nil)).distinct
           val guards =
@@ -374,12 +381,21 @@ final class TemplateCodegen(src: SourceText,
               (if (ms.contains("self")) List("__st.self(event)") else Nil)
           val pre = ms.filter(actionModifiers.contains).distinct.map(actionModifiers).mkString
           val body = userStmt(a)
-          val stmt =
-            if (guards.isEmpty) s"$pre$body"
-            else s"if (${guards.mkString(" && ")}) { $pre$body} "
-          List(Code(
-            s"__st.on(${StringLiteral(event)}, (event: org.scalajs.dom.Event) => { ${lineComment(a.offset)} $stmt})"
-          ))
+          if (ms.exists(listenerModifiers.contains)) {
+            // .once/.capture/.passive: 条件(キーなど)は別の関数にし、.onceは条件を満たした最初の1回だけ実行する
+            val guard = if (guards.isEmpty) "_ => true" else s"(event: org.scalajs.dom.Event) => ${guards.mkString(" && ")}"
+            List(Code(
+              s"__st.on(${StringLiteral(event)}, (event: org.scalajs.dom.Event) => { ${lineComment(a.offset)} $pre$body}, " +
+                s"capture = ${ms.contains("capture")}, once = ${ms.contains("once")}, passive = ${ms.contains("passive")}, guard = $guard)"
+            ))
+          } else {
+            val stmt =
+              if (guards.isEmpty) s"$pre$body"
+              else s"if (${guards.mkString(" && ")}) { $pre$body} "
+            List(Code(
+              s"__st.on(${StringLiteral(event)}, (event: org.scalajs.dom.Event) => { ${lineComment(a.offset)} $stmt})"
+            ))
+          }
         case _ => src.fail(a.offset, s"invalid event binding '$n'")
       }
     } else if (n.startsWith("v-")) {

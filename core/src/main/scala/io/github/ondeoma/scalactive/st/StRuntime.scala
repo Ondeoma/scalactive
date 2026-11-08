@@ -7,6 +7,7 @@ import io.github.ondeoma.scalactive.controllers.attrs.AttrController
 import io.github.ondeoma.scalactive.controllers.events.EventController
 import io.github.ondeoma.scalactive.enums.EventType
 import io.github.ondeoma.scalactive.reactive.*
+import io.github.ondeoma.scalactive.utils.DomUtil.addEventToElement
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
 
@@ -331,6 +332,34 @@ object StRuntime {
          handler: Event => Unit)
         (using cm: ComponentManager): ATTR = {
     ComponentManager.ev(EventType.CustomEventType(name), handler)
+  }
+
+  /**
+   * .once / .capture / .passive 付きのイベント.
+   * guard(キー修飾子などの条件)を満たした場合だけhandlerを実行します. onceの場合は、条件を満たした最初の1回だけ実行して解除します.
+   */
+  def on(name: String,
+         handler: Event => Unit,
+         capture: Boolean,
+         once: Boolean,
+         passive: Boolean,
+         guard: Event => Boolean)
+        (using cm: ComponentManager): ATTR = {
+    ComponentManager.el(ele => new EventController(ec => {
+      var done = false
+      val h: Event => Unit = e => {
+        if (!done && guard(e)) {
+          if (once) {
+            done = true
+            ec.abortController.foreach(_.abort())
+          }
+          handler(e)
+        }
+      }
+      ec.element = Some(ele)
+      ec.abortController = Some(addEventToElement(ele, EventType.CustomEventType(name), h, capture = capture, passive = passive))
+      Right(ec)
+    }))
   }
 
   // @event.enter / .ctrl / .self などの修飾子

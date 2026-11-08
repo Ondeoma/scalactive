@@ -134,6 +134,14 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("""if (__st.self(event)) { y() }"""))
   }
 
+  test("once/capture/passive event modifiers") {
+    val c = compile("""<template><div @click.capture.stop="a()" @keydown.enter.once="b()" @scroll.passive="c()"></div></template>""").code
+    assert(c.contains("""event.stopPropagation(); a() }, capture = true, once = false, passive = false, guard = _ => true)"""), c)
+    assert(c.contains("""b() }, capture = false, once = true, passive = false, guard = (event: org.scalajs.dom.Event) => __st.key(event, "Enter"))"""), c)
+    assert(c.contains("""c() }, capture = false, once = false, passive = true, guard = _ => true)"""), c)
+    assert(compileError("<template>\n<div @wheel.passive.prevent=\"x\"></div></template>").message.contains("passive"))
+  }
+
   test("v-model") {
     val o = compile("""<template><input v-model="s.name"><textarea v-model.lazy.trim="s.memo"></textarea></template>""")
     assert(o.code.contains("__st.model((/* Foo.st:1 */ s.name), lazyUpdate = false, trim = false)"))
