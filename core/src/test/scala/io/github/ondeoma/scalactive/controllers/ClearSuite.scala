@@ -155,4 +155,33 @@ class ClearSuite extends munit.FunSuite {
     }
   }
 
+  test("EventController: DOMに残る要素のclearではリスナーを外し、取り除いた要素なら外さずに捨てる") {
+    import io.github.ondeoma.scalactive.controllers.events.EventController
+    import io.github.ondeoma.scalactive.enums.EventType
+    val ele = document.createElement("button").asInstanceOf[HTMLElement]
+    document.body.appendChild(ele)
+    var clicks = 0
+    val ec = EventController(ele, EventType.click, _ => clicks += 1)
+    ec.init()
+    ele.click()
+    ec.clear()
+    ele.click()
+    assertEquals(clicks, 1, "要素が残っていれば、clearでリスナーを外す")
+
+    // 取り除いた要素の内側のリスナーは外さない(要素ごと捨てる)
+    val row = document.createElement("div").asInstanceOf[HTMLElement]
+    val btn = document.createElement("button").asInstanceOf[HTMLElement]
+    row.appendChild(btn)
+    document.body.appendChild(row)
+    val ec2 = EventController(btn, EventType.click, _ => clicks += 1)
+    ec2.init()
+    ClearScope.run {
+      ClearScope.remove(row)
+      ec2.clear()
+    }
+    btn.click()
+    assertEquals(clicks, 2, "DOMから外れた要素のリスナーはそのまま(もう押されない)")
+    assertEquals(ec2.element, None)
+  }
+
 }

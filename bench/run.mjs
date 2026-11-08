@@ -23,6 +23,7 @@ const { values: args } = parseArgs({
     fast: { type: "boolean", default: false },
     headed: { type: "boolean", default: false },
     chrome: { type: "string" },
+    profile: { type: "string" },
     help: { type: "boolean", short: "h", default: false },
   },
 });
@@ -38,6 +39,7 @@ if (args.help) {
   --out file.json        結果の保存先(既定: results/<日時>-<コミット>.json)
   --compare base.json    前の結果と中央値を比較する
   --fast                 fullLinkJSではなくfastLinkJSの出力を使う
+  --profile dir          シナリオごとのCPUプロファイル(.cpuprofile)をdirに保存する(--fastと合わせると関数名が読める)
   --headed               ブラウザを表示する
   --chrome path          Chromeの実行ファイル(既定: インストール済みのGoogle Chrome)`);
   process.exit(0);
@@ -150,7 +152,17 @@ async function main() {
         const heapBefore = (await cdp.send("Runtime.getHeapUsage")).usedSize;
         const iterations = args.iterations ? Number(args.iterations) : s.iterations;
         process.stderr.write(`${impl} ${s.name} (${warmup}+${iterations}) ... `);
+        if (args.profile) {
+          await cdp.send("Profiler.enable");
+          await cdp.send("Profiler.setSamplingInterval", { interval: 100 });
+          await cdp.send("Profiler.start");
+        }
         const r = await page.evaluate(([n, w, i]) => window.scalactiveBench.run(n, w, i), [s.name, warmup, iterations]);
+        if (args.profile) {
+          const { profile } = await cdp.send("Profiler.stop");
+          fs.mkdirSync(args.profile, { recursive: true });
+          fs.writeFileSync(path.join(args.profile, `${impl}-${s.name}.cpuprofile`), JSON.stringify(profile));
+        }
         await cdp.send("HeapProfiler.collectGarbage");
         const heapAfter = (await cdp.send("Runtime.getHeapUsage")).usedSize;
         const st = stats(r.times);

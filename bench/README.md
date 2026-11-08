@@ -33,6 +33,7 @@ node run.mjs --compare results/before.json
 | `--delay ms` | `ScalactiveConfig.reloadTimerLazyDuration`. 指定しなければライブラリの既定値(0: 現在の処理の直後に描き直す)のまま |
 | `--cpu-throttle N` | CPUをN倍遅くする(遅い端末の想定) |
 | `--fast` | fullLinkJSではなくfastLinkJSの出力を使う |
+| `--profile dir` | シナリオごとのCPUプロファイル(`.cpuprofile`)をdirに保存する。`--fast`と合わせると関数名が読める。Chrome DevToolsのPerformanceパネルで開ける |
 
 ## 計測の内容
 
