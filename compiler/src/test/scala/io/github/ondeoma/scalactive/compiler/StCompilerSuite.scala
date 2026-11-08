@@ -120,6 +120,13 @@ class StCompilerSuite extends munit.FunSuite {
     assert(compileError("<script>\ndef mounted(x: Int): Unit = ()\n</script><template><p>a</p></template>").message.contains("mounted"))
   }
 
+  test("v-model on component passes the RV as props") {
+    val c = compile("""<template><Field v-model="s.name" v-model:first-name="s.first" label="x" /></template>""").code
+    assert(c.contains("__st.component(Field(model = (/* Foo.st:1 */ s.name), firstName = (/* Foo.st:1 */ s.first), label = \"x\"))"), c)
+    assertEquals(compileError("<template>\n<Field v-model.trim=\"x\" /></template>").line, 2)
+    assertEquals(compileError("<template>\n<Field v-model=\"x\" :model=\"y\" /></template>").line, 2)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>

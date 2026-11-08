@@ -62,6 +62,21 @@ object SingleFileComponent extends StatelessComponent {
          |<Badge label="count" :count="s.count" @reset="s.count := 0" />
          |""".stripMargin
 
+    val codeComponentModel = // language=html
+      s"""<!-- src/main/scalactive/app/Field.st -->
+         |<script lang="scala">
+         |case class Props(label: String, model: RV[String], note: RV[String] = RV(""))
+         |</script>
+         |
+         |<template>
+         |  <label>{{ props.label }}: <input v-model="props.model"></label>
+         |  <input v-model="props.note">
+         |</template>
+         |
+         |<!-- 親(.st)からの利用 -->
+         |<Field label="名前" v-model="s.name" v-model:note="s.memo" />
+         |""".stripMargin
+
     val codeSlot = // language=html
       s"""<!-- src/main/scalactive/app/Card.st -->
          |<script lang="scala">
@@ -213,7 +228,7 @@ object SingleFileComponent extends StatelessComponent {
        |    <code>.capture</code>(子要素より先にキャプチャフェーズで実行)、
        |    <code>.passive</code>(スクロールなどを妨げない. <code>.prevent</code> とは併用できません).
        |  </td></tr>
-       |  <tr><td><code>&lt;Other /&gt;</code></td><td>大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます. 属性はprops、子要素はslotとして渡されます.</td></tr>
+       |  <tr><td><code>&lt;Other /&gt;</code></td><td>大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます. 属性はprops、子要素はslotとして渡されます. <code>v-model</code> も使えます.</td></tr>
        |  <tr><td><code>&lt;slot&gt;</code></td><td>親から渡された子要素を展開します. 中身は子要素がない場合の既定の内容です.</td></tr>
        |</table>
        |
@@ -253,6 +268,9 @@ object SingleFileComponent extends StatelessComponent {
        |    子は <code>onName: A =&gt; Unit</code> をpropsに定義し、<code>props.onName(a)</code> で親へ通知します(値がない場合は <code>Unit =&gt; Unit</code>).
        |  </li>
        |  <li>ケバブケースの属性名はキャメルケースに変換されます(<code>on-reset</code> → <code>onReset</code>).</li>
+       |  <li>
+       |    <code>v-model="rv"</code> はpropsの <code>model</code> に、<code>v-model:name="rv"</code> はpropsの <code>name</code> にRVを渡します(後述).
+       |  </li>
        |  <li>デフォルト値のあるpropsは省略できます. すべて省略可能なら <code>&lt;Badge /&gt;</code> と書けます.</li>
        |  <li>
        |    propsは生成時に1度だけ渡されます. 値の変化を子に伝えたい場合はReactiveを渡してください.
@@ -262,6 +280,20 @@ object SingleFileComponent extends StatelessComponent {
        |    <code>def initState()</code> と併用できます. 初期状態をpropsから作る場合は <code>def initState(props: Props)</code> と定義します.
        |  </li>
        |  <li>Scalaで書く場合は <code>StatelessPropsComponent[P]</code> / <code>StatefulPropsComponent[P, S]</code> を継承します.</li>
+       |</ul>
+       |
+       |<h3 id="component-model">コンポーネントのv-model</h3>
+       |
+       |<p>
+       |  子コンポーネントのタグに <code>v-model</code> を書くと、RVをそのままpropsとして渡します.
+       |  親と子が同じRVを共有するので、どちらで変更しても両方に反映されます(双方向バインディング).
+       |</p>
+       |
+       |<pre><code class="language-html">${esc(codeComponentModel)}</code></pre>
+       |
+       |<ul>
+       |  <li><code>v-model="rv"</code> はpropsの <code>model</code>、<code>v-model:title="rv"</code> はpropsの <code>title</code> になります. 複数指定できます.</li>
+       |  <li>子のpropsの型はRV(<code>RV[String]</code> など)にします. 修飾子(<code>.trim</code> など)は子の中のinputに指定してください.</li>
        |</ul>
        |
        |<h2 id="slot">slot</h2>
@@ -334,7 +366,7 @@ object SingleFileComponent extends StatelessComponent {
        |<h2 id="limitations">制限事項</h2>
        |
        |<ul>
-       |  <li>子コンポーネントへの <code>class</code>・<code>style</code>・<code>v-model</code> の指定、名前付きslotは未対応です.</li>
+       |  <li>子コンポーネントへの <code>class</code>・<code>style</code> の指定、名前付きslotは未対応です.</li>
        |  <li><code>{{ }}</code> は属性値の中では使えません. <code>:name="expr"</code> を使ってください.</li>
        |  <li>
        |    sbtのコンパイルエラーは生成ソースの位置で報告されます. 埋め込まれた式には元ファイルの行番号コメントが付与されます.

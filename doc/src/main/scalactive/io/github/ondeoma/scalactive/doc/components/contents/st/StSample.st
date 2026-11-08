@@ -46,6 +46,7 @@ def add(s: State): Unit = {
     </ul>
 
     <h3>v-model</h3>
+    <p><StField label="コンポーネントのv-model" v-model="s.input" /> → {{ s.input }}</p>
     <p><label><input type="checkbox" v-model="s.agree"> 同意する</label> → {{ s.agree }}</p>
     <p :class='List("note", "agreed" -> s.agree)' :style='Map("fontWeight" -> s.agree.mapC(a => if (a) "bold" else "normal"))'>
       :class / :style のオブジェクト記法(同意すると太字・緑色になります)

@@ -269,6 +269,7 @@ final class TemplateCodegen(src: SourceText,
    *  - `:name="expr"` / `v-bind:name="expr"` : Scala式
    *  - `@name="stmt"` / `v-on:name="stmt"` : `onName = (event => { stmt })`
    *    (子は `onName: A => Unit` を定義し、`props.onName(a)` で通知します)
+   *  - `v-model="rv"` / `v-model:name="rv"` : `model = rv` / `name = rv` (子はRVを受け取り、双方向に使います)
    * ケバブケースの名前はキャメルケースに変換します(`on-close` → `onClose`).
    * 子要素は `slot = __st.slotOf { ... }` として渡します.
    */
@@ -285,6 +286,12 @@ final class TemplateCodegen(src: SourceText,
               ("on-" + event, s"(event => { ${lineComment(a.offset)} ${userStmt(a)}})")
             case _ => src.fail(a.offset, s"invalid event binding '$n'")
           }
+        } else if (n == "v-model" || n.startsWith("v-model:") || n.startsWith("v-model.")) {
+          // v-model="rv" はpropsのmodelに、v-model:name="rv" はpropsのnameにRVを渡す(RVを共有するので双方向になる)
+          if (n.contains(".")) src.fail(a.offset, s"v-model modifiers are not supported on component <${e.name}>")
+          val target = if (n == "v-model") "model" else n.drop("v-model:".length)
+          if (target.isEmpty) src.fail(a.offset, s"prop name expected in '$n'")
+          (target, attrExpr(a))
         } else if (n.startsWith("v-")) {
           src.fail(a.offset, s"directive '$n' on component <${e.name}> is not supported")
         } else {

@@ -215,6 +215,13 @@ test("v-html", () => {
   expectScopes(t, 1, "body", ["meta.embedded.inline.scala"]);
 });
 
+test("コンポーネントのv-model / v-model:name", () => {
+  const t = tokenize(`<template>\n  <Field v-model="s.name" v-model:first-name="s.first" />\n</template>\n`);
+  expectScopes(t, 1, "v-model", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, "v-model:first-name", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, "first", ["meta.embedded.inline.scala"]);
+});
+
 if (failures > 0) {
   console.log(`${failures} test(s) failed`);
   process.exit(1);
