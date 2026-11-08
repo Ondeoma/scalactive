@@ -103,6 +103,33 @@ class ErrorBoundarySuite extends munit.FunSuite {
     }
   }
 
+  test("イベントハンドラーの中の例外も受け止める") {
+    val root = mount { implicit cm =>
+      s"<div>${ComponentManager.errorBoundaryC(fallback, _ => ()) { implicit cm =>
+        s"""<button ${ComponentManager.evClick(throw new RuntimeException("clicked"))}>x</button>"""
+      }}</div>"
+    }
+    root.querySelector("button").asInstanceOf[HTMLElement].click()
+    flush().flatMap(_ => flush()).map(_ => assertEquals(root.querySelector(".fb").textContent, "clicked"))
+  }
+
+  test("境界の外の例外はScalactiveConfig.errorHandlerに渡す(イベントハンドラー・描き直し)") {
+    var handled = List.empty[String]
+    val saved = ScalactiveConfig.errorHandler
+    ScalactiveConfig.errorHandler = e => handled :+= e.getMessage
+    val flag = RV(false)
+    val root = mount { implicit cm =>
+      s"""<button ${ComponentManager.evClick(throw new RuntimeException("event"))}>x</button>""" +
+        s"<p>${ComponentManager.ifC(flag)(_ => throw new RuntimeException("reload"))}</p>"
+    }
+    root.querySelector("button").asInstanceOf[HTMLElement].click()
+    flag := true
+    flush().flatMap(_ => flush()).map { _ =>
+      ScalactiveConfig.errorHandler = saved
+      assertEquals(handled, List("event", "reload"))
+    }
+  }
+
   test("入れ子の境界では内側が受け止め、外側の中身はそのまま") {
     val root = mount { implicit cm =>
       s"<div>${ComponentManager.errorBoundaryC(_ => _ => "<p class='outer'>outer</p>", _ => ()) { implicit cm =>

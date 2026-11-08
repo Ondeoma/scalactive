@@ -267,7 +267,7 @@ object SingleFileComponent extends StatelessComponent {
        |    <code>&lt;template #default="v"&gt;</code>(結果)、<code>&lt;template #error="err"&gt;</code>(失敗. <code>err.retry()</code> で読み込み直し)を書きます.
        |  </td></tr>
        |  <tr><td><code>&lt;ErrorBoundary&gt;</code></td><td>
-       |    中身で起きたエラー(描画・描き直し・mountedの中の例外)を受け止め、<code>&lt;template #fallback="err"&gt;</code> の表示に切り替えます.
+       |    中身で起きたエラー(描画・描き直し・mounted・イベントハンドラーの中の例外)を受け止め、<code>&lt;template #fallback="err"&gt;</code> の表示に切り替えます.
        |    <code>err.message</code> でメッセージ、<code>err.retry()</code> で中身の描き直しができます. <code>@error="..."</code> でエラーを受け取れます.
        |  </td></tr>
        |  <tr><td><code>&lt;Teleport to="body"&gt;</code></td><td>

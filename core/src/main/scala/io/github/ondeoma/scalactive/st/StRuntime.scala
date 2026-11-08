@@ -449,12 +449,17 @@ object StRuntime {
     ComponentManager.el(ele => new EventController(ec => {
       var done = false
       val h: Event => Unit = e => {
-        if (!done && guard(e)) {
-          if (once) {
-            done = true
-            ec.abortController.foreach(_.abort())
+        try {
+          if (!done && guard(e)) {
+            if (once) {
+              done = true
+              ec.abortController.foreach(_.abort())
+            }
+            handler(e)
           }
-          handler(e)
+        } catch {
+          // ハンドラーの中の例外は、エラーの境界(なければScalactiveConfig.errorHandler)へ
+          case scala.util.control.NonFatal(ex) => io.github.ondeoma.scalactive.components.ErrorBoundaryContext.report(ec.boundary, ex)
         }
       }
       ec.element = Some(ele)

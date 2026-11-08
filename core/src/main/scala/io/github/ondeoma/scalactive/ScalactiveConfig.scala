@@ -24,6 +24,13 @@ object ScalactiveConfig {
   var keepWindowScrollPositionWhenReload: Boolean = true
 
   /**
+   * エラーの境界(ErrorBoundary)で受け止められなかった例外を受け取る関数(Vueのapp.config.errorHandler).
+   * 描き直し・onMounted・イベントハンドラーの中の例外が渡されます. 既定ではコンソールに出力します.
+   * エラーの報告サービスへの送信などに使います.
+   */
+  var errorHandler: Throwable => Unit = e => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e)
+
+  /**
    * Router.goで遷移したときに、ウィンドウを先頭までスクロールする場合はtrue.
    */
   var scrollToTopOnNavigate: Boolean = true

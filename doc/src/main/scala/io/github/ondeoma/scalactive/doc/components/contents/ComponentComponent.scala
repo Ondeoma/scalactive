@@ -293,10 +293,12 @@ object ComponentComponent extends StatelessComponent {
        |}</code></pre>
        |
        |<ul>
-       |  <li>受け止めるのは、中身を描く途中の例外(子コンポーネントを含む)、後から起きる子孫の描き直しの中の例外、子孫の <code>onMounted</code> の中の例外です.</li>
-       |  <li>イベントハンドラーの中の例外は受け止めません.</li>
+       |  <li>受け止めるのは、中身を描く途中の例外(子コンポーネントを含む)、後から起きる子孫の描き直しの中の例外、子孫の <code>onMounted</code> とイベントハンドラーの中の例外です.</li>
        |  <li><code>err.retry()</code> で中身を描き直します. <code>onError</code> を指定すると、エラーを受け止めたときに呼ばれます(既定ではコンソールに出力).</li>
-       |  <li>境界の外で起きた描き直しの例外はコンソールに出力され、ほかの描き直しは続けられます.</li>
+       |  <li>
+       |    境界の外で起きた例外は <code>ScalactiveConfig.errorHandler</code>(既定ではコンソールに出力)に渡され、ほかの描き直しは続けられます.
+       |    エラーの報告サービスへ送る場合などは、アプリの起動時に <code>ScalactiveConfig.errorHandler = e =&gt; ...</code> と設定します(Vueのapp.config.errorHandler).
+       |  </li>
        |  <li>単一ファイルコンポーネント(.st)では <code>&lt;ErrorBoundary&gt;...&lt;template #fallback="err"&gt;...&lt;/template&gt;&lt;/ErrorBoundary&gt;</code> と書きます.</li>
        |</ul>
        |

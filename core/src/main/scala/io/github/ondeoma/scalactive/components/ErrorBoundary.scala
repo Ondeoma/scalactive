@@ -41,15 +41,19 @@ private[scalactive] object ErrorBoundaryContext {
     finally current0 = saved
   }
 
-  /** fを実行し、例外が起きたら境界に知らせる(境界がなければログに出す) */
+  /** 例外を境界に知らせる(境界がなければScalactiveConfig.errorHandlerへ) */
+  def report(h: Option[BoundaryHandle], e: Throwable): Unit = {
+    h match {
+      case Some(b) => b.capture(e)
+      case None => io.github.ondeoma.scalactive.ScalactiveConfig.errorHandler(e)
+    }
+  }
+
+  /** fを実行し、例外が起きたら境界に知らせる */
   def guard(h: Option[BoundaryHandle])(f: => Unit): Unit = {
     try within(h)(f)
     catch {
-      case NonFatal(e) =>
-        h match {
-          case Some(b) => b.capture(e)
-          case None => ConsoleUtil.error(e)
-        }
+      case NonFatal(e) => report(h, e)
     }
   }
 
@@ -63,7 +67,8 @@ private[scalactive] object ErrorBoundaryContext {
  *  - 中身を描く途中の例外(子コンポーネントの初期化を含む)
  *  - 後から起きる子孫の描き直し(ifC・forC・リアクティブな値の変化など)の中の例外
  *  - 子孫のonMountedの中の例外
- * イベントハンドラーの中の例外は受け止めません.
+ *  - 子孫のイベントハンドラーの中の例外
+ * 境界の外の例外はScalactiveConfig.errorHandlerに渡されます.
  *
  * .stでは `<ErrorBoundary>...<template #fallback="err">...</template></ErrorBoundary>`、
  * Scalaでは `errorBoundaryC(err => cm => ...) { cm => ... }` と書きます.

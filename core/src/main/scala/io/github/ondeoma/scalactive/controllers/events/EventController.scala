@@ -8,6 +8,8 @@ import io.github.ondeoma.scalactive.utils.DomUtil.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
 
+import scala.util.control.NonFatal
+
 class EventController(val initF: EventController => Either[String, EventController],
                       var element: Option[HTMLElement] = None,
                       var abortController: Option[AbortController] = None) extends ComponentController[EventController] {
@@ -28,8 +30,15 @@ object EventController {
             et: EventType,
             handler: Event => Unit): EventController = {
     new EventController(ec =>
+      // ハンドラーの中の例外は、エラーの境界(なければScalactiveConfig.errorHandler)へ
+      val guarded: Event => Unit = e => {
+        try handler(e)
+        catch {
+          case NonFatal(ex) => io.github.ondeoma.scalactive.components.ErrorBoundaryContext.report(ec.boundary, ex)
+        }
+      }
       ec.element = ele.some
-      ec.abortController = addEventToElement(ele, et, handler).some
+      ec.abortController = addEventToElement(ele, et, guarded).some
       Right(ec)
     )
   }
