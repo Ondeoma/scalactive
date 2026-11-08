@@ -69,7 +69,8 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
   override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = {
     val caps = new ServerCapabilities()
     caps.setTextDocumentSync(TextDocumentSyncKind.Full)
-    caps.setCompletionProvider(new CompletionOptions(false, List(".").asJava))
+    // "." はScalaの部分、"<" "@" "#" "\"" はテンプレートの部分(タグ名・イベント・スロット名・<slot name>)の補完のきっかけ
+    caps.setCompletionProvider(new CompletionOptions(false, List(".", "<", "@", "#", "\"").asJava))
     caps.setHoverProvider(true)
     caps.setDefinitionProvider(true)
     caps.setDocumentHighlightProvider(true)

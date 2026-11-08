@@ -26,6 +26,9 @@ VS CodeとIntelliJ IDEAに提供します.
 - presentation compilerは、対象プロジェクトのScalaバージョンのもの(`scala3-presentation-compiler_3`, 3.3.2以降)を
   coursierで取得し、別のクラスローダーで動かします(言語サーバー自身はScala 2.12のため).
   環境変数 `SCALACTIVE_PC_CLASSPATH` でjarを直接指定することもできます.
+- テンプレートのHTMLの部分(タグ名・属性名・スロット名)の補完は `TemplateCompletion` が行います.
+  書きかけでコンパイルできない `.st` でも動くよう、コンパイルせずにテキストを走査して文脈を求めます.
+  子コンポーネントのpropsは、同じディレクトリの `.st` の `case class Props(...)` から読み取ります(`StCompiler.propsOf`).
 - 定義ジャンプは、同じ `.st` 内に加えて、プロジェクトのソースディレクトリにある `.scala` / `.st` を名前で探します.
   ライブラリ(jar)内の定義、ドキュメント、自動importには対応していません.
 

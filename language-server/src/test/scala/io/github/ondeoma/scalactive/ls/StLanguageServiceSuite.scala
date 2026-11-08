@@ -135,8 +135,8 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
-  test("HTMLの部分では補完しない") {
-    assertEquals(service.completion(counterUri, pos(counter, "<button", 3)).getItems.size, 0)
+  test("HTMLのテキストの部分では補完しない") {
+    assertEquals(service.completion(counterUri, pos(counter, ">+<", 1)).getItems.size, 0)
   }
 
   test("ホバーで型を表示し、範囲は.st上") {
@@ -186,6 +186,73 @@ class StLanguageServiceSuite extends munit.FunSuite {
     val ds = service.diagnostics(other.toUri.toString)
     assertEquals(ds.map(_.getSeverity), List(DiagnosticSeverity.Information))
     assert(ds.head.getMessage.contains("scalactive-lsp.json"))
+  }
+
+  // ---- テンプレートの補完 ----
+
+  write(srcRoot.resolve("app/Card.st"),
+    """<script lang="scala">
+      |case class Props(title: String,
+      |                 count: RV[Int] = RV(0),
+      |                 onClose: Unit => Unit = _ => (),
+      |                 slot: Slot = Slot.empty,
+      |                 footer: Slot = Slot.empty,
+      |                 row: ScopedSlot[Int] = ScopedSlot.empty)
+      |</script>
+      |<template><div><slot name="foo" /></div></template>
+      |""".stripMargin)
+
+  private def labels(uri: String, text: String, marker: String = "|"): List[String] = {
+    val offset = text.indexOf(marker)
+    val src = text.replace(marker, "")
+    withText(uri, src) {
+      service.completion(uri, new LineIndex(src).position(offset)).getItems.asScala.map(_.getLabel).toList
+    }
+  }
+
+  test("テンプレートの補完: タグ名に同じパッケージのコンポーネントと組み込みのコンポーネント") {
+    val ls = labels(counterUri, counter.replace("<button @click", "<Ca|<button @click"))
+    assert(ls.contains("Card"), ls)
+    assert(ls.contains("Teleport") && ls.contains("RouterLink"), ls)
+    assert(ls.contains("div"), ls)
+  }
+
+  test("テンプレートの補完: 子コンポーネントの属性にprops・イベント・v-model") {
+    val ls = labels(counterUri, counter.replace("<button @click", "<Card | /><button @click"))
+    assert(ls.contains("title") && ls.contains(":title"), ls)
+    assert(ls.contains("@close"), ls)
+    assert(ls.contains("v-model:count"), ls)
+    assert(!ls.contains("footer"), "スロットは属性に出さない")
+    assert(ls.contains("v-if") && ls.contains("class"), ls)
+  }
+
+  test("テンプレートの補完: 子コンポーネントの中の<template>にスロット名") {
+    val ls = labels(counterUri, counter.replace("<button @click", "<Card title=\"t\"><template |></template></Card><button @click"))
+    assertEquals(ls.filter(_.startsWith("#")).sorted, List("#default", "#footer", "#row"))
+  }
+
+  test("テンプレートの補完: 要素の属性にディレクティブ. Scalaの部分は従来どおり") {
+    val ls = labels(counterUri, counter.replace("<span v-show", "<span | v-show"))
+    assert(ls.contains("v-if") && ls.contains("v-for") && ls.contains(":class") && ls.contains("ref"), ls)
+    val scala = labels(counterUri, counter.replace("{{ s.count }}", "{{ s.cou| }}"))
+    assert(scala.exists(_.startsWith("count")), scala)
+  }
+
+  test("テンプレートの補完: <slot name=\"\">に自分のPropsのスロット名") {
+    val cardUri = srcRoot.resolve("app/Card.st").toUri.toString
+    val text = new String(Files.readAllBytes(srcRoot.resolve("app/Card.st")), StandardCharsets.UTF_8)
+    val ls = labels(cardUri, text.replace("<slot name=\"foo\" />", "<slot name=\"|\" />"))
+    assertEquals(ls.sorted, List("footer", "row"))
+  }
+
+  test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
+    import TemplateCompletion._
+    def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))
+    assertEquals(ctx("<div><!-- <a | --></div>"), Other)
+    assertEquals(ctx("<div title=\"<a |\">"), AttrValue("div", "title", 12))
+    assertEquals(ctx("<Card><template |"), AttrName("template", 16, List("Card")))
+    assertEquals(ctx("<p>a</p><Ca|"), TagName(9, Nil))
+    assertEquals(ctx("<br><input |"), AttrName("input", 11, Nil))
   }
 
   test("SemanticDBのシンボルを分解する") {

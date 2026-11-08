@@ -38,6 +38,48 @@ object StCompiler {
     }
   }
 
+  /**
+   * .stの <script> の case class Props(...) のパラメータ(名前と型). Propsがない・読めない場合は空.
+   * エディタの補完(子コンポーネントの属性・スロット名)に使います.
+   */
+  def propsOf(source: String): List[(String, String)] = {
+    try {
+      val src = new SourceText(source)
+      SfcParser.parse(src).script.toList.flatMap { b =>
+        val body = b.content(src)
+        PropsDecl.findFirstMatchIn(body).toList.flatMap { m =>
+          findClose(body, m.end - 1).toList.flatMap { close =>
+            splitTopLevel(body.substring(m.end, close), ',').filter(_.trim.nonEmpty).collect {
+              case PropParam(name, rest) => (name, typeOf(rest))
+            }
+          }
+        }
+      }
+    } catch {
+      case _: StCompileException => Nil
+    }
+  }
+
+  /** "Int = 1" から "Int" を取り出す(デフォルト値を除く). 関数型の => は区切りにしない */
+  private def typeOf(rest: String): String = {
+    var depth = 0
+    var i = 0
+    while (i < rest.length) {
+      rest.charAt(i) match {
+        case '"' | '\'' => i = skipString(rest, i)
+        case '(' | '[' | '{' => depth += 1
+        case ')' | ']' | '}' => depth -= 1
+        case '=' if depth == 0 =>
+          val next = if (i + 1 < rest.length) rest.charAt(i + 1) else ' '
+          val prev = if (i > 0) rest.charAt(i - 1) else ' '
+          if (next != '>' && next != '=' && !"=!<>".contains(prev)) return rest.substring(0, i).trim
+        case _ => ()
+      }
+      i += 1
+    }
+    rest.trim
+  }
+
   /** scoped CSS用の属性名. ファイルのパスから決まります. */
   def scopeId(fileName: String): String = {
     val crc = new CRC32

@@ -198,7 +198,28 @@ final class StLanguageService(log: String => Unit) {
     }
   }
 
+  /**
+   * テンプレートのHTMLの部分(タグ名・属性名・スロット名)の補完. コンパイルできない書きかけの.stでも動きます.
+   */
+  private def templateCompletion(uri: String, pos: Position): Option[CompletionList] = {
+    try {
+      val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
+      val text = textOf(uri, path)
+      val index = new LineIndex(text)
+      TemplateCompletion.complete(text, index.offset(pos), path, index).map(items => new CompletionList(false, items.asJava))
+    } catch {
+      case NonFatal(e) =>
+        log(s"template completion failed: $e")
+        None
+    }
+  }
+
   def completion(uri: String, pos: Position): CompletionList = {
+    scalaCompletion(uri, pos).orElse(templateCompletion(uri, pos))
+      .getOrElse(new CompletionList(false, java.util.Collections.emptyList()))
+  }
+
+  private def scalaCompletion(uri: String, pos: Position): Option[CompletionList] = {
     at(uri, pos) { (d, params) =>
       val list = await(d.pc.complete(params))
       list.getItems.asScala.foreach { item =>
@@ -221,7 +242,7 @@ final class StLanguageService(log: String => Unit) {
         }
       }
       list
-    }.getOrElse(new CompletionList(false, java.util.Collections.emptyList()))
+    }
   }
 
   def hover(uri: String, pos: Position): Option[Hover] = {

@@ -187,6 +187,20 @@ class StCompilerSuite extends munit.FunSuite {
     assert(compileError("<template><List>\n<template #item=\"1 + 2\">x</template></List></template>").message.contains("slot parameter"))
   }
 
+  test("propsOf: Propsのパラメータの名前と型") {
+    val ps = StCompiler.propsOf(
+      """<script lang="scala">
+        |case class Props(title: String,
+        |                 count: Option[Reactive[Int]] = None,
+        |                 onClose: Unit => Unit = _ => (),
+        |                 item: ScopedSlot[(String, Int)] = ScopedSlot.empty)
+        |</script>
+        |<template><p>a</p></template>""".stripMargin)
+    assertEquals(ps, List(
+      ("title", "String"), ("count", "Option[Reactive[Int]]"), ("onClose", "Unit => Unit"), ("item", "ScopedSlot[(String, Int)]")))
+    assertEquals(StCompiler.propsOf("<template><p>a</p></template>"), Nil)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>
