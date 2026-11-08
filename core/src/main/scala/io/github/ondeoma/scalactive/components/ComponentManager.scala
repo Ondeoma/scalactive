@@ -80,7 +80,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 
   /**
    * 目印を1回の走査でまとめて探し、子コンポーネントと要素の効果を作ります.
-   * 子コンポーネントはコメントのノードの直後に挿入し、要素の効果の目印の属性(data-cm-N)は取り除きます.
+   * 子コンポーネントはコメントのノードの直後に挿入します.
    */
   private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {
     if (bufGC.isEmpty && bufEE.isEmpty) Nil
@@ -98,10 +98,8 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
             var i = attrs.length - 1
             while (i >= 0) {
               val name = attrs(i).name
-              if (name.startsWith("data-cm-")) {
-                elements.update(name.drop("data-".length), e)
-                e.removeAttribute(name)
-              }
+              // 目印の属性は残す(取り除くと1,000行あたり数ms遅くなる. IDは連番で、属性名は使い回される)
+              if (name.startsWith("data-cm-")) elements.update(name.drop("data-".length), e)
               i -= 1
             }
           case _ => ()
