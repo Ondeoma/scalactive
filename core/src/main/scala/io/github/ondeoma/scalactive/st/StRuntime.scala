@@ -1,6 +1,6 @@
 package io.github.ondeoma.scalactive.st
 
-import io.github.ondeoma.scalactive.components.{ComponentManager, Slot}
+import io.github.ondeoma.scalactive.components.{ComponentManager, ScopedSlot, Slot}
 import io.github.ondeoma.scalactive.components.htmls.HtmlComponent
 import io.github.ondeoma.scalactive.components.texts.TextComponent
 import io.github.ondeoma.scalactive.controllers.attrs.{AttrBooleanController, AttrController, AttrStringController, ClassStringsController}
@@ -631,6 +631,17 @@ object StRuntime {
           (fallback: ComponentManager => HTML)
           (using cm: ComponentManager): HTML = {
     s(fallback)
+  }
+
+  // <slot name="x" :value="v" /> と <template #x="v">(スコープ付きスロット)
+
+  def scopedSlotOf[A](f: A => ComponentManager => HTML): ScopedSlot[A] = ScopedSlot(f)
+
+  def scopedSlot[A](s: ScopedSlot[A],
+                    value: A)
+                   (fallback: ComponentManager => HTML)
+                   (using cm: ComponentManager): HTML = {
+    s(value)(fallback)
   }
 
   // <ChildComponent />

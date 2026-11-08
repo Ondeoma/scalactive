@@ -100,6 +100,27 @@ object SingleFileComponent extends StatelessComponent {
          |</Card>
          |""".stripMargin
 
+    val codeScopedSlot = // language=html
+      s"""<!-- src/main/scalactive/app/TodoList.st -->
+         |<script lang="scala">
+         |case class Todo(id: Int, title: String)
+         |case class Props(todos: List[Todo],
+         |                 item: ScopedSlot[Todo] = ScopedSlot.empty)
+         |</script>
+         |
+         |<template>
+         |  <ul>
+         |    <!-- :valueで値を渡す. 親が内容を渡さなければ中身(既定の内容)を表示 -->
+         |    <li v-for="t in props.todos" :key="t.id"><slot name="item" :value="t">{{ t.title }}</slot></li>
+         |  </ul>
+         |</template>
+         |
+         |<!-- 親(.st)からの利用. #item="t" で子から受け取った値を使う -->
+         |<TodoList :todos="s.todos">
+         |  <template #item="t"><b>{{ t.id }}</b> {{ t.title }}</template>
+         |</TodoList>
+         |""".stripMargin
+
     val codeModel = // language=html
       s"""<input type="text" v-model.trim="s.name">         <!-- RV[String] -->
          |<input type="number" v-model="s.age">            <!-- RV[Int] / RV[Double] -->
@@ -236,12 +257,12 @@ object SingleFileComponent extends StatelessComponent {
        |    <code>.passive</code>(スクロールなどを妨げない. <code>.prevent</code> とは併用できません).
        |  </td></tr>
        |  <tr><td><code>&lt;Other /&gt;</code></td><td>大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます. 属性はprops、子要素はslotとして渡されます. <code>v-model</code> も使えます.</td></tr>
-       |  <tr><td><code>&lt;slot&gt;</code><br><code>&lt;slot name="x"&gt;</code></td><td>親から渡された子要素(名前付きスロット)を展開します. 中身は渡されなかった場合の既定の内容です.</td></tr>
+       |  <tr><td><code>&lt;slot&gt;</code><br><code>&lt;slot name="x"&gt;</code></td><td>親から渡された子要素(名前付きスロット)を展開します. 中身は渡されなかった場合の既定の内容です. <code>:value="v"</code> でスコープ付きスロットに値を渡します.</td></tr>
        |  <tr><td><code>&lt;Teleport to="body"&gt;</code></td><td>
        |    中身を別の要素(toのCSSセレクター)の末尾に描画します(モーダルなど). <code>disabled</code> を付けると元の位置に描画します.
        |    scoped CSSやイベントはそのまま使えます.
        |  </td></tr>
-       |  <tr><td><code>&lt;template #x&gt;</code><br><code>&lt;template v-slot:x&gt;</code></td><td>子コンポーネントのタグの中で、名前付きスロットxに渡す内容を囲みます.</td></tr>
+       |  <tr><td><code>&lt;template #x&gt;</code><br><code>&lt;template v-slot:x&gt;</code></td><td>子コンポーネントのタグの中で、名前付きスロットxに渡す内容を囲みます. <code>#x="v"</code> とするとスコープ付きスロットとして子から値を受け取ります.</td></tr>
        |</table>
        |
        |<p>
@@ -328,7 +349,21 @@ object SingleFileComponent extends StatelessComponent {
        |  <li>名前付きスロットを受け取るには、子のPropsに <code>name: Slot = Slot.empty</code> を定義します(ケバブケースの名前はキャメルケースになります).</li>
        |  <li><code>&lt;slot&gt;</code> の中身は、そのスロットが渡されなかった場合の既定の内容です.</li>
        |  <li><code>&lt;template #default&gt;</code> はデフォルトのslotです.</li>
-       |  <li>スコープ付きslot(子から値を受け取るslot)は未対応です.</li>
+       |</ul>
+       |
+       |<h3 id="scoped-slot">スコープ付きスロット</h3>
+       |
+       |<p>
+       |  子から値を受け取って内容を作るスロットです(Vueのスコープ付きスロット). 表やリストのような汎用部品で、行の表示を親に任せる場合に使います.
+       |</p>
+       |
+       |<pre><code class="language-html">${esc(codeScopedSlot)}</code></pre>
+       |
+       |<ul>
+       |  <li>子はPropsに <code>name: ScopedSlot[A] = ScopedSlot.empty</code> を定義し、<code>&lt;slot name="name" :value="expr"&gt;</code> で値(A)を渡して展開します.</li>
+       |  <li>親は <code>&lt;template #name="x"&gt;</code> で値を受け取ります. <code>x</code> の型は子のPropsから推論されます(<code>#name="x: Todo"</code> と型を書くこともできます).</li>
+       |  <li>複数の値はタプルで渡し、<code>#name="(item, i)"</code> のように分解して受け取れます.</li>
+       |  <li>Scalaで書く場合は、親は <code>ScopedSlot { x =&gt; cm =&gt; ... }</code> を渡し、子は <code>props.name(value)()</code> で展開します.</li>
        |</ul>
        |
        |<h2 id="lifecycle">ライフサイクルフック</h2>
@@ -388,7 +423,6 @@ object SingleFileComponent extends StatelessComponent {
        |<h2 id="limitations">制限事項</h2>
        |
        |<ul>
-       |  <li>スコープ付きslotは未対応です.</li>
        |  <li><code>{{ }}</code> は属性値の中では使えません. <code>:name="expr"</code> を使ってください.</li>
        |  <li>
        |    sbtのコンパイルエラーは生成ソースの位置で報告されます. 埋め込まれた式には元ファイルの行番号コメントが付与されます.

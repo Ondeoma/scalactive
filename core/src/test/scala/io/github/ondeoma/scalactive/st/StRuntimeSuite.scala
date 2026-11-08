@@ -360,6 +360,21 @@ class StRuntimeSuite extends munit.FunSuite {
     }
   }
 
+  test("scopedSlot: 値を渡して子のComponentManagerで展開し、空ならfallback") {
+    val n = RV(1)
+    val filled = StRuntime.scopedSlotOf[String] { label => cm =>
+      given ComponentManager = cm
+      s"<b>$label:${StRuntime.text(n)}</b>"
+    }
+    val root = mount { implicit cm =>
+      s"""<p>${StRuntime.scopedSlot(ScopedSlot.empty, "x")(_ => "fallback")}</p><div>${StRuntime.scopedSlot(filled, "a")(_ => "fallback")}</div>"""
+    }
+    assertEquals(q[HTMLElement](root, "p").textContent, "fallback")
+    assertEquals(q[HTMLElement](root, "div").textContent, "a:1")
+    n := 2
+    assertEquals(q[HTMLElement](root, "div").textContent, "a:2")
+  }
+
   test("injectStyle: 同じidのスタイルは1度だけ挿入する") {
     StRuntime.injectStyle("data-st-test", "p { color: red; }")
     StRuntime.injectStyle("data-st-test", "p { color: red; }")

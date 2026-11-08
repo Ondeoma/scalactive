@@ -84,6 +84,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 object ComponentManager {
 
   export io.github.ondeoma.scalactive.components.Slot
+  export io.github.ondeoma.scalactive.components.ScopedSlot
   export io.github.ondeoma.scalactive.components.ElementRef
   export io.github.ondeoma.scalactive.components.Teleport
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent

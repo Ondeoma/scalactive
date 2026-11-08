@@ -44,9 +44,10 @@ def add(s: State): Unit = {
       <button @click="s.todoInput.foreach(_.focus())">入力欄へ(ref)</button>
       入力中: {{ s.input }}
     </p>
-    <ul>
-      <li v-for="(todo, i) in s.todos">{{ i + 1 }}. {{ todo }}</li>
-    </ul>
+    <StList :items="s.todos">
+      <template #item="(todo, i)"><b>{{ i + 1 }}.</b> {{ todo }}</template>
+      <template #empty><p>(Todoがありません)</p></template>
+    </StList>
 
     <h3>v-model</h3>
     <p><StField label="コンポーネントのv-model" v-model="s.input" /> → {{ s.input }}</p>

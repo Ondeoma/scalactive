@@ -260,12 +260,17 @@ final class TemplateCodegen(src: SourceText,
       if (nameAttr.isEmpty) src.fail(e.offset, "<slot> requires 'slot: Slot' in case class Props (e.g. case class Props(slot: Slot = Slot.empty))")
       else src.fail(e.offset, s"<slot name='${nameAttr.get.value.get}'> requires '$propName0: Slot' in case class Props (e.g. case class Props($propName0: Slot = Slot.empty))")
     }
-    e.attrs.find(a => !structuralDirectives.contains(a.name) && a.name != "name").foreach { a =>
-      src.fail(a.offset, s"'${a.name}' on <slot> is not supported (scoped slots are not supported)")
+    val valueAttr = e.attrs.find(a => a.name == ":value" || a.name == "v-bind:value")
+    e.attrs.find(a => !structuralDirectives.contains(a.name) && a.name != "name" && !valueAttr.contains(a)).foreach { a =>
+      src.fail(a.offset, s"'${a.name}' on <slot> is not supported (use :value to pass a value to a scoped slot)")
     }
     val id = nextId()
     val fallback = render(genNodes(e.children), "      ")
-    List(Code(s"__st.slot($slot) { implicit __cm$id =>\n      $fallback\n    }"))
+    valueAttr match {
+      // スコープ付きスロット: 値を渡して展開する(PropsはScopedSlot[A])
+      case Some(v) => List(Code(s"__st.scopedSlot($slot, ${attrExpr(v)}) { implicit __cm$id =>\n      $fallback\n    }"))
+      case None => List(Code(s"__st.slot($slot) { implicit __cm$id =>\n      $fallback\n    }"))
+    }
   }
 
   /**
@@ -347,7 +352,6 @@ final class TemplateCodegen(src: SourceText,
       case t: Element if t.name == "template" =>
         t.attrs.find(a => a.name.startsWith("#") || a.name == "v-slot" || a.name.startsWith("v-slot:")).map { a =>
           val raw = if (a.name.startsWith("#")) a.name.drop(1) else a.name.drop("v-slot".length).stripPrefix(":")
-          if (a.value.exists(_.trim.nonEmpty)) src.fail(a.offset, s"'${a.name}' does not take a value (scoped slots are not supported)")
           t.attrs.find(_ ne a).foreach(x => src.fail(x.offset, s"'${x.name}' cannot be used on <template ${a.name}>"))
           (if (raw.isEmpty || raw == "default") "slot" else propName(raw), a)
         }
@@ -359,10 +363,25 @@ final class TemplateCodegen(src: SourceText,
       val body = render(genNodes(nodes), "      ")
       s"__st.slotOf { implicit __cm$id =>\n      $body\n    }"
     }
+    // <template #x="param">: スコープ付きスロット. paramは名前(型を付けても可)か、タプルのパターン(a, b)
+    def scopedSlotOf(param: Located, nodes: List[HtmlNode], offset: Int): String = {
+      val p = param.trim
+      val id = nextId()
+      val body = render(genNodes(nodes), "      ")
+      val fn = s"(__cm$id: __CM) => {\n      given __CM = __cm$id\n      $body\n    }"
+      if (p.text.matches("""[A-Za-z_]\w*(\s*:.+)?""")) s"__st.scopedSlotOf { (${marks.mark(p)}) => $fn }"
+      else if (p.text.startsWith("(")) s"__st.scopedSlotOf { case ${marks.mark(p)} => $fn }"
+      else src.fail(offset, s"invalid slot parameter '${p.text}' (use a name such as 'item' or a tuple pattern such as '(item, i)')")
+    }
     val namedArgs = named.map { c =>
       val (name, a) = slotName(c).get
       if (!name.matches("""[A-Za-z_][A-Za-z0-9_]*""")) src.fail(a.offset, s"invalid slot name '${a.name}'")
-      (name, name, slotOf(c.asInstanceOf[Element].children), a.offset)
+      val children = c.asInstanceOf[Element].children
+      val value = decodedValue(a).filter(_.text.trim.nonEmpty) match {
+        case Some(param) => scopedSlotOf(param, children, a.offset)
+        case None => slotOf(children)
+      }
+      (name, name, value, a.offset)
     }
     val hasChildren = rest.exists {
       case Text(t, _) => t.trim.nonEmpty

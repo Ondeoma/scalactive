@@ -236,6 +236,12 @@ test("テンプレート参照 ref", () => {
   expectScopes(t, 1, "box", ["meta.embedded.inline.scala"]);
 });
 
+test("スコープ付きスロット #name=\"param\" の値はScala", () => {
+  const t = tokenize(`<template>\n  <List><template #item="(todo, idx)">x</template></List>\n</template>\n`);
+  expectScopes(t, 1, "item", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, "idx", ["meta.embedded.inline.scala"]);
+});
+
 if (failures > 0) {
   console.log(`${failures} test(s) failed`);
   process.exit(1);

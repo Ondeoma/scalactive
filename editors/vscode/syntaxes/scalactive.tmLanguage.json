@@ -503,15 +503,48 @@
       "name": "entity.other.attribute-name.directive.scalactive"
     },
     "slot-directive": {
-      "match": "(#|v-slot:)([A-Za-z_][\\w-]*)",
-      "captures": {
-        "1": {
-          "name": "punctuation.attribute-shorthand.slot.scalactive"
+      "patterns": [
+        {
+          "begin": "(#|v-slot:)([A-Za-z_][\\w-]*)\\s*(=)\\s*([\"'])",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.attribute-shorthand.slot.scalactive"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.directive.scalactive"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.html"
+            },
+            "4": {
+              "name": "punctuation.definition.string.begin.html"
+            }
+          },
+          "end": "\\4",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.html"
+            }
+          },
+          "contentName": "meta.embedded.inline.scala",
+          "patterns": [
+            {
+              "include": "#attribute-scala"
+            }
+          ]
         },
-        "2": {
-          "name": "entity.other.attribute-name.directive.scalactive"
+        {
+          "match": "(#|v-slot:)([A-Za-z_][\\w-]*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.attribute-shorthand.slot.scalactive"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.directive.scalactive"
+            }
+          }
         }
-      }
+      ]
     },
     "plain-attribute": {
       "patterns": [

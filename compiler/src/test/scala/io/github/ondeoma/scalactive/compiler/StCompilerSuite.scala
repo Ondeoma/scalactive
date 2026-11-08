@@ -167,6 +167,26 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("""__st.component(Btn(label = "ok"), __st.rootCls("primary"), __st.rootStyle((/* Foo.st:1 */ s.st)), __st.rootAttr("id", "b1"), __st.rootAttr("data-n", (/* Foo.st:1 */ s.n)), __st.rootAttr("aria-label", "a"), __st.rootAttr("aria-busy", (/* Foo.st:1 */ s.busy)))"""), c)
   }
 
+  test("scoped slots") {
+    val child = compile(
+      """<script lang="scala">
+        |case class Props(items: List[String], item: ScopedSlot[String] = ScopedSlot.empty)
+        |</script>
+        |<template><ul><li v-for="x in props.items"><slot name="item" :value="x">{{ x }}</slot></li></ul></template>
+        |""".stripMargin).code
+    assert(child.contains("__st.scopedSlot(props.item, (/* Foo.st:4 */ x)) { implicit"), child)
+    val parent = compile(
+      """<template><List>
+        |  <template #item="x"><b>{{ x }}</b></template>
+        |  <template #row="r: Row">{{ r }}</template>
+        |  <template #pair="(a, i)">{{ i }}</template>
+        |</List></template>""".stripMargin).code
+    assert(parent.contains("item = __st.scopedSlotOf { (x) => (__cm"), parent)
+    assert(parent.contains("row = __st.scopedSlotOf { (r: Row) => (__cm"))
+    assert(parent.contains("pair = __st.scopedSlotOf { case (a, i) => (__cm"))
+    assert(compileError("<template><List>\n<template #item=\"1 + 2\">x</template></List></template>").message.contains("slot parameter"))
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>
