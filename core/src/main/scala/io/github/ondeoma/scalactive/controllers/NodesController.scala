@@ -22,20 +22,20 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
   
   def init(): Either[String, CC]
 
-  def clear(): Unit = {
+  def clear(): Unit = ClearScope.run {
+    cancelReload()
     clearNodes()
     
     watchInfos.foreach(_.abort())
     watchInfos = Nil
   }
 
-  def clearNodes(): Unit = {
+  def clearNodes(): Unit = ClearScope.run {
     saveParent()
     
-    nodes.collect {
-      case e: Element => e.remove()
-      case t: CharacterData => t.data = ""
-    }
+    // テキストやコメント(空のときの目印など)も取り除く. 以前は中身を空にするだけで、描き直すたびにDOMに残っていました.
+    // 子コンポーネントのノードのうち、ここで取り除いた要素の内側にあるものはそのままにします(ClearScope).
+    nodes.foreach(ClearScope.remove)
     children.foreach(_.clear())
     abortControllers.foreach(_.abort())
     eventHandlers.foreach(EventManager.rmHandler)
@@ -49,11 +49,14 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
   }
 
   private def saveParent(): Unit = {
-    parent = for {
-      h <- nodes.headOption
-      p = h.parentNode
-      h <- p.toHtml
-    } yield h
+    // 2度続けてclearされたときに、覚えている親を失わないようにする
+    if (nodes.nonEmpty) {
+      parent = for {
+        h <- nodes.headOption
+        p = h.parentNode
+        h <- p.toHtml
+      } yield h
+    }
   }
 
 }

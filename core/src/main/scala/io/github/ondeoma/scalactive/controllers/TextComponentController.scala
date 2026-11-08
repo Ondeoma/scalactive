@@ -9,8 +9,9 @@ class TextComponentController(val initF: TextComponentController => Either[Strin
 
   def init(): Either[String, TextComponentController] = initF(this)
 
-  def clear(): Unit = {
-    text.foreach(_.data = "")
+  def clear(): Unit = ClearScope.run {
+    cancelReload()
+    text.foreach(ClearScope.remove)
     text = None
     watchInfos.foreach(_.abort())
     watchInfos = Nil
