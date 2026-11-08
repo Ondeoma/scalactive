@@ -301,7 +301,9 @@ object ReactiveComponent extends StatelessComponent {
        |
        |<p>
        |  リアクティブな値が変化した際に任意の処理を実行させることができます.<br>
-       |  Vue.jsにおけるwatchの概念に近いものです.
+       |  Vue.jsにおけるwatchの概念に近いものです.<br>
+       |  コンポーネントの外のリアクティブな値(グローバルな状態やRouter.hrefなど)をgenHtmlの中で監視する場合は、
+       |  <code>onUnmounted(watchInfo.abort())</code> で片付けるときに解除してください. 解除しないと、描画のたびに監視が増えていきます.
        |</p>
        |
        |<pre><code class="language-scala">${esc(codeWatch)}</code></pre>

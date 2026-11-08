@@ -13,7 +13,9 @@ object SpNavComponent extends StatefulComponent[State] {
   def genHtml(s: State)
              (implicit cm: ComponentManager): HTML = {
     import Router.*
-    href.addWatcher(_ => s.open := false)
+    // ページを移動したらメニューを閉じる. 片付けるときに監視を解除する(描画のたびに監視が増えないように)
+    val closeOnNavigate = href.addWatcher(_ => s.open := false)
+    onUnmounted(closeOnNavigate.abort())
     val menuIcon = """<svg data-v-0f6864fa="" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="menu-icon"><path d="M17,11H3c-0.6,0-1-0.4-1-1s0.4-1,1-1h14c0.6,0,1,0.4,1,1S17.6,11,17,11z"></path><path d="M21,7H3C2.4,7,2,6.6,2,6s0.4-1,1-1h18c0.6,0,1,0.4,1,1S21.6,7,21,7z"></path><path d="M21,15H3c-0.6,0-1-0.4-1-1s0.4-1,1-1h18c0.6,0,1,0.4,1,1S21.6,15,21,15z"></path><path d="M17,19H3c-0.6,0-1-0.4-1-1s0.4-1,1-1h14c0.6,0,1,0.4,1,1S17.6,19,17,19z"></path></svg>"""
     // language=html
     s"""<nav class="sp-menu sp-only-block">
