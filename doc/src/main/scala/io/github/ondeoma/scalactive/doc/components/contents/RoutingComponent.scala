@@ -45,6 +45,43 @@ object RoutingComponent extends StatelessComponent {
          |  }
          |}""".stripMargin  
 
+    val codeNested = // language=scala
+      s"""// 外側のルート: "/guide/*" で /guide 以下のすべてのパスにマッチさせる
+         |val routes: PathPatternRoutes = List(
+         |  ("/", _ => RootComponent()),
+         |  ("/guide/*", _ => GuideLayout()),
+         |)
+         |
+         |// レイアウト: 内側のRouterComponentで /guide より下のパスを切り替える
+         |object GuideLayout extends StatelessComponent {
+         |  def genHtml(implicit cm: ComponentManager): HTML = {
+         |    val inner = RouterComponent.nested("/guide")(List(
+         |      ("intro", _ => IntroComponent()),        // /guide/intro
+         |      ("api/:name", r => ApiComponent(r.pathname.groups("name"))), // /guide/api/xxx
+         |    ))
+         |    s\"\"\"<nav>...</nav><section>$${%(inner)}</section>\"\"\"
+         |  }
+         |}
+         |""".stripMargin
+
+    val codeGuard = // language=scala
+      s"""import io.github.ondeoma.scalactive.routes.Router
+         |import io.github.ondeoma.scalactive.routes.Router.*
+         |
+         |// 遷移の前に呼ばれる(Router.go・戻る/進む・ページを開いた直後)
+         |val removeGuard = Router.beforeEach { (to, from) =>
+         |  if (to.path.startsWith("/admin") && !loggedIn.v) Redirect("/login")
+         |  else if (editing.v && !window.confirm("保存していない変更があります. 移動しますか?")) Cancel
+         |  else Continue
+         |}
+         |
+         |// 遷移の後に呼ばれる
+         |Router.afterEach((to, from) => document.title = s"MyApp $${to.path}")
+         |
+         |// 登録の解除
+         |removeGuard()
+         |""".stripMargin
+
     // language=html
     s"""<h1>ルーティング</h1>
        |
@@ -55,6 +92,8 @@ object RoutingComponent extends StatelessComponent {
        |<ul class="toc">
        |  <li><a ${evClick(setHash("RouterComponent"))}>RouterComponent</a></li>
        |  <li><a ${evClick(setHash("Router"))}>Router</a></li>
+       |  <li><a ${evClick(setHash("Nested"))}>ネストしたルート</a></li>
+       |  <li><a ${evClick(setHash("Guard"))}>ナビゲーションガード</a></li>
        |  <li><a ${evClick(setHash("BasePath"))}>BasePath</a></li>
        |</ul>
        |
@@ -92,6 +131,57 @@ object RoutingComponent extends StatelessComponent {
        |</p>
        |
        |<pre><code class="language-scala">${esc(code2)}</code></pre>
+       |
+       |<p>
+       |  RouterComponentは、マッチしたルート・名前付きのパスパラメータ(<code>:id</code> など)・クエリ文字列のどれかが変わったときだけ描き直します.
+       |  名前のないワイルドカード(<code>*</code>)の部分だけが変わった場合は描き直しません(次のネストしたルートのため).
+       |  ワイルドカードの値を使って描く場合は、<code>/files/:path*</code> のように名前を付けてください.
+       |</p>
+       |
+       |<h2 id="Nested">ネストしたルート</h2>
+       |
+       |<p>
+       |  ルートに割り当てたコンポーネント(レイアウト)の中にRouterComponentを置くと、その部分だけを子のパスで切り替えられます.
+       |  Vue Routerのネストしたルート(childrenと入れ子のrouter-view)に当たります.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeNested)}</code></pre>
+       |
+       |<ul>
+       |  <li>外側のルートは <code>"/guide/*"</code> のように、ワイルドカードで子のパスまでマッチさせます.</li>
+       |  <li>
+       |    内側は <code>RouterComponent.nested("/guide")(routes)</code> と書き、パターンは <code>/guide</code> からの相対パスで指定します.
+       |    (<code>RouterComponent(routes, base = ...)</code> にベースパスを渡しても同じです.)
+       |  </li>
+       |  <li>/guide/intro から /guide/api/xxx への遷移では、レイアウトは作り直されず、内側だけが切り替わります.</li>
+       |</ul>
+       |
+       |<h2 id="Guard">ナビゲーションガード</h2>
+       |
+       |<p>
+       |  <code>Router.beforeEach</code> で、遷移の前に呼ばれる関数(ガード)を登録できます.
+       |  ログインしていない場合のリダイレクトや、編集中の離脱の確認などに使います.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeGuard)}</code></pre>
+       |
+       |<ul>
+       |  <li>
+       |    ガードは遷移先 <code>to</code> と遷移元 <code>from</code>(<code>RouteLocation</code>. <code>path</code> はベースパスを除いたパス)を受け取り、
+       |    <code>Continue</code>(遷移する)・<code>Cancel</code>(取り消す)・<code>Redirect(url)</code>(別のパスへ遷移する)のどれかを返します.
+       |  </li>
+       |  <li>Router.goのほか、ブラウザの戻る・進むでも呼ばれます. 戻る・進むを取り消した場合はURLを元に戻します.</li>
+       |  <li>
+       |    最初に登録したときに、ページを開いた直後の場所も確認します(このとき <code>from</code> は <code>None</code>).
+       |    Redirectを返すと、そのパスへ置き換えます.
+       |  </li>
+       |  <li>複数登録した場合は登録順に呼ばれ、最初にContinue以外を返したものが使われます.</li>
+       |  <li><code>Router.afterEach</code> で、遷移の後に呼ばれる関数を登録できます.</li>
+       |  <li>
+       |    Router.goで遷移したときにウィンドウを先頭までスクロールしたくない場合は、
+       |    <code>ScalactiveConfig.scrollToTopOnNavigate = false</code> を設定してください.
+       |  </li>
+       |</ul>
        |
        |
        |<h2 id="BasePath">BasePath</h2>

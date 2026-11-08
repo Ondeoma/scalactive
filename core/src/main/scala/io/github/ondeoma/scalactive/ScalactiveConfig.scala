@@ -24,6 +24,11 @@ object ScalactiveConfig {
   var keepWindowScrollPositionWhenReload: Boolean = true
 
   /**
+   * Router.goで遷移したときに、ウィンドウを先頭までスクロールする場合はtrue.
+   */
+  var scrollToTopOnNavigate: Boolean = true
+
+  /**
    * Router.goで遷移する時/RouterComponentのベースパス
    */
   var basePath: String = ""
