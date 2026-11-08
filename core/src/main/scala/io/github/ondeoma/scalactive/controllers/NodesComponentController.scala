@@ -17,6 +17,11 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
   /** 設定されていれば、描き直し(refresh)でclear + initの代わりに呼ばれます(forCの差分更新など) */
   var onRefresh: Option[NodesComponentController => Unit] = None
 
+  /** 設定されていれば、clearのときに呼ばれます(forCの行の片付けなど) */
+  var onClear: Option[NodesComponentController => Unit] = None
+
+  override protected def clearExtra(): Unit = onClear.foreach(_(this))
+
   override def refresh(): Unit = {
     onRefresh match {
       case Some(f) => f(this)

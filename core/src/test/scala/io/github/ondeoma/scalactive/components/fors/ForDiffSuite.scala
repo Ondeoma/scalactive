@@ -261,6 +261,48 @@ class ForDiffSuite extends munit.FunSuite {
     }
   }
 
+  test("forEachC: 子コンポーネントが行の末尾に足したノードも一緒に動かす") {
+    import io.github.ondeoma.scalactive.components.texts.TextComponent
+    val list = RV(List(new RV("a"), new RV("b"), new RV("c")))
+    val root = mount { implicit cm =>
+      // 行のHTMLの末尾にあるプレースホルダーの後に、TextComponentがテキストを足す
+      s"<div>${ComponentManager.forEachC(list) { (rowCm, rv) =>
+        given ComponentManager = rowCm
+        s"<b>[</b>${ComponentManager.%(TextComponent(rv)(identity))}"
+      }}</div>"
+    }
+    val div = root.querySelector("div")
+    assertEquals(div.textContent, "[a[b[c")
+    list := list.v.reverse
+    flush().flatMap { _ =>
+      assertEquals(div.textContent, "[c[b[a")
+      list := list.v.tail
+      flush()
+    }.map(_ => assertEquals(div.textContent, "[b[a"))
+  }
+
+  test("forCの後ろにある同じ親の要素は、forCを片付けても残る") {
+    val show = RV(true)
+    val list = RV(List(1, 2))
+    val root = mount { implicit cm =>
+      s"<div>${ComponentManager.ifC(show) { implicit cm =>
+        s"<span>head</span>${ComponentManager.forEachC(list)((_, v) => s"<i>$v</i>")}<span>tail</span>"
+      }}<p>after</p></div>"
+    }
+    val div = root.querySelector("div")
+    assertEquals(div.textContent, "head12tailafter")
+    list := List(2, 3, 4)
+    flush().flatMap { _ =>
+      assertEquals(div.textContent, "head234tailafter")
+      show := false
+      flush()
+    }.flatMap { _ =>
+      assertEquals(div.textContent, "after")
+      show := true
+      flush()
+    }.map(_ => assertEquals(div.textContent, "head234tailafter"))
+  }
+
   test("longestIncreasing: 値が増加する最長の部分列(負の値は除く)") {
     def run(xs: Int*): List[Int] = {
       val r = ForGeneralComponent.longestIncreasing(xs.toArray)

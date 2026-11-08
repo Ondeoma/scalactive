@@ -35,6 +35,8 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
     
     // テキストやコメント(空のときの目印など)も取り除く. 以前は中身を空にするだけで、描き直すたびにDOMに残っていました.
     // 子コンポーネントのノードのうち、ここで取り除いた要素の内側にあるものはそのままにします(ClearScope).
+    // 先にclearExtra(forCの行は末尾の目印を頼りに範囲を求めるため、目印を取り除く前に片付ける)
+    clearExtra()
     nodes.foreach(ClearScope.remove)
     children.foreach(_.clear())
     abortControllers.foreach(_.abort())
@@ -47,6 +49,9 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
     eventHandlers = Nil
     tmpReactives = Nil
   }
+
+  /** nodes/childrenなどで管理していないものを片付ける(forCの行など). clearNodesの中で呼ばれます. */
+  protected def clearExtra(): Unit = ()
 
   override private[scalactive] def depth: Int = {
     var d = 0

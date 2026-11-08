@@ -25,7 +25,14 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   private lazy val tmpReactives = ListBuffer[Reactive[?]]()
   private lazy val eventHandlerIds = ListBuffer[ID]()
 
-  def gen(): GenResult = {
+  def gen(): GenResult = genWithOwnLast().map(_._1)
+
+  /**
+   * genに加えて、HTML自身の最後のノード(子コンポーネントが足したノードを除く)を返します.
+   * 子コンポーネントはプレースホルダーの後ろにノードを足すだけで、HTML自身のノードは取り除かないため、
+   * HTML自身の最初と最後のノードはコンポーネントが片付けられるまで変わりません(forCの行の範囲に使います).
+   */
+  private[scalactive] def genWithOwnLast(): Either[String, ((List[Node], ChildrenComponents, TemporaryReactiveValues, EventHandlerIds), Node)] = {
     val tmpDiv = mkDiv()
     // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
     val nodes = html.toNodes.orDummyNode
@@ -35,7 +42,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
       cs <- children.traverse(_.init())
       ns = tmpDiv.childNodes.toList
       _ = tmpDiv.remove()
-    } yield (ns, cs, tmpReactives.toList, eventHandlerIds.toList)
+    } yield ((ns, cs, tmpReactives.toList, eventHandlerIds.toList), nodes.last)
   }
 
   private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {
@@ -133,6 +140,10 @@ object ComponentManager {
 
   def apply(f: ComponentManager => HTML): GenResult = {
     new ComponentManager(f).gen()
+  }
+
+  private[scalactive] def genWithOwnLast(f: ComponentManager => HTML) = {
+    new ComponentManager(f).genWithOwnLast()
   }
 
   def %(f: GenComponentF)

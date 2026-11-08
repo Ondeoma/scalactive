@@ -35,6 +35,14 @@ private[scalactive] object ClearScope {
     }
   }
 
+  /** nがこのclearの連鎖で取り除いた要素の内側にあるか(n自身が取り除かれた場合を含む) */
+  def isRemoved(n: Node): Boolean = insideRemoved(n)
+
+  /** まとめて取り除いた(Range.deleteContentsなど)ノードを、取り除いたものとして覚える */
+  def markRemoved(n: Node): Unit = {
+    if (depth > 0) removed.add(n)
+  }
+
   private def insideRemoved(from: Node): Boolean = {
     if (removed.size == 0) false
     else {
