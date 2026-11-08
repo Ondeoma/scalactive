@@ -87,6 +87,28 @@ async function run() {
   assert.equal(path.basename(tagDef.uri.fsPath), "StCard.st");
   console.log(`  + component definition: ${path.basename(tagDef.uri.fsPath)}`);
 
+  // 子コンポーネントのタグのホバー: Propsの一覧
+  const tagHover = hoverText(
+    await vscode.commands.executeCommand("vscode.executeHoverProvider", doc.uri, positionOf(doc, "<StCard v-if", 2)),
+  );
+  assert.ok(tagHover.includes("StCard.st") && tagHover.includes("title: String"), tagHover);
+  console.log(`  + component hover: ${tagHover.replace(/\s+/g, " ").slice(0, 80)}...`);
+
+  // propの参照: 定義(StCard.st)と、StSample.stの2つのタグの属性
+  const titlePos = positionOf(doc, 'title="slotの例"', 1);
+  const refs = await vscode.commands.executeCommand("vscode.executeReferenceProvider", doc.uri, titlePos);
+  const refFiles = refs.map((r) => path.basename(r.uri.fsPath));
+  assert.equal(refFiles.filter((f) => f === "StSample.st").length, 2, refFiles.join(", "));
+  assert.ok(refFiles.includes("StCard.st"), refFiles.join(", "));
+  console.log(`  + references: ${refFiles.join(", ")}`);
+
+  // propの名前の変更(適用はしない)
+  const edit = await vscode.commands.executeCommand("vscode.executeDocumentRenameProvider", doc.uri, titlePos, "heading");
+  const renamedFiles = edit.entries().map(([u, es]) => `${path.basename(u.fsPath)}:${es.length}`);
+  assert.ok(renamedFiles.some((f) => f.startsWith("StSample.st:2")), renamedFiles.join(", "));
+  assert.ok(renamedFiles.some((f) => f.startsWith("StCard.st:")), renamedFiles.join(", "));
+  console.log(`  + rename: ${renamedFiles.join(", ")}`);
+
   // 整形: 整形済みのファイルは変わらない. インデントを崩すと元に戻す
   const noEdits = await vscode.commands.executeCommand("vscode.executeFormatDocumentProvider", doc.uri, { tabSize: 2, insertSpaces: true });
   assert.equal((noEdits ?? []).length, 0);
@@ -110,6 +132,16 @@ async function run() {
   );
   assert.equal(error.range.start.line, doc.positionAt(start).line);
   console.log(`  + diagnostics: line ${error.range.start.line + 1}: ${error.message.split("\n")[0]}`);
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+
+  // propsの検査: 未知のpropを、その属性の位置で指摘する(型検査が同じpropについて報告していれば、そちらだけ)
+  const tagStart = doc.getText().indexOf('<StCard title="slotなし"') + "<StCard ".length;
+  await editor.edit((b) => b.insert(doc.positionAt(tagStart), 'titel="x" '));
+  const unknownProp = await poll("unknown prop", async () =>
+    vscode.languages.getDiagnostics(doc.uri).find((d) => d.message.includes("titel")),
+  );
+  assert.equal(doc.offsetAt(unknownProp.range.start), tagStart);
+  console.log(`  + props check: ${unknownProp.message.split("\n")[0]}`);
   await vscode.commands.executeCommand("workbench.action.files.revert");
 
   // 整形: インデントを崩した行を元に戻す
