@@ -14,6 +14,16 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
                                var tmpReactives: List[Reactive[?]] = Nil,
                                var onInit: NodesComponentController => Unit = _ => ()) extends NodesController[NodesComponentController] {
 
+  /** 設定されていれば、描き直し(refresh)でclear + initの代わりに呼ばれます(forCの差分更新など) */
+  var onRefresh: Option[NodesComponentController => Unit] = None
+
+  override def refresh(): Unit = {
+    onRefresh match {
+      case Some(f) => f(this)
+      case None => super.refresh()
+    }
+  }
+
   def init(): Either[String, NodesComponentController] = {
     initF(this).map { c =>
       onInit(c)

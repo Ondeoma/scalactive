@@ -58,8 +58,7 @@ private[scalactive] object ReloadScheduler {
         // 先に描き直した親に片付けられた(cancelされた)ものは飛ばす
         if (pending.contains(c)) {
           pending.remove(c)
-          c.clear()
-          c.init()
+          c.refresh()
         }
       }
       if (keepScroll) window.scrollTo(x.toInt, y.toInt)

@@ -13,7 +13,9 @@ object ForRVComponent extends BaseComponent {
                am: AddMethod,
                values: RVList[A])
               (genHtml: (ComponentManager, RV[A], IDX) => HTML): NodesComponentController = {
-    ForGeneralComponent(root, am, values, _.rv, c => List(values.addWatcherRowLevel(_ => c.reload())))(genHtml)
+    // 行はRVの同一性で対応付け、代入で値が書き換わった行は作り直す
+    ForGeneralComponent(root, am, values, _.rv, c => List(values.addWatcherRowLevel(_ => c.reload())),
+      snapshotOf = (rv: RV[A]) => rv.v)(genHtml)
   }
 
   def apply[A](values: RVList[A])

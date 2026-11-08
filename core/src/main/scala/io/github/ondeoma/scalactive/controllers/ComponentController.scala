@@ -21,6 +21,15 @@ trait ComponentController[CC <: ComponentController[?]] {
   }
 
   /**
+   * 予約された描き直しの本体. 既定ではclearしてinitし直します.
+   * 差分だけを反映できるコンポーネント(forCなど)は上書きします.
+   */
+  def refresh(): Unit = {
+    clear()
+    init()
+  }
+
+  /**
    * 予約済みのreloadを取り消します.
    * clearの後(親コンポーネントに片付けられた後など)に遅れてreloadが走ると、
    * 監視だけが登録されて解除されないままになるため、clearで呼びます.
