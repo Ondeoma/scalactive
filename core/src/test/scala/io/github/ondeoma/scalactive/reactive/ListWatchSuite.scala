@@ -186,6 +186,53 @@ class ListWatchSuite extends munit.FunSuite {
     def watcherCount: Int = watchers.size
   }
 
+  private final case class PairRM(a: ItemRM, b: RV[String]) extends ReactiveModel[(Item, String), PairRM] {
+    val reactives: List[Reactive[?]] = List(b)
+    val reactiveModels: List[ReactiveModel[?, ?]] = List(a)
+
+    def reload(o: (Item, String)): Unit = { a.reload(o._1); b := o._2 }
+
+    def toOrigin: (Item, String) = (a.toOrigin, b.v)
+  }
+
+  /** マイクロタスク(ReactiveModelの通知)を待つ */
+  private def flush(): scala.concurrent.Future[Unit] = {
+    val p = scala.concurrent.Promise[Unit]()
+    scala.scalajs.js.Dynamic.global.setTimeout(() => p.success(()), 0)
+    p.future
+  }
+
+  test("ReactiveModel: 作った直後に監視して変更しても、待たずに通知する") {
+    implicit val ec: scala.concurrent.ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.queue
+    val m = ItemRM(new RV(1))
+    var seen = List.empty[(Item, Item)]
+    m.addWatcher { case (o, n) => seen = seen :+ (o -> n) }
+    m.n := 2
+    m.n := 3
+    flush().map { _ =>
+      assertEquals(seen, List(Item(1) -> Item(3)), "まとめて1回、変更前と変更後の値で通知する")
+    }
+  }
+
+  test("ReactiveModel: 入れ子のモデルの変更も通知し、abortで監視を解除する") {
+    implicit val ec: scala.concurrent.ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.queue
+    val inner = new RV(1)
+    val m = PairRM(ItemRM(inner), new RV("x"))
+    var count = 0
+    m.addWatcher(_ => count += 1)
+    inner := 5
+    flush().flatMap { _ =>
+      assertEquals(count, 1)
+      assertEquals(m.v, (Item(5), "x"))
+      m.abort()
+      inner := 6
+      flush()
+    }.map { _ =>
+      assertEquals(count, 1, "abortの後は通知しない")
+      assertEquals(m.a.watcherCount, 0, "入れ子のモデルの監視も解除する")
+    }
+  }
+
   private def items(n: Int): List[ItemRM] = List.tabulate(n)(i => ItemRM(new RV(i)))
 
   private def assertWatchedRM(list: List[ItemRM], removed: List[ItemRM])(implicit loc: munit.Location): Unit = {
