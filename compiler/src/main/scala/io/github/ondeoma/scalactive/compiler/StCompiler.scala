@@ -136,8 +136,8 @@ object StCompiler {
     val scopeAttr = if (scoped) Some(scopeId(in.fileName)) else None
     val nodes = HtmlParser.parse(src, template.contentStart, template.contentEnd)
     val trimmed = trimEdges(nodes)
-    val slotExpr = props.filter(_.exists(_._1 == "slot")).map(_ => s"$propsName.slot")
-    val htmlExpr = new TemplateCodegen(src, in.fileName, scopeAttr, slotExpr, marks).generate(trimmed)
+    val slotProps = props.map(ps => (propsName, ps.map(_._1).toSet))
+    val htmlExpr = new TemplateCodegen(src, in.fileName, scopeAttr, slotProps, marks).generate(trimmed)
 
     // ---- style ----
     val css = sfc.styles.map { b =>

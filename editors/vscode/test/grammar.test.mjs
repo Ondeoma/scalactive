@@ -222,6 +222,14 @@ test("コンポーネントのv-model / v-model:name", () => {
   expectScopes(t, 1, "first", ["meta.embedded.inline.scala"]);
 });
 
+test("名前付きスロット #name / v-slot:name", () => {
+  const t = tokenize(`<template>\n  <Card><template #header>h</template><template v-slot:footer>f</template></Card>\n</template>\n`);
+  expectScopes(t, 1, "#", ["punctuation.attribute-shorthand.slot.scalactive"]);
+  expectScopes(t, 1, "header", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, "v-slot:", ["punctuation.attribute-shorthand.slot.scalactive"]);
+  expectScopes(t, 1, "footer", ["entity.other.attribute-name.directive.scalactive"]);
+});
+
 if (failures > 0) {
   console.log(`${failures} test(s) failed`);
   process.exit(1);

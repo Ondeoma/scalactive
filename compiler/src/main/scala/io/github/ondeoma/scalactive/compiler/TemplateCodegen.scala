@@ -9,13 +9,13 @@ import scala.collection.mutable.ListBuffer
  *  - `__st` : io.github.ondeoma.scalactive.st.StRuntime
  *
  * @param scopeAttr scoped CSS用に各要素へ付与する属性名
- * @param slotExpr  <slot>で展開するSlotの式(Propsにslotがある場合のみ)
+ * @param props     propsの変数名とPropsのパラメータ名(Propsがある場合のみ). <slot>で展開するSlotを探すのに使う
  * @param marks     ユーザーのコードの位置を記録する目印(LSPで使うSourceMapのため)
  */
 final class TemplateCodegen(src: SourceText,
                             fileName: String,
                             scopeAttr: Option[String],
-                            slotExpr: Option[String] = None,
+                            props: Option[(String, Set[String])] = None,
                             marks: Marks = new Marks) {
 
   import TemplateCodegen._
@@ -249,13 +249,19 @@ final class TemplateCodegen(src: SourceText,
     genNodes(e.children)
   }
 
-  /** <slot>: 親から渡された子要素を展開します. <slot>の中身は子要素が渡されなかった場合の既定の内容です. */
+  /**
+   * <slot>: 親から渡された子要素を展開します. <slot>の中身は子要素が渡されなかった場合の既定の内容です.
+   * <slot name="header"> はPropsの `header: Slot` を展開します(名前付きスロット).
+   */
   private def genSlot(e: Element): List[Part] = {
-    val slot = slotExpr.getOrElse(
-      src.fail(e.offset, "<slot> requires 'slot: Slot' in case class Props (e.g. case class Props(slot: Slot = Slot.empty))")
-    )
-    e.attrs.find(a => !structuralDirectives.contains(a.name)).foreach { a =>
-      src.fail(a.offset, s"'${a.name}' on <slot> is not supported (named slots are not supported)")
+    val nameAttr = e.attrs.find(_.name == "name")
+    val propName0 = nameAttr.map(a => propName(a.value.getOrElse(src.fail(a.offset, "<slot name> requires a value")))).getOrElse("slot")
+    val slot = props.filter(_._2.contains(propName0)).map(p => s"${p._1}.$propName0").getOrElse {
+      if (nameAttr.isEmpty) src.fail(e.offset, "<slot> requires 'slot: Slot' in case class Props (e.g. case class Props(slot: Slot = Slot.empty))")
+      else src.fail(e.offset, s"<slot name='${nameAttr.get.value.get}'> requires '$propName0: Slot' in case class Props (e.g. case class Props($propName0: Slot = Slot.empty))")
+    }
+    e.attrs.find(a => !structuralDirectives.contains(a.name) && a.name != "name").foreach { a =>
+      src.fail(a.offset, s"'${a.name}' on <slot> is not supported (scoped slots are not supported)")
     }
     val id = nextId()
     val fallback = render(genNodes(e.children), "      ")
@@ -307,20 +313,36 @@ final class TemplateCodegen(src: SourceText,
       val nameCode = if (name == raw && n.length == prefix + raw.length) marks.mark(name, a.offset + prefix) else name
       (name, nameCode, value, a.offset)
     }
-    val hasChildren = e.children.exists {
+    // <template #name> / <template v-slot:name> は名前付きスロット、それ以外の子要素はデフォルトスロット(slot)
+    def slotName(c: HtmlNode): Option[(String, Attr)] = c match {
+      case t: Element if t.name == "template" =>
+        t.attrs.find(a => a.name.startsWith("#") || a.name == "v-slot" || a.name.startsWith("v-slot:")).map { a =>
+          val raw = if (a.name.startsWith("#")) a.name.drop(1) else a.name.drop("v-slot".length).stripPrefix(":")
+          if (a.value.exists(_.trim.nonEmpty)) src.fail(a.offset, s"'${a.name}' does not take a value (scoped slots are not supported)")
+          t.attrs.find(_ ne a).foreach(x => src.fail(x.offset, s"'${x.name}' cannot be used on <template ${a.name}>"))
+          (if (raw.isEmpty || raw == "default") "slot" else propName(raw), a)
+        }
+      case _ => None
+    }
+    val (named, rest) = e.children.partition(c => slotName(c).isDefined)
+    def slotOf(nodes: List[HtmlNode]): String = {
+      val id = nextId()
+      val body = render(genNodes(nodes), "      ")
+      s"__st.slotOf { implicit __cm$id =>\n      $body\n    }"
+    }
+    val namedArgs = named.map { c =>
+      val (name, a) = slotName(c).get
+      if (!name.matches("""[A-Za-z_][A-Za-z0-9_]*""")) src.fail(a.offset, s"invalid slot name '${a.name}'")
+      (name, name, slotOf(c.asInstanceOf[Element].children), a.offset)
+    }
+    val hasChildren = rest.exists {
       case Text(t, _) => t.trim.nonEmpty
       case _ => true
     }
-    val slotArg =
-      if (!hasChildren) Nil
-      else {
-        val id = nextId()
-        val body = render(genNodes(e.children), "      ")
-        List(("slot", "slot", s"__st.slotOf { implicit __cm$id =>\n      $body\n    }", e.offset))
-      }
-    val args = attrArgs ++ slotArg
+    val slotArg = if (!hasChildren) Nil else List(("slot", "slot", slotOf(rest), e.offset))
+    val args = attrArgs ++ namedArgs ++ slotArg
     args.groupBy(_._1).collectFirst { case (n, xs) if xs.size > 1 => (n, xs.map(_._4).max) }.foreach {
-      case (n, offset) => src.fail(offset, s"duplicate prop '$n' on component <${e.name}>")
+      case (n, offset) => src.fail(offset, s"duplicate prop or slot '$n' on component <${e.name}>")
     }
     val argList = args.map { case (_, n, v, _) => s"$n = $v" }.mkString(", ")
     List(Code(s"__st.component(${marks.mark(e.name, e.offset + 1)}($argList))"))

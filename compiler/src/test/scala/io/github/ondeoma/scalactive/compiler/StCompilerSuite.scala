@@ -127,6 +127,34 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(compileError("<template>\n<Field v-model=\"x\" :model=\"y\" /></template>").line, 2)
   }
 
+  test("named slots") {
+    val child = compile(
+      """<script lang="scala">
+        |case class Props(slot: Slot = Slot.empty, header: Slot = Slot.empty, sideNote: Slot = Slot.empty)
+        |</script>
+        |<template><div><slot name="header">H</slot><slot /><slot name="side-note" /></div></template>
+        |""".stripMargin).code
+    assert(child.contains("__st.slot(props.header) { implicit"), child)
+    assert(child.contains("__st.slot(props.slot) { implicit"))
+    assert(child.contains("__st.slot(props.sideNote) { implicit"))
+    val parent = compile(
+      """<template><Card title="t">
+        |  <template #header><b>h</b></template>
+        |  <p>body</p>
+        |  <template v-slot:side-note>n</template>
+        |</Card></template>""".stripMargin).code
+    assert(parent.contains("header = __st.slotOf { implicit"), parent)
+    assert(parent.contains("sideNote = __st.slotOf { implicit"))
+    assert(parent.contains("slot = __st.slotOf { implicit"))
+    assert(parent.contains("\"<b>h</b>\""))
+    assert(!parent.contains("\"<template") && !parent.contains("#header"), "名前付きスロットの<template>は出力しない")
+    val explicitDefault = compile("""<template><Card><template #default>d</template></Card></template>""").code
+    assert(explicitDefault.contains("slot = __st.slotOf"))
+    assert(compileError("<script>\ncase class Props(slot: Slot = Slot.empty)\n</script><template>\n<slot name=\"x\" /></template>").message.contains("x: Slot"))
+    assertEquals(compileError("<template><Card>\n<template #a>1</template><template #a>2</template></Card></template>").line, 2)
+    assertEquals(compileError("<template><Card>\n<template #default>1</template><p>2</p></Card></template>").line, 2)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>

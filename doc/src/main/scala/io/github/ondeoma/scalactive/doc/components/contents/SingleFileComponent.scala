@@ -80,19 +80,23 @@ object SingleFileComponent extends StatelessComponent {
     val codeSlot = // language=html
       s"""<!-- src/main/scalactive/app/Card.st -->
          |<script lang="scala">
-         |case class Props(title: String, slot: Slot = Slot.empty)
+         |case class Props(title: String,
+         |                 slot: Slot = Slot.empty,
+         |                 footer: Slot = Slot.empty)
          |</script>
          |
          |<template>
          |  <div class="card">
          |    <h4>{{ props.title }}</h4>
          |    <slot><p>(内容がありません)</p></slot>
+         |    <footer><slot name="footer">(footerなし)</slot></footer>
          |  </div>
          |</template>
          |
-         |<!-- 親(.st)からの利用. 子要素がslotに展開されます -->
+         |<!-- 親(.st)からの利用. <template #footer>の中身はfooterに、それ以外の子要素はslotに展開されます -->
          |<Card title="お知らせ">
          |  <p>count = {{ s.count }}</p>
+         |  <template #footer><small>更新: 今日</small></template>
          |</Card>
          |""".stripMargin
 
@@ -229,7 +233,8 @@ object SingleFileComponent extends StatelessComponent {
        |    <code>.passive</code>(スクロールなどを妨げない. <code>.prevent</code> とは併用できません).
        |  </td></tr>
        |  <tr><td><code>&lt;Other /&gt;</code></td><td>大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます. 属性はprops、子要素はslotとして渡されます. <code>v-model</code> も使えます.</td></tr>
-       |  <tr><td><code>&lt;slot&gt;</code></td><td>親から渡された子要素を展開します. 中身は子要素がない場合の既定の内容です.</td></tr>
+       |  <tr><td><code>&lt;slot&gt;</code><br><code>&lt;slot name="x"&gt;</code></td><td>親から渡された子要素(名前付きスロット)を展開します. 中身は渡されなかった場合の既定の内容です.</td></tr>
+       |  <tr><td><code>&lt;template #x&gt;</code><br><code>&lt;template v-slot:x&gt;</code></td><td>子コンポーネントのタグの中で、名前付きスロットxに渡す内容を囲みます.</td></tr>
        |</table>
        |
        |<p>
@@ -299,14 +304,19 @@ object SingleFileComponent extends StatelessComponent {
        |<h2 id="slot">slot</h2>
        |
        |<p>
-       |  子コンポーネントのタグの中に書いた要素は、Propsの <code>slot: Slot</code> として渡され、子の <code>&lt;slot&gt;</code> の位置に展開されます.
+       |  子コンポーネントのタグの中に書いた要素は、Propsの <code>slot: Slot</code> として渡され、子の <code>&lt;slot&gt;</code> の位置に展開されます.<br>
+       |  <code>&lt;template #name&gt;</code>(または <code>&lt;template v-slot:name&gt;</code>)で囲んだ要素は名前付きスロットとして
+       |  Propsの <code>name: Slot</code> に渡され、子の <code>&lt;slot name="name"&gt;</code> の位置に展開されます.
        |</p>
        |
        |<pre><code class="language-html">${esc(codeSlot)}</code></pre>
        |
        |<ul>
        |  <li>slotの内容は親のスコープで評価されるため、親の状態を参照できます. scoped CSSも親のものが適用されます.</li>
-       |  <li>名前付きslot・スコープ付きslotは未対応です.</li>
+       |  <li>名前付きスロットを受け取るには、子のPropsに <code>name: Slot = Slot.empty</code> を定義します(ケバブケースの名前はキャメルケースになります).</li>
+       |  <li><code>&lt;slot&gt;</code> の中身は、そのスロットが渡されなかった場合の既定の内容です.</li>
+       |  <li><code>&lt;template #default&gt;</code> はデフォルトのslotです.</li>
+       |  <li>スコープ付きslot(子から値を受け取るslot)は未対応です.</li>
        |</ul>
        |
        |<h2 id="lifecycle">ライフサイクルフック</h2>
@@ -366,7 +376,7 @@ object SingleFileComponent extends StatelessComponent {
        |<h2 id="limitations">制限事項</h2>
        |
        |<ul>
-       |  <li>子コンポーネントへの <code>class</code>・<code>style</code> の指定、名前付きslotは未対応です.</li>
+       |  <li>子コンポーネントへの <code>class</code>・<code>style</code> の指定、スコープ付きslotは未対応です.</li>
        |  <li><code>{{ }}</code> は属性値の中では使えません. <code>:name="expr"</code> を使ってください.</li>
        |  <li>
        |    sbtのコンパイルエラーは生成ソースの位置で報告されます. 埋め込まれた式には元ファイルの行番号コメントが付与されます.

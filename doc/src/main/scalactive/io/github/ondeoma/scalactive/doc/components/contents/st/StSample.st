@@ -76,6 +76,7 @@ def add(s: State): Unit = {
     </dl>
     <StCard v-if="s.cardOpen" title="slotの例" @close="s.cardOpen := false">
       <p>親のテンプレートで書いた内容です. count = {{ s.count }}</p>
+      <template #footer><small>名前付きスロット(#footer)の内容です.</small></template>
     </StCard>
     <button v-else @click="s.cardOpen := true">カードを再表示</button>
     <StCard title="slotなし" />

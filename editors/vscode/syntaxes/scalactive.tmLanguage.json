@@ -398,6 +398,9 @@
           "include": "#v-else"
         },
         {
+          "include": "#slot-directive"
+        },
+        {
           "include": "#plain-attribute"
         }
       ]
@@ -498,6 +501,17 @@
     "v-else": {
       "match": "v-else(?![\\w-])",
       "name": "entity.other.attribute-name.directive.scalactive"
+    },
+    "slot-directive": {
+      "match": "(#|v-slot:)([A-Za-z_][\\w-]*)",
+      "captures": {
+        "1": {
+          "name": "punctuation.attribute-shorthand.slot.scalactive"
+        },
+        "2": {
+          "name": "entity.other.attribute-name.directive.scalactive"
+        }
+      }
     },
     "plain-attribute": {
       "patterns": [
