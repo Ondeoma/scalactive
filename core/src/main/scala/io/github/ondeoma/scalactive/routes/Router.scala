@@ -21,7 +21,12 @@ object Router {
   final case class RouteLocation(href: String,
                                  path: String,
                                  search: String,
-                                 hash: String)
+                                 hash: String) {
+
+    /** 表示中のRouterComponentのルートのうち、この場所にマッチするもののmeta(ネストしたルートは合わせたもの) */
+    def meta: Map[String, Any] = Router.metaOf(href)
+
+  }
 
   object RouteLocation {
 
@@ -62,6 +67,36 @@ object Router {
   /** 遷移の後に呼ばれるフック */
   type AfterHook = (RouteLocation, Option[RouteLocation]) => Unit
 
+  /** 表示中のRouterComponentのルート(ルートごとのガードとmetaのため) */
+  private[scalactive] final case class RouteEntry(pattern: io.github.ondeoma.scalactive.facades.URLPattern,
+                                                  meta: Map[String, Any],
+                                                  beforeEnter: Guard)
+
+  private final class RouteTable(val entries: List[RouteEntry]) {
+    def matchOf(href: String): Option[RouteEntry] = entries.find(_.pattern.test(href))
+  }
+
+  private val tables = ListBuffer[RouteTable]()
+
+  /** RouterComponentが表示中のルートを登録します. 戻り値の関数で解除します. */
+  private[scalactive] def registerRoutes(entries: List[RouteEntry]): () => Unit = {
+    val t = new RouteTable(entries)
+    tables += t
+    scheduleInitialCheck()
+    () => tables -= t
+  }
+
+  private[scalactive] def metaOf(href: String): Map[String, Any] = {
+    tables.toList.flatMap(_.matchOf(href)).map(_.meta).foldLeft(Map.empty[String, Any])(_ ++ _)
+  }
+
+  /** ルートに入るときのガード(beforeEnter). 同じルートの中での移動(パラメータの変化など)では呼ばない */
+  private def runRouteGuards(to: RouteLocation, from: Option[RouteLocation]): NavigationResult = {
+    tables.toList.iterator.flatMap { t =>
+      t.matchOf(to.href).filter(e => !from.flatMap(f => t.matchOf(f.href)).contains(e)).map(_.beforeEnter)
+    }.map(_(to, from)).find(_ != Continue).getOrElse(Continue)
+  }
+
   private val guards = ListBuffer[Guard]()
   private val afterHooks = ListBuffer[AfterHook]()
   private var initialChecked = false
@@ -92,7 +127,7 @@ object Router {
   }
 
   private def runGuards(to: RouteLocation, from: Option[RouteLocation]): NavigationResult = {
-    guards.toList.iterator.map(_(to, from)).find(_ != Continue).getOrElse(Continue)
+    guards.toList.iterator.map(_(to, from)).find(_ != Continue).getOrElse(runRouteGuards(to, from))
   }
 
   private def runAfterHooks(to: RouteLocation, from: Option[RouteLocation]): Unit = {

@@ -258,6 +258,10 @@ object SingleFileComponent extends StatelessComponent {
        |  </td></tr>
        |  <tr><td><code>&lt;Other /&gt;</code></td><td>大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます. 属性はprops、子要素はslotとして渡されます. <code>v-model</code> も使えます.</td></tr>
        |  <tr><td><code>&lt;slot&gt;</code><br><code>&lt;slot name="x"&gt;</code></td><td>親から渡された子要素(名前付きスロット)を展開します. 中身は渡されなかった場合の既定の内容です. <code>:value="v"</code> でスコープ付きスロットに値を渡します.</td></tr>
+       |  <tr><td><code>&lt;RouterLink to="/x"&gt;</code></td><td>
+       |    Router.goで遷移するリンク. 現在の場所に応じて <code>router-link-active</code> / <code>router-link-exact-active</code> クラスを付けます
+       |    (<code>active-class</code> / <code>exact-active-class</code> で変更できます).
+       |  </td></tr>
        |  <tr><td><code>&lt;Await :load="() =&gt; f()"&gt;</code></td><td>
        |    非同期の処理(Future)の状態に応じて表示を切り替えます. <code>&lt;template #pending&gt;</code>(読み込み中)、
        |    <code>&lt;template #default="v"&gt;</code>(結果)、<code>&lt;template #error="err"&gt;</code>(失敗. <code>err.retry()</code> で読み込み直し)を書きます.

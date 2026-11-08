@@ -2,11 +2,25 @@ package io.github.ondeoma.scalactive.components.routes
 
 import io.github.ondeoma.scalactive.ScalactiveConfig
 import io.github.ondeoma.scalactive.components.{BaseComponent, ComponentManager}
-import io.github.ondeoma.scalactive.facades.URLPattern
+import io.github.ondeoma.scalactive.facades.{URLPattern, URLPatternResult}
 import org.scalajs.dom.*
 import org.scalajs.dom.window.location
 
+import io.github.ondeoma.scalactive.routes.Router
+import io.github.ondeoma.scalactive.utils.TypeAlias.GenComponentF
+
 import scala.scalajs.js
+
+/**
+ * ルートの定義.
+ *
+ * @param beforeEnter このルートに(別のルートから)入るときに呼ばれるガード(既定ではそのまま遷移)
+ * @param meta        ガードの中で to.meta として参照できる情報(例: Map("requiresAuth" -> true))
+ */
+final case class Route(pattern: String,
+                       component: URLPatternResult => GenComponentF,
+                       beforeEnter: Router.Guard = (_, _) => Router.Continue,
+                       meta: Map[String, Any] = Map.empty)
 
 object RouterComponent extends BaseComponent {
 
@@ -18,7 +32,7 @@ object RouterComponent extends BaseComponent {
    */
   private final case class MatchKey(route: Int, params: Map[String, String], search: String)
 
-  private def matchKey(routes: URLPatternRoutes, href: String): Option[MatchKey] = {
+  private def matchKey(routes: List[(URLPattern, Route)], href: String): Option[MatchKey] = {
     routes.iterator.zipWithIndex.collectFirst {
       case ((p, _), i) if p.test(href) =>
         val groups = p.exec(href).toOption.map(_.pathname.groups.toMap).getOrElse(Map.empty)
@@ -30,10 +44,21 @@ object RouterComponent extends BaseComponent {
             am: AddMethod,
             routes: PathPatternRoutes,
             base: String): NodesComponentController = {
-    val ups = toURLPatterns(routes, base)
+    withRoutes(root, am, routes.map((p, f) => Route(p, f)), base)
+  }
+
+  /** Route(ルートごとのガード・meta付き)で定義する */
+  def withRoutes(root: HTMLElement,
+                 am: AddMethod,
+                 routes: List[Route],
+                 base: String): NodesComponentController = {
+    val ups = toURLPatternRoutes(routes, base)
     var current: Option[MatchKey] = None
-    mkNCC({ cm =>
+    var unregister: () => Unit = () => ()
+    val controller = mkNCC({ cm =>
       current = matchKey(ups, location.href)
+      unregister()
+      unregister = Router.registerRoutes(ups.map((p, r) => Router.RouteEntry(p, r.meta, r.beforeEnter)))
       genElement(ups)(using cm)
     }, c => List(
       Router.href.addWatcher { _ =>
@@ -47,11 +72,25 @@ object RouterComponent extends BaseComponent {
       }),
       c => window.setTimeout(() => Router.scrollToHash(c.parent), 0)
     )(root, am)
+    controller.onClear = Some(_ => {
+      unregister()
+      unregister = () => ()
+    })
+    controller
   }
 
   def apply(routes: PathPatternRoutes,
             base: String = ScalactiveConfig.fixedBasePath): (HTMLElement, AddMethod) => NodesComponentController = {
     apply(_, _, routes, base)
+  }
+
+  /**
+   * Route(ルートごとのガード・meta付き)で定義する.
+   * (タプルのリストを受け取るapplyと名前を分けているのは、オーバーロードにすると関数の型が推論できなくなるため)
+   */
+  def of(routes: List[Route],
+         base: String = ScalactiveConfig.fixedBasePath): (HTMLElement, AddMethod) => NodesComponentController = {
+    withRoutes(_, _, routes, base)
   }
 
   /**
@@ -64,8 +103,19 @@ object RouterComponent extends BaseComponent {
     apply(routes, Router.joinSlash(ScalactiveConfig.fixedBasePath, prefix))
   }
 
+  /** Route(ルートごとのガード・meta付き)で定義するネストしたルート */
+  def nestedOf(prefix: String)
+              (routes: List[Route]): (HTMLElement, AddMethod) => NodesComponentController = {
+    withRoutes(_, _, routes, Router.joinSlash(ScalactiveConfig.fixedBasePath, prefix))
+  }
+
   def toURLPatterns(routes: PathPatternRoutes,
                     base: String): URLPatternRoutes = {
+    toURLPatternRoutes(routes.map((p, f) => Route(p, f)), base).map((u, r) => u -> r.component)
+  }
+
+  private def toURLPatternRoutes(routes: List[Route],
+                                 base: String): List[(URLPattern, Route)] = {
     val origin = location.origin
     val (fixedBase, hasBaseSubPath) = {
       if (base.isEmpty) (origin, false)
@@ -80,17 +130,17 @@ object RouterComponent extends BaseComponent {
       // サブパスが指定されている場合パターンは相対パスとして認識したいはずなので、
       // 先頭にスラッシュがある場合は取り除く.
       val fixedPattern =
-        if (hasBaseSubPath && r._1.headOption.contains('/')) r._1.tail
-        else r._1
-      URLPattern(fixedPattern, fixedBase) -> r._2
+        if (hasBaseSubPath && r.pattern.headOption.contains('/')) r.pattern.tail
+        else r.pattern
+      URLPattern(fixedPattern, fixedBase) -> r
     })
   }
 
-  private def genElement(routes: URLPatternRoutes)
+  private def genElement(routes: List[(URLPattern, Route)])
                         (implicit cm: ComponentManager) = {
     val href = location.href
-    routes.find(r => r._1.test(href)).fold("") { (p, f) =>
-      val cmp = f(p.exec(href).get)
+    routes.find(r => r._1.test(href)).fold("") { (p, r) =>
+      val cmp = r.component(p.exec(href).get)
       c(cmp)
     }
   }

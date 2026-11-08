@@ -82,6 +82,32 @@ object RoutingComponent extends StatelessComponent {
          |removeGuard()
          |""".stripMargin
 
+    val codeLink = // language=scala
+      s"""// Scala
+         |s\"\"\"<nav>$${linkC("/")(_ => "TOP")} $${linkC("/guide")(_ => "ガイド")}</nav>\"\"\"
+         |
+         |// .st
+         |// <nav><RouterLink to="/">TOP</RouterLink> <RouterLink to="/guide" active-class="on">ガイド</RouterLink></nav>
+         |""".stripMargin
+
+    val codeRoute = // language=scala
+      s"""val routes = List(
+         |  Route("/", _ => HomeComponent()),
+         |  Route("/login", _ => LoginComponent()),
+         |  // ルートに入るときだけ呼ばれるガード
+         |  Route("/items/:id", r => ItemComponent(r.pathname.groups("id")),
+         |    beforeEnter = (to, from) => if (itemsLoaded.v) Continue else Redirect("/")),
+         |  // ガードの中で to.meta として参照できる情報
+         |  Route("/admin", _ => AdminComponent(), meta = Map("requiresAuth" -> true)),
+         |)
+         |
+         |Router.beforeEach { (to, from) =>
+         |  if (to.meta.get("requiresAuth").contains(true) && !loggedIn.v) Redirect("/login") else Continue
+         |}
+         |
+         |s\"\"\"<main>$${%(RouterComponent.of(routes))}</main>\"\"\"
+         |""".stripMargin
+
     // language=html
     s"""<h1>ルーティング</h1>
        |
@@ -94,6 +120,8 @@ object RoutingComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("Router"))}>Router</a></li>
        |  <li><a ${evClick(setHash("Nested"))}>ネストしたルート</a></li>
        |  <li><a ${evClick(setHash("Guard"))}>ナビゲーションガード</a></li>
+       |  <li><a ${evClick(setHash("Link"))}>RouterLink</a></li>
+       |  <li><a ${evClick(setHash("Route"))}>ルートごとのガード・meta</a></li>
        |  <li><a ${evClick(setHash("BasePath"))}>BasePath</a></li>
        |</ul>
        |
@@ -183,6 +211,41 @@ object RoutingComponent extends StatelessComponent {
        |  </li>
        |</ul>
        |
+       |
+       |<h2 id="Link">RouterLink</h2>
+       |
+       |<p>
+       |  <code>&lt;a href&gt;</code> を描画し、クリックでRouter.goするリンクです(Vue Routerのrouter-link).
+       |  Ctrl/⌘/Shiftを押しながらのクリックや中クリックは、ブラウザ(新しいタブで開くなど)に任せます.
+       |  現在の場所に応じてクラスを付けます.
+       |</p>
+       |
+       |<ul>
+       |  <li><code>router-link-active</code>(<code>activeClass</code>): 現在のパスがtoと同じか、その下にある場合(<code>/</code> は完全一致のみ)</li>
+       |  <li><code>router-link-exact-active</code>(<code>exactActiveClass</code>): 現在のパスがtoと同じ場合</li>
+       |</ul>
+       |
+       |<pre><code class="language-scala">${esc(codeLink)}</code></pre>
+       |
+       |<div class="rendered">
+       |  <style>.link-demo .router-link-active { font-weight: bold; } .link-demo .router-link-exact-active { color: tomato; }</style>
+       |  <p class="link-demo">${linkC("/")(_ => "はじめに")} / ${linkC("/routing")(_ => "ルーティング(このページ)")} / ${linkC("/sfc")(_ => "単一ファイルコンポーネント")}</p>
+       |</div>
+       |
+       |<h2 id="Route">ルートごとのガード・meta</h2>
+       |
+       |<p>
+       |  <code>Route</code> でルートを定義し、<code>RouterComponent.of(routes)</code>(ネストしたルートでは <code>RouterComponent.nestedOf(prefix)(routes)</code>)に渡すと、
+       |  ルートごとのガード(<code>beforeEnter</code>)と情報(<code>meta</code>)を指定できます.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeRoute)}</code></pre>
+       |
+       |<ul>
+       |  <li><code>beforeEnter</code> は、そのルートに別のルートから入るときに呼ばれます. 同じルートの中での移動(パスパラメータの変化など)では呼ばれません.</li>
+       |  <li><code>meta</code> は、表示中のRouterComponentのルートのうち遷移先にマッチするものから集められ、ガードの中で <code>to.meta</code> として参照できます(ネストしたルートは合わせたもの).</li>
+       |  <li>グローバルなガード(<code>Router.beforeEach</code>)が先に呼ばれ、すべてContinueの場合にルートごとのガードが呼ばれます.</li>
+       |</ul>
        |
        |<h2 id="BasePath">BasePath</h2>
        |

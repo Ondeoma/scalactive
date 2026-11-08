@@ -3,7 +3,7 @@ package io.github.ondeoma.scalactive.routes
 import io.github.ondeoma.scalactive.ScalactiveConfig
 import io.github.ondeoma.scalactive.components.*
 import io.github.ondeoma.scalactive.components.ComponentManager.{AddMethod, HTML}
-import io.github.ondeoma.scalactive.components.routes.RouterComponent
+import io.github.ondeoma.scalactive.components.routes.{Route, RouterComponent}
 import io.github.ondeoma.scalactive.routes.Router.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
@@ -199,6 +199,80 @@ class RouterSuite extends munit.FunSuite {
     assertEquals(root.textContent, "user 1")
     Router.go("/users/2")
     flush().map(_ => assertEquals(root.textContent, "user 2"))
+  }
+
+  /** クリックして、RouterLinkがデフォルトの動作(ページの移動)を止めたかを返す */
+  private def click(e: Element, ctrl: Boolean = false): Boolean = {
+    var prevented = false
+    // 親要素で記録してから止める(jsdomはページの移動に対応していないため)
+    val record: js.Function1[Event, Unit] = ev => {
+      prevented = ev.defaultPrevented
+      ev.preventDefault()
+    }
+    document.addEventListener("click", record)
+    try {
+      e.dispatchEvent(new MouseEvent("click", new MouseEventInit {
+        bubbles = true
+        cancelable = true
+        ctrlKey = ctrl
+      }))
+    } finally document.removeEventListener("click", record)
+    prevented
+  }
+
+  test("RouterLink: hrefを描き、クリックで遷移する. 現在の場所に応じてクラスを付ける") {
+    window.history.replaceState(js.Object(), "", "/guide/intro")
+    Router.href := window.location.href
+    val root = mount { implicit cm =>
+      s"""<nav>${ComponentManager.linkC("/guide")(_ => "guide")}${ComponentManager.linkC("/guide/intro")(_ => "intro")}${ComponentManager.linkC("/other", activeClass = "on")(_ => "other")}</nav>"""
+    }
+    def a(i: Int) = root.querySelectorAll("a")(i).asInstanceOf[HTMLAnchorElement]
+    assertEquals(a(0).getAttribute("href"), "/guide")
+    assertEquals(a(0).className, "router-link-active")
+    assertEquals(a(1).className, "router-link-active router-link-exact-active")
+    assertEquals(a(2).className, "")
+    assert(!click(a(2), ctrl = true), "Ctrl+クリックはブラウザに任せる")
+    assertEquals(path, "/guide/intro")
+    assert(click(a(2)))
+    assertEquals(path, "/other")
+    flush().map { _ =>
+      assert(a(2).classList.contains("on") && a(2).classList.contains("router-link-exact-active"), a(2).className)
+      assertEquals(a(0).className, "")
+    }
+  }
+
+  test("Route: beforeEnterは別のルートから入るときだけ呼ばれ、metaはガードのto.metaで参照できる") {
+    window.history.replaceState(js.Object(), "", "/top")
+    Router.href := window.location.href
+    var enters = 0
+    var loggedIn = false
+    def page(name: String): GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = s"<b>$name</b>"
+    }.apply()(_, _)
+    val routes = List(
+      Route("/top", _ => page("top")),
+      Route("/login", _ => page("login")),
+      Route("/items/:id", _ => page("item"), beforeEnter = (_, _) => { enters += 1; Continue }),
+      Route("/admin", _ => page("admin"), meta = Map("requiresAuth" -> true)),
+    )
+    val removeGuard = Router.beforeEach { (to, _) =>
+      if (to.meta.get("requiresAuth").contains(true) && !loggedIn) Redirect("/login") else Continue
+    }
+    val root = mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent.of(routes))}</main>")
+    try {
+      Router.go("/items/1")
+      Router.go("/items/2")
+      assertEquals(enters, 1, "同じルートの中での移動では呼ばない")
+      Router.go("/top")
+      Router.go("/items/3")
+      assertEquals(enters, 2)
+      Router.go("/admin")
+      assertEquals(path, "/login")
+      loggedIn = true
+      Router.go("/admin")
+      assertEquals(path, "/admin")
+    } finally removeGuard()
+    flush().map(_ => assertEquals(root.textContent, "admin"))
   }
 
   test("RouteLocation: ベースパスを除いたパス") {

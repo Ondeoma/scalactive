@@ -101,6 +101,8 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.components.ErrorBoundary
   export io.github.ondeoma.scalactive.components.ErrorInfo
   export io.github.ondeoma.scalactive.components.Await
+  export io.github.ondeoma.scalactive.components.routes.Route
+  export io.github.ondeoma.scalactive.components.routes.RouterLink
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
   export io.github.ondeoma.scalactive.components.fors.ForLRComponent
   export io.github.ondeoma.scalactive.components.fors.ForRMComponent
@@ -398,6 +400,18 @@ object ComponentManager {
   def asyncComponent(load: () => scala.concurrent.Future[GenComponentF],
                      pending: ComponentManager => HTML = _ => ""): GenComponentF = {
     Await.component(load, Slot(pending))
+  }
+
+  /**
+   * Router.goで遷移するリンク(Vue Routerのrouter-link). 現在の場所に応じてactiveClass/exactActiveClassを付けます.
+   * 例: `linkC("/guide")(_ => "ガイド")`
+   */
+  def linkC(to: String,
+            activeClass: String = "router-link-active",
+            exactActiveClass: String = "router-link-exact-active")
+           (genHtml: ComponentManager => HTML)
+           (using ComponentManager): HTML = {
+    %(RouterLink(to, activeClass, exactActiveClass, Slot(genHtml))(_, _))
   }
 
   def ifC(ifV: Reactive[Boolean])
