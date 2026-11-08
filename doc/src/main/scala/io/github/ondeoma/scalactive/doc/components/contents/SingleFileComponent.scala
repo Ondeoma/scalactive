@@ -420,7 +420,7 @@ object SingleFileComponent extends StatelessComponent {
        |  <li>補完(テンプレートのHTMLの部分では、同じパッケージのコンポーネント名、子コンポーネントのprops・イベント・v-model、ディレクティブ、スロット名も補完します)</li>
        |  <li>型エラーなどの表示(.st上の位置で表示されます)</li>
        |  <li>ホバーでの型の表示、引数のヒント</li>
-       |  <li>定義へのジャンプ(同じ.st内と、プロジェクト内の .scala / .st)</li>
+       |  <li>定義へのジャンプ(同じ.st内と、プロジェクト内の .scala / .st. 子コンポーネントのタグ名・属性名からは、その.stのPropsへ)</li>
        |</ul>
        |
        |<p>

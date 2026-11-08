@@ -245,6 +245,23 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assertEquals(ls.sorted, List("footer", "row"))
   }
 
+  test("定義ジャンプ: 子コンポーネントのタグ名はその.stのProps、属性名はPropsのパラメータへ") {
+    val cardPath = srcRoot.resolve("app/Card.st")
+    val cardText = new String(Files.readAllBytes(cardPath), StandardCharsets.UTF_8)
+    val text = counter.replace("<button @click", "<Card title=\"t\" :count=\"s.count\" @close=\"()\"></Card><button @click")
+    withText(counterUri, text) {
+      def defAt(marker: String, delta: Int) = service.definition(counterUri, pos(text, marker, delta))
+      val tag = defAt("<Card title", 2)
+      assertEquals(tag.map(_.getUri), List(cardPath.toUri.toString))
+      assertEquals(tag.head.getRange.getStart, pos(cardText, "case class Props"))
+      val close = defAt("</Card>", 3)
+      assertEquals(close.map(_.getUri), List(cardPath.toUri.toString))
+      assertEquals(defAt("Card title=", 6).head.getRange.getStart, pos(cardText, "title: String"))
+      assertEquals(defAt(":count=", 2).head.getRange.getStart, pos(cardText, "count: RV"))
+      assertEquals(defAt("@close=", 2).head.getRange.getStart, pos(cardText, "onClose:"))
+    }
+  }
+
   test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
     import TemplateCompletion._
     def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))

@@ -261,6 +261,21 @@ final class StLanguageService(log: String => Unit) {
   }
 
   def definition(uri: String, pos: Position): List[Location] = {
+    templateDefinition(uri, pos).map(List(_)).getOrElse(scalaDefinition(uri, pos))
+  }
+
+  /** 子コンポーネントのタグ名・属性名からの定義ジャンプ(コンパイルできない書きかけの.stでも動きます) */
+  private def templateDefinition(uri: String, pos: Position): Option[Location] = {
+    try {
+      val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
+      val text = textOf(uri, path)
+      TemplateNavigation.definition(text, new LineIndex(text).offset(pos), path)
+    } catch {
+      case NonFatal(_) => None
+    }
+  }
+
+  private def scalaDefinition(uri: String, pos: Position): List[Location] = {
     at(uri, pos) { (d, params) =>
       await(d.pc.definition(params)).locations().asScala.toList.flatMap { loc =>
         if (isGenerated(d, loc.getUri)) toSt(d, loc.getRange).map(r => new Location(uri, r))
