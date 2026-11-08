@@ -156,6 +156,11 @@ object SingleFileComponent extends StatelessComponent {
        |  <tr><td><code>v-for="item in expr"</code><br><code>v-for="(item, i) in expr"</code></td><td>リストレンダリング. 添字の変数を書かなければforEachC(行の削除や並べ替えで行を作り直さないので速い)、書けばforC. RVListの場合itemはRV、RMListの場合はReactiveModelになります.</td></tr>
        |  <tr><td><code>&lt;template v-if/v-for&gt;</code></td><td>要素自体は出力せず、中身の複数要素をまとめて条件分岐・繰り返しします.</td></tr>
        |  <tr><td><code>v-show="expr"</code></td><td>表示切替(showIf).</td></tr>
+       |  <tr><td><code>v-html="expr"</code></td><td>
+       |    要素の中身を、式の値のHTMLで置き換えます(HtmlComponent). Reactiveの場合は値が変わるたびに展開し直します.
+       |    要素の中身は空にしてください.<br>
+       |    <b>値はエスケープされません.</b> ユーザーの入力など信頼できない値を渡すと、スクリプトを埋め込まれる危険があります.
+       |  </td></tr>
        |  <tr><td><code>v-model="rv"</code></td><td>input/textarea/selectとRVの双方向バインディング. <code>.lazy</code> / <code>.trim</code> 修飾子が使えます(後述).</td></tr>
        |  <tr><td><code>:name="expr"</code><br><code>v-bind:name="expr"</code></td><td>属性バインディング. Reactive[Boolean]は属性の有無、それ以外は値として反映します.</td></tr>
        |  <tr><td><code>:class="expr"</code></td><td>クラスバインディング. String(空白区切り)またはList[String]. 静的なclass属性と併用できます.</td></tr>

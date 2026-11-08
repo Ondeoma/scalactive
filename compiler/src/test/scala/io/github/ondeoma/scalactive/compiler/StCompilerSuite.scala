@@ -79,6 +79,17 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("__st.component(Child())"))
   }
 
+  test("v-html") {
+    val c = compile("""<template><div class="x" v-html="s.body"></div><p v-html="raw" /></template>""").code
+    assert(c.contains("\"<div class=\\\"x\\\">\" +"), c)
+    assert(c.contains("__st.html(/* Foo.st:1 */ s.body)"))
+    assert(c.contains("__st.html(/* Foo.st:1 */ raw)"))
+    assert(!c.contains("v-html"))
+    assert(compileError("<template>\n<div v-html=\"x\">child</div></template>").message.contains("must be empty"))
+    assertEquals(compileError("<template>\n<br v-html=\"x\"></template>").line, 2)
+    assertEquals(compileError("<template>\n<Child v-html=\"x\" /></template>").line, 2)
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>

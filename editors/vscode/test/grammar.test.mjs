@@ -207,6 +207,14 @@ for (const file of readdirSync(stDir).filter((f) => f.endsWith(".st"))) {
   });
 }
 
+// ---- 追加の構文 ----
+
+test("v-html", () => {
+  const t = tokenize(`<template>\n  <div v-html="s.body"></div>\n</template>\n`);
+  expectScopes(t, 1, "v-html", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, "body", ["meta.embedded.inline.scala"]);
+});
+
 if (failures > 0) {
   console.log(`${failures} test(s) failed`);
   process.exit(1);

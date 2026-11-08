@@ -455,7 +455,7 @@
       ]
     },
     "directive": {
-      "begin": "(?:(v-(?:if|else-if|show|model))|(:|v-bind:)([A-Za-z_][\\w:-]*)|(@|v-on:)([A-Za-z_][\\w-]*))((?:\\.[\\w-]+)*)\\s*(=)\\s*([\"'])",
+      "begin": "(?:(v-(?:if|else-if|show|model|html))|(:|v-bind:)([A-Za-z_][\\w:-]*)|(@|v-on:)([A-Za-z_][\\w-]*))((?:\\.[\\w-]+)*)\\s*(=)\\s*([\"'])",
       "beginCaptures": {
         "1": {
           "name": "entity.other.attribute-name.directive.scalactive"

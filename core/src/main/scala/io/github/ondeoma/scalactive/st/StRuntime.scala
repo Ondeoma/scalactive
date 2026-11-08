@@ -1,6 +1,7 @@
 package io.github.ondeoma.scalactive.st
 
 import io.github.ondeoma.scalactive.components.{ComponentManager, Slot}
+import io.github.ondeoma.scalactive.components.htmls.HtmlComponent
 import io.github.ondeoma.scalactive.components.texts.TextComponent
 import io.github.ondeoma.scalactive.controllers.attrs.AttrController
 import io.github.ondeoma.scalactive.controllers.events.EventController
@@ -53,6 +54,25 @@ object StRuntime {
   def text(v: Any)
           (using cm: ComponentManager): HTML = {
     escape(String.valueOf(v))
+  }
+
+  // v-html="expr"
+  // 値をHTMLとしてそのまま展開します(エスケープしません). 信頼できない値を渡さないでください.
+
+  def html(rv: Reactive[String])
+          (using cm: ComponentManager): HTML = {
+    ComponentManager.%(HtmlComponent(rv)(identity))
+  }
+
+  def html[A](rv: Reactive[A])
+             (using d: DummyImplicit,
+              cm: ComponentManager): HTML = {
+    ComponentManager.%(HtmlComponent(rv)(a => if (a == null) "" else String.valueOf(a)))
+  }
+
+  def html(v: Any)
+          (using cm: ComponentManager): HTML = {
+    if (v == null) "" else String.valueOf(v)
   }
 
   // v-if / v-else-if / v-else / v-show

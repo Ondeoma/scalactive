@@ -194,6 +194,10 @@ final class TemplateCodegen(src: SourceText,
   private def isComponentTag(name: String): Boolean = name.head.isUpper
 
   private def genElementCore(e: Element): List[Part] = {
+    val vHtml = e.attrs.find(_.name == "v-html")
+    if (isComponentTag(e.name) || e.name == "template" || e.name == "slot") {
+      vHtml.foreach(a => src.fail(a.offset, s"v-html cannot be used on <${e.name}>"))
+    }
     if (isComponentTag(e.name)) genComponent(e)
     else if (e.name == "template") genTemplateWrapper(e)
     else if (e.name == "slot") genSlot(e)
@@ -201,14 +205,25 @@ final class TemplateCodegen(src: SourceText,
       val out = ListBuffer[Part]()
       out += Static("<" + e.name)
       e.attrs.foreach { a =>
-        if (structuralDirectives.contains(a.name)) ()
+        if (structuralDirectives.contains(a.name) || a.name == "v-html") ()
         else out ++= genAttr(e, a)
       }
       scopeAttr.foreach(s => out += Static(" " + s))
       out += Static(">")
       if (!HtmlParser.voidElements.contains(e.name.toLowerCase)) {
-        out ++= genNodes(e.children)
+        vHtml match {
+          case Some(a) =>
+            // v-html: 子要素の代わりに、式の値をHTMLとして展開する(エスケープしない)
+            if (e.children.exists { case Text(t, _) => t.trim.nonEmpty; case _ => true }) {
+              src.fail(a.offset, "an element with v-html must be empty (its children are replaced)")
+            }
+            out += Code(s"__st.html${attrExpr(a)}")
+          case None =>
+            out ++= genNodes(e.children)
+        }
         out += Static(s"</${e.name}>")
+      } else {
+        vHtml.foreach(a => src.fail(a.offset, s"v-html cannot be used on void element <${e.name}>"))
       }
       out.toList
     }

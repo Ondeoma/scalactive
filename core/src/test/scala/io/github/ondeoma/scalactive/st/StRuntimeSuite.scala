@@ -13,6 +13,28 @@ import scala.scalajs.js
  */
 class StRuntimeSuite extends munit.FunSuite {
 
+  private var savedDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration.Zero
+  private var savedKeepScroll = true
+
+  override def beforeAll(): Unit = {
+    savedDelay = io.github.ondeoma.scalactive.ScalactiveConfig.reloadTimerLazyDuration
+    savedKeepScroll = io.github.ondeoma.scalactive.ScalactiveConfig.keepWindowScrollPositionWhenReload
+    io.github.ondeoma.scalactive.ScalactiveConfig.reloadTimerLazyDuration = scala.concurrent.duration.Duration.Zero
+    // jsdomはwindow.scrollToを実装していない
+    io.github.ondeoma.scalactive.ScalactiveConfig.keepWindowScrollPositionWhenReload = false
+  }
+
+  override def afterAll(): Unit = {
+    io.github.ondeoma.scalactive.ScalactiveConfig.reloadTimerLazyDuration = savedDelay
+    io.github.ondeoma.scalactive.ScalactiveConfig.keepWindowScrollPositionWhenReload = savedKeepScroll
+  }
+
+  /** 予約された描き直しが終わるまで待つ */
+  protected def flush(): scala.concurrent.Future[Unit] = {
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    js.Promise.resolve[Unit](()).toFuture.flatMap(_ => js.Promise.resolve[Unit](()).toFuture)
+  }
+
   /** genで生成したHTMLをdocument.bodyにマウントし、そのルート要素を返します. */
   private def mount(gen: ComponentManager => HTML): HTMLElement = {
     val root = document.createElement("div").asInstanceOf[HTMLElement]
@@ -245,6 +267,24 @@ class StRuntimeSuite extends munit.FunSuite {
     assertEquals(q[HTMLElement](root, "div").textContent, "1")
     n := 2
     assertEquals(q[HTMLElement](root, "div").textContent, "2")
+  }
+
+  test("html: 静的な値はそのまま、ReactiveはHTMLとして展開し直す(エスケープしない)") {
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    val body = RV("<b>a</b>")
+    val root = mount { implicit cm =>
+      s"""<p>${StRuntime.html("<i>x</i>")}</p><div>${StRuntime.html(body)}</div><span>${StRuntime.html(RV(1))}</span>"""
+    }
+    assertEquals(q[HTMLElement](root, "p").innerHTML, "<i>x</i>")
+    assertEquals(q[HTMLElement](root, "div b").textContent, "a")
+    assertEquals(q[HTMLElement](root, "span").textContent, "1")
+    body := "<u>c</u><u>d</u>"
+    flush().map { _ =>
+      val div = q[HTMLElement](root, "div")
+      assertEquals(div.querySelectorAll("u").length, 2)
+      assertEquals(div.querySelectorAll("b").length, 0)
+      assertEquals(div.textContent, "cd")
+    }
   }
 
   test("injectStyle: 同じidのスタイルは1度だけ挿入する") {
