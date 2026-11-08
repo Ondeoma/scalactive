@@ -12,12 +12,26 @@ object ForStaticComponent extends BaseComponent {
                am: AddMethod,
                values: List[A])
               (genHtml: (ComponentManager, A, IDX) => HTML): NodesComponentController = {
-    ForGeneralComponent(root, am, values, identity, _ => Nil)(genHtml)
+    apply(root, am, values, true)(genHtml)
+  }
+
+  def apply[A](root: HTMLElement,
+               am: AddMethod,
+               values: List[A],
+               usesIndex: Boolean)
+              (genHtml: (ComponentManager, A, IDX) => HTML): NodesComponentController = {
+    ForGeneralComponent(root, am, values, identity, _ => Nil, usesIndex = usesIndex)(genHtml)
   }
 
   def apply[A](values: List[A])
               (genHtml: (ComponentManager, A, IDX) => HTML): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, values)(genHtml)
+    apply(_, _, values, true)(genHtml)
+  }
+
+  def apply[A](values: List[A],
+               usesIndex: Boolean)
+              (genHtml: (ComponentManager, A, IDX) => HTML): (HTMLElement, AddMethod) => NodesComponentController = {
+    apply(_, _, values, usesIndex)(genHtml)
   }
 
 }

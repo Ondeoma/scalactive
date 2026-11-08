@@ -195,6 +195,72 @@ class ForDiffSuite extends munit.FunSuite {
     }
   }
 
+  test("forEachC: 並べ替えでは行を作り直さず動かす") {
+    val list = RV(List(1, 2, 3, 4))
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forEachC(list)((_, v) => s"<li>$v</li>")}</ul>")
+    val before = lis(root)
+    list := List(4, 3, 2, 1)
+    flush().map { _ =>
+      assertEquals(texts(root), List("4", "3", "2", "1"))
+      assert(lis(root).zip(before.reverse).forall(_ eq _), "すべての行を使い回す")
+    }
+  }
+
+  test("forEachC: RVListの途中の行を消しても、ほかの行は使い回す") {
+    val list = RVList(List("a", "b", "c", "d"))
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forEachC(list)((_, rv) => s"<li>${rv.v}</li>")}</ul>")
+    val before = lis(root)
+    list.rm(1)
+    flush().map { _ =>
+      assertEquals(texts(root), List("a", "c", "d"))
+      assert(lis(root).zip(before.patch(1, Nil, 1)).forall(_ eq _))
+    }
+  }
+
+  test("forEachC: ランダムな変更を続けても、表示はリストと一致する") {
+    val random = new scala.util.Random(11)
+    val list = RV(List.empty[Int])
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forEachC(list)((_, v) => s"<li>$v</li>")}</ul>")
+    val steps = (1 to 60).map { _ =>
+      val cur = list.v
+      random.nextInt(5) match {
+        case 0 => cur :+ random.nextInt(10)
+        case 1 if cur.nonEmpty => cur.patch(random.nextInt(cur.size), Nil, 1)
+        case 2 => random.shuffle(cur)
+        case 3 => List.fill(random.nextInt(8))(random.nextInt(4))
+        case _ => random.nextInt(10) :: cur
+      }
+    }
+    steps.foldLeft(Future.successful(())) { (f, next) =>
+      f.flatMap { _ =>
+        list := next
+        flush().map { _ =>
+          assertEquals(texts(root), next.map(_.toString))
+          assertEquals(root.querySelector("ul").childNodes.length, next.size + 2)
+        }
+      }
+    }
+  }
+
+  test("forEachC: RVListへの操作を続けても、表示はリストと一致する") {
+    val random = new scala.util.Random(5)
+    val list = RVList(List.empty[Int])
+    val root = mount(implicit cm => s"<ul>${ComponentManager.forEachC(list)((_, rv) => s"<li>${rv.v}</li>")}</ul>")
+    (1 to 60).foldLeft(Future.successful(())) { (f, _) =>
+      f.flatMap { _ =>
+        val n = list.v.size
+        random.nextInt(6) match {
+          case 0 | 1 => list.add(random.nextInt(100))
+          case 2 if n > 0 => list.rm(random.nextInt(n))
+          case 3 if n > 1 => list.up(1 + random.nextInt(n - 1))
+          case 4 if n > 0 => list := random.shuffle(list.v)
+          case _ => list := List.fill(random.nextInt(6))(random.nextInt(100))
+        }
+        flush().map(_ => assertEquals(texts(root), list.v.map(_.toString)))
+      }
+    }
+  }
+
   test("longestIncreasing: 値が増加する最長の部分列(負の値は除く)") {
     def run(xs: Int*): List[Int] = {
       val r = ForGeneralComponent.longestIncreasing(xs.toArray)

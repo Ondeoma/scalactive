@@ -294,6 +294,45 @@ object ComponentManager {
     %(ForLRComponent(forV)(genHtml))
   }
 
+  // forEachC: 添字を渡さないforC. 行の位置が変わっても作り直さず使い回すため、削除や並べ替えが速くなります.
+  // (forCは、添字を使う行を正しく描くために、位置が変わった行を作り直します)
+
+  def forEachC[A](forV: List[A])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForStaticComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RVList[A])
+                 (genHtml: (ComponentManager, RV[A]) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForRVComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM])
+                                             (genHtml: (ComponentManager, RM) => HTML)
+                                             (using ComponentManager): HTML = {
+    %(ForRMComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: CRV[List[A]])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RV[List[A]])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: ReactiveList[A])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
   def ev(et: EventType | List[EventType],
          handler: Event => Unit)
         (using cc: ComponentManager): ATTR = {

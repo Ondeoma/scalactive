@@ -13,14 +13,28 @@ object ForRVComponent extends BaseComponent {
                am: AddMethod,
                values: RVList[A])
               (genHtml: (ComponentManager, RV[A], IDX) => HTML): NodesComponentController = {
+    apply(root, am, values, true)(genHtml)
+  }
+
+  def apply[A](root: HTMLElement,
+               am: AddMethod,
+               values: RVList[A],
+               usesIndex: Boolean)
+              (genHtml: (ComponentManager, RV[A], IDX) => HTML): NodesComponentController = {
     // 行はRVの同一性で対応付け、代入で値が書き換わった行は作り直す
     ForGeneralComponent(root, am, values, _.rv, c => List(values.addWatcherRowLevel(_ => c.reload())),
-      snapshotOf = (rv: RV[A]) => rv.v)(genHtml)
+      snapshotOf = (rv: RV[A]) => rv.v, usesIndex = usesIndex)(genHtml)
   }
 
   def apply[A](values: RVList[A])
               (genHtml: (ComponentManager, RV[A], IDX) => HTML): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, values)(genHtml)
+    apply(_, _, values, true)(genHtml)
+  }
+
+  def apply[A](values: RVList[A],
+               usesIndex: Boolean)
+              (genHtml: (ComponentManager, RV[A], IDX) => HTML): (HTMLElement, AddMethod) => NodesComponentController = {
+    apply(_, _, values, usesIndex)(genHtml)
   }
 
 }
