@@ -74,6 +74,7 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
     caps.setHoverProvider(true)
     caps.setDefinitionProvider(true)
     caps.setDocumentHighlightProvider(true)
+    caps.setDocumentFormattingProvider(true)
     caps.setSignatureHelpProvider(new SignatureHelpOptions(List("(", ",").asJava))
     CompletableFuture.completedFuture(new InitializeResult(caps, new ServerInfo("scalactive-language-server", BuildInfo.version)))
   }
@@ -128,6 +129,12 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
       type R = LspEither[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]
       async[R](LspEither.forLeft(java.util.Collections.emptyList[Location]())) {
         LspEither.forLeft(service.definition(params.getTextDocument.getUri, params.getPosition).asJava)
+      }
+    }
+
+    override def formatting(params: DocumentFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = {
+      async[java.util.List[_ <: TextEdit]](java.util.Collections.emptyList()) {
+        service.formatting(params.getTextDocument.getUri).asJava
       }
     }
 

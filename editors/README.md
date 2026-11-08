@@ -31,6 +31,8 @@ VS CodeとIntelliJ IDEAに提供します.
   子コンポーネントのpropsは、同じディレクトリの `.st` の `case class Props(...)` から読み取ります(`StCompiler.propsOf`).
 - 定義ジャンプは、同じ `.st` 内に加えて、プロジェクトのソースディレクトリにある `.scala` / `.st` を名前で探します.
   子コンポーネントのタグ名・属性名からは、同じディレクトリの `.st` のProps(のパラメータ)へジャンプします(`TemplateNavigation`).
+- 整形(ドキュメントのフォーマット)は `compiler/` の `StFormatter` が行います.
+  テンプレートは入れ子に合わせてインデントし直し、`<script>` / `<style>` は前後の空行と行末の空白だけを整えます.
   ライブラリ(jar)内の定義、ドキュメント、自動importには対応していません.
 
 ```sh

@@ -284,6 +284,24 @@ final class StLanguageService(log: String => Unit) {
     }.getOrElse(Nil)
   }
 
+  /** ドキュメントの整形. 変わる場合は全体を置き換える編集を1つ返します. */
+  def formatting(uri: String): List[TextEdit] = {
+    try {
+      val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
+      val text = textOf(uri, path)
+      val formatted = io.github.ondeoma.scalactive.compiler.StFormatter.format(text)
+      if (formatted == text) Nil
+      else {
+        val index = new LineIndex(text)
+        List(new TextEdit(index.range(0, text.length), formatted))
+      }
+    } catch {
+      case NonFatal(e) =>
+        log(s"formatting failed: $e")
+        Nil
+    }
+  }
+
   def documentHighlight(uri: String, pos: Position): List[DocumentHighlight] = {
     at(uri, pos) { (d, params) =>
       await(d.pc.documentHighlight(params)).asScala.toList.flatMap { h =>

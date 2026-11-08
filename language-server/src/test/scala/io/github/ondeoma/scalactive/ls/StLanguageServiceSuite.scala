@@ -262,6 +262,16 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("整形: 変わる場合は全体を置き換える編集を返し、整形済みなら返さない") {
+    val messy = counter.replace("    <p v-if", "<p v-if")
+    withText(counterUri, messy) {
+      val edits = service.formatting(counterUri)
+      assertEquals(edits.size, 1)
+      assertEquals(edits.head.getNewText, counter)
+    }
+    assertEquals(service.formatting(counterUri), Nil)
+  }
+
   test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
     import TemplateCompletion._
     def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))

@@ -421,6 +421,10 @@ object SingleFileComponent extends StatelessComponent {
        |  <li>型エラーなどの表示(.st上の位置で表示されます)</li>
        |  <li>ホバーでの型の表示、引数のヒント</li>
        |  <li>定義へのジャンプ(同じ.st内と、プロジェクト内の .scala / .st. 子コンポーネントのタグ名・属性名からは、その.stのPropsへ)</li>
+       |  <li>
+       |    ドキュメントのフォーマット(整形). テンプレートは要素の入れ子に合わせて2スペースずつインデントし直します.
+       |    <code>&lt;script&gt;</code>・<code>&lt;style&gt;</code> の中はインデントを変えず、前後の空行と行末の空白だけを整えます.
+       |  </li>
        |</ul>
        |
        |<p>
