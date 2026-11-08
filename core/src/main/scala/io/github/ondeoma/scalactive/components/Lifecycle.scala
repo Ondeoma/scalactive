@@ -19,10 +19,13 @@ private[scalactive] final class LifecycleHooks extends Reactive[Unit] {
   /** 片付けられていなければtrue */
   var alive: Boolean = true
 
+  /** 作られたときのエラーの境界. onMountedの中の例外はここへ知らせます. */
+  private val boundary = ErrorBoundaryContext.current
+
   override def v: Unit = ()
 
   def runMounted(): Unit = {
-    if (alive) mounted.foreach(_())
+    if (alive) ErrorBoundaryContext.guard(boundary)(mounted.foreach(_()))
   }
 
   override def abort(): Unit = {

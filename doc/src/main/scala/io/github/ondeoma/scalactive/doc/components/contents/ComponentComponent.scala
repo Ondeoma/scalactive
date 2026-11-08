@@ -149,6 +149,7 @@ object ComponentComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("Lifecycle"))}>ライフサイクルフック</a></li>
        |  <li><a ${evClick(setHash("Ref"))}>テンプレート参照</a></li>
        |  <li><a ${evClick(setHash("Attrs"))}>属性の引き継ぎ</a></li>
+       |  <li><a ${evClick(setHash("ErrorBoundary"))}>エラーの境界</a></li>
        |</ul>
        |
        |
@@ -276,6 +277,27 @@ object ComponentComponent extends StatelessComponent {
        |<p>
        |  単一ファイルコンポーネント(.st)では、子コンポーネントのタグに書いた <code>class</code>・<code>style</code>・<code>id</code>・<code>role</code>・<code>data-*</code>・<code>aria-*</code> が自動的に引き継がれます.
        |</p>
+       |
+       |<h2 id="ErrorBoundary">エラーの境界</h2>
+       |
+       |<p>
+       |  <code>errorBoundaryC</code> で囲んだ中身で起きたエラーを受け止め、代わりの表示(fallback)に切り替えます(ReactのError Boundary、VueのerrorCaptured).
+       |  エラーが起きても画面全体が壊れず、その部分だけを差し替えられます.
+       |</p>
+       |
+       |<pre><code class="language-scala">errorBoundaryC(err =&gt; implicit cm =&gt;
+       |  s&quot;&lt;p&gt;読み込めませんでした: $${err.message} &lt;button $${evClick(err.retry())}&gt;再試行&lt;/button&gt;&lt;/p&gt;&quot;
+       |) { implicit cm =&gt;
+       |  s&quot;&lt;div&gt;$${%(RiskyComponent())}&lt;/div&gt;&quot;
+       |}</code></pre>
+       |
+       |<ul>
+       |  <li>受け止めるのは、中身を描く途中の例外(子コンポーネントを含む)、後から起きる子孫の描き直しの中の例外、子孫の <code>onMounted</code> の中の例外です.</li>
+       |  <li>イベントハンドラーの中の例外は受け止めません.</li>
+       |  <li><code>err.retry()</code> で中身を描き直します. <code>onError</code> を指定すると、エラーを受け止めたときに呼ばれます(既定ではコンソールに出力).</li>
+       |  <li>境界の外で起きた描き直しの例外はコンソールに出力され、ほかの描き直しは続けられます.</li>
+       |  <li>単一ファイルコンポーネント(.st)では <code>&lt;ErrorBoundary&gt;...&lt;template #fallback="err"&gt;...&lt;/template&gt;&lt;/ErrorBoundary&gt;</code> と書きます.</li>
+       |</ul>
        |
        |""".stripMargin
   }

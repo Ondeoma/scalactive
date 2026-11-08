@@ -1,6 +1,7 @@
 package io.github.ondeoma.scalactive.controllers
 
 import io.github.ondeoma.scalactive.ScalactiveConfig
+import io.github.ondeoma.scalactive.components.ErrorBoundaryContext
 import org.scalajs.dom.window
 
 import scala.collection.mutable
@@ -58,7 +59,8 @@ private[scalactive] object ReloadScheduler {
         // 先に描き直した親に片付けられた(cancelされた)ものは飛ばす
         if (pending.contains(c)) {
           pending.remove(c)
-          c.refresh()
+          // 描き直しの中で作られるコントローラーも同じ境界を覚える. 例外は境界(なければコンソール)へ
+          ErrorBoundaryContext.guard(c.boundary)(c.refresh())
         }
       }
       if (keepScroll) window.scrollTo(x.toInt, y.toInt)

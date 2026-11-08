@@ -45,17 +45,28 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
    */
   private[scalactive] def genWithOwnLast(): Either[String, ((List[Node], ChildrenComponents, TemporaryReactiveValues, EventHandlerIds), Node)] = {
     val tmpDiv = mkDiv()
-    // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
-    val nodes = html.toNodes.orDummyNode
-    for {
-      _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
-      children = genChildren(tmpDiv)
-      cs <- children.traverse(_.init())
-      ns = tmpDiv.childNodes.toList
-      _ = tmpDiv.remove()
-      // 子コンポーネントの描画が終わった後に登録するので、onMountedは子から順に実行される
-      _ = hooks.filter(_.mounted.nonEmpty).foreach(MountQueue.enqueue)
-    } yield ((ns, cs, tmpReactives.toList, eventHandlerIds.toList), nodes.last)
+    val inited = ListBuffer[ComponentController[?]]()
+    try {
+      // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
+      val nodes = html.toNodes.orDummyNode
+      for {
+        _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
+        children = genChildren(tmpDiv)
+        cs <- children.traverse(c => c.init().map { r => inited += c; r })
+        ns = tmpDiv.childNodes.toList
+        _ = tmpDiv.remove()
+        // 子コンポーネントの描画が終わった後に登録するので、onMountedは子から順に実行される
+        _ = hooks.filter(_.mounted.nonEmpty).foreach(MountQueue.enqueue)
+      } yield ((ns, cs, tmpReactives.toList, eventHandlerIds.toList), nodes.last)
+    } catch {
+      case e: Throwable =>
+        // 描画の途中で例外が起きたら、それまでに作ったもの(子コンポーネント・一時リアクティブ値・ハンドラー)を片付ける
+        inited.foreach(_.clear())
+        tmpReactives.foreach(_.abort())
+        eventHandlerIds.foreach(io.github.ondeoma.scalactive.events.EventManager.rmHandler)
+        tmpDiv.remove()
+        throw e
+    }
   }
 
   private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {
@@ -87,6 +98,8 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.components.ScopedSlot
   export io.github.ondeoma.scalactive.components.ElementRef
   export io.github.ondeoma.scalactive.components.Teleport
+  export io.github.ondeoma.scalactive.components.ErrorBoundary
+  export io.github.ondeoma.scalactive.components.ErrorInfo
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
   export io.github.ondeoma.scalactive.components.fors.ForLRComponent
   export io.github.ondeoma.scalactive.components.fors.ForRMComponent
@@ -350,6 +363,17 @@ object ComponentManager {
                (genHtml: ComponentManager => HTML)
                (using ComponentManager): HTML = {
     %(Teleport(to, disabled, Slot(genHtml))(_, _))
+  }
+
+  /**
+   * 中身で起きたエラーを受け止め、fallbackの表示に切り替えます(エラーの境界).
+   * 例: `errorBoundaryC(err => implicit cm => s"<p>${err.message}</p>") { implicit cm => ... }`
+   */
+  def errorBoundaryC(fallback: ErrorInfo => ComponentManager => HTML,
+                     onError: Throwable => Unit = e => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e))
+                    (genHtml: ComponentManager => HTML)
+                    (using ComponentManager): HTML = {
+    %(ErrorBoundary(ScopedSlot(fallback), onError, Slot(genHtml))(_, _))
   }
 
   def ifC(ifV: Reactive[Boolean])

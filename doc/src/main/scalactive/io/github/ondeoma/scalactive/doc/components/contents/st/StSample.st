@@ -9,9 +9,13 @@ case class State(count: RV[Int] = RV(0),
                  cardOpen: RV[Boolean] = RV(true),
                  mountedAt: RV[String] = RV("-"),
                  todoInput: ElementRef[HTMLInputElement] = ElementRef(),
-                 modal: RV[Boolean] = RV(false))
+                 modal: RV[Boolean] = RV(false),
+                 crash: RV[Boolean] = RV(false))
 
 def initState() = State()
+
+// 描画中に例外を起こす(エラーの境界のデモ)
+def boom(): String = throw new RuntimeException("描画中にエラーが起きました")
 
 // DOMに挿入された後に呼ばれる(ライフサイクルフック)
 def mounted(s: State): Unit = s.mountedAt := new scala.scalajs.js.Date().toLocaleTimeString()
@@ -85,6 +89,15 @@ def add(s: State): Unit = {
     <button v-else @click="s.cardOpen := true">カードを再表示</button>
     <StCard title="slotなし" />
 
+    <h3>ErrorBoundary</h3>
+    <ErrorBoundary @error="println(event)">
+      <p>中身: <span v-if="s.crash">{{ boom() }}</span><span v-else>正常です</span></p>
+      <button @click="s.crash := true">エラーを起こす</button>
+      <template #fallback="err">
+        <p class="st-error">{{ err.message }} <button @click="s.crash := false; err.retry()">戻す</button></p>
+      </template>
+    </ErrorBoundary>
+
     <h3>Teleport</h3>
     <button @click="s.modal := true">モーダルを開く</button>
     <Teleport v-if="s.modal" to="body">
@@ -105,6 +118,7 @@ def add(s: State): Unit = {
 .odd { color: royalblue; }
 .agreed { color: seagreen; }
 .big-badge { font-size: 16px !important; }
+.st-error { color: tomato; }
 .st-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .st-modal-body { background: #fff; color: #222; padding: 16px; border-radius: 6px; }
 </style>

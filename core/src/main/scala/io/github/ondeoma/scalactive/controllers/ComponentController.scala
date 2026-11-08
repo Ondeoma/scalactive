@@ -9,6 +9,10 @@ trait ComponentController[CC <: ComponentController[?]] {
 
   def clear(): Unit
 
+  /** 作られたときのエラーの境界. 描き直しで起きた例外はここへ知らせます. */
+  private[scalactive] val boundary: Option[io.github.ondeoma.scalactive.components.BoundaryHandle] =
+    io.github.ondeoma.scalactive.components.ErrorBoundaryContext.current
+
   private var scrollX: Double = 0
   private var scrollY: Double = 0
 
