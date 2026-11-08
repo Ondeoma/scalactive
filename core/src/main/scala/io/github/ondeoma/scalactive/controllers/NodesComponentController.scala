@@ -34,6 +34,7 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
 
   def init(): Either[String, NodesComponentController] = {
     initF(this).map { c =>
+      c.markMounted()
       onInit(c)
       afterInit.foreach(_(c))
       c

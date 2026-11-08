@@ -22,7 +22,21 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
   
   def init(): Either[String, CC]
 
+  /** 表示中か(Devtoolsの表示中のコンポーネントの数のため) */
+  private var mountedForDevtools = false
+
+  private[scalactive] def markMounted(): Unit = {
+    if (!mountedForDevtools) {
+      mountedForDevtools = true
+      io.github.ondeoma.scalactive.Devtools.componentMounted()
+    }
+  }
+
   def clear(): Unit = ClearScope.run {
+    if (mountedForDevtools) {
+      mountedForDevtools = false
+      io.github.ondeoma.scalactive.Devtools.componentCleared()
+    }
     cancelReload()
     clearNodes()
     

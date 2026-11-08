@@ -24,6 +24,9 @@ abstract class Reactive[A] {
     WatchInfo(this, id)
   }
 
+  /** 監視している数(Devtools.watcherCountで使います) */
+  private[scalactive] def numWatchers: Int = watchers.size
+
   def rmWatcher(id: ID): Unit = {
     watchers.remove(id)
   }

@@ -60,7 +60,7 @@ private[scalactive] object ReloadScheduler {
         if (pending.contains(c)) {
           pending.remove(c)
           // 描き直しの中で作られるコントローラーも同じ境界を覚える. 例外は境界(なければコンソール)へ
-          ErrorBoundaryContext.guard(c.boundary)(c.refresh())
+          ErrorBoundaryContext.guard(c.boundary)(io.github.ondeoma.scalactive.Devtools.measure(c)(c.refresh()))
         }
       }
       if (keepScroll) window.scrollTo(x.toInt, y.toInt)

@@ -21,6 +21,7 @@ object ContentComponent extends StatelessComponent {
       ("/routing", _ => RoutingComponent()),
       ("/state", _ => StateComponent()),
       ("/sfc", _ => SingleFileComponent()),
+      ("/devtools", _ => DevtoolsComponent()),
       ("/deploy", _ => DeployComponent()),
       ("/contribute", _ => ContributeComponent()),
     )

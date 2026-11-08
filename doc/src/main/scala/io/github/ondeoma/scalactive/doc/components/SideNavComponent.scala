@@ -23,6 +23,7 @@ object SideNavComponent extends StatelessComponent {
        |    <li ${evClick(go("/routing"))}>ルーティング</li>
        |    <li ${evClick(go("/state"))}>状態管理</li>
        |    <li ${evClick(go("/sfc"))}>単一ファイルコンポーネント</li>
+       |    <li ${evClick(go("/devtools"))}>テスト・デバッグ</li>
        |    <li ${evClick(go("/deploy"))}>本番ビルド</li>
        |    <li ${evClick(go("/contribute"))}>コントリビュート</li>
        |  </ul>

@@ -11,6 +11,8 @@ object App {
   @main
   def main(): Unit = {
     ScalactiveConfig.basePath = "scalactive"
+    // ブラウザのコンソールから scalactive.stats() などを使えるようにする
+    io.github.ondeoma.scalactive.Devtools.install()
     MainComponent()(body, AddMethod.appendS(IdSelector("app"))).init()
   } 
 
