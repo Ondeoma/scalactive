@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 /**
- * テンプレートのHTMLの部分の補完(コンポーネント名・属性・ディレクティブ・スロット名).
+ * テンプレートのHTMLの部分の補完(コンポーネント名・HTMLのタグ・属性・属性値・イベント・ディレクティブ・スロット名).
  * 書きかけでコンパイルできない.stでも動くよう、コンパイルせずにテキストを走査して文脈を求めます.
  */
 object TemplateCompletion {
@@ -131,11 +131,10 @@ object TemplateCompletion {
     "RouterLink" -> List(Prop("to", "String"), Prop("activeClass", "String"), Prop("exactActiveClass", "String"), Prop("slot", "Slot")),
   )
 
-  private val htmlTags = List(
-    "div", "span", "p", "a", "button", "input", "label", "select", "option", "textarea", "form", "ul", "ol", "li",
-    "table", "thead", "tbody", "tr", "th", "td", "img", "h1", "h2", "h3", "h4", "section", "header", "footer", "nav",
-    "main", "article", "aside", "pre", "code", "b", "i", "small", "strong", "em", "br", "hr", "dl", "dt", "dd",
-    "template", "slot")
+  /** 値を書かない(真偽値の)属性 */
+  private val booleanAttributes = Set(
+    "hidden", "disabled", "readonly", "required", "checked", "selected", "multiple", "autofocus", "autoplay", "controls",
+    "loop", "muted", "open", "novalidate", "reversed", "download", "inert", "playsinline", "default")
 
   private val elementDirectives = List(
     "v-if", "v-else-if", "v-else", "v-for", ":key", "v-show", "v-model", "v-html", "ref", ":class", ":style",
@@ -212,7 +211,7 @@ object TemplateCompletion {
             item(n, CompletionItemKind.Class, "component", r, sort = "0")
           }
           // 子コンポーネントの中の<template>は、スロットに渡す内容
-          components ++ htmlTags.map(n => item(n, CompletionItemKind.Keyword, "element", r))
+          components ++ HtmlData.tags.map { case (n, d) => item(n, CompletionItemKind.Keyword, s"<$n> $d", r) }
         case AttrName(tag, start, stack) =>
           val r = range(start)
           if (tag.headOption.exists(_.isUpper)) {
@@ -239,7 +238,16 @@ object TemplateCompletion {
           } else if (tag == "slot") {
             List(attr("name", "slot name", r), attr(":value", "value for the scoped slot", r))
           } else {
-            elementDirectives.map(d => attr(d, "directive", r, value = d != "v-else"))
+            // 要素の属性 → ディレクティブ → 全体の属性 → イベントの順
+            def htmlAttr(n: String, d: String, sort: String) = attr(n, d, r, value = !booleanAttributes.contains(n), sort = sort)
+            val own = HtmlData.attributesOf(tag)
+            own.map { case (n, d) => htmlAttr(n, d, "0") } ++
+              own.map { case (n, d) => attr(":" + n, d + "(バインド)", r, sort = "1") } ++
+              elementDirectives.map(d => attr(d, "directive", r, value = d != "v-else", sort = "1")) ++
+              HtmlData.globalAttributes.map { case (n, d) => htmlAttr(n, d, "2") } ++
+              HtmlData.events.filterNot { case (e, _) => elementDirectives.contains("@" + e) }.map { case (e, d) =>
+                attr("@" + e, d, r, sort = "3")
+              }
           }
         case AttrValue("slot", "name", start) =>
           // <slot name="..."> は自分のPropsのスロット
@@ -247,6 +255,10 @@ object TemplateCompletion {
           readProps(file).collect {
             case p if (p.isSlot || p.isScopedSlot) && p.name != "slot" => item(kebab(p.name), CompletionItemKind.Property, p.tpe, r)
           }
+        case AttrValue(tag, attrName, start) if !attrName.startsWith(":") && !attrName.startsWith("v-") && !attrName.startsWith("@") =>
+          // 列挙された属性値(input の type など)
+          val r = range(start)
+          HtmlData.valuesOf(tag, attrName).map(v => item(v, CompletionItemKind.EnumMember, attrName + "=\"" + v + "\"", r))
         case _ => Nil
       }
     }.filter(_.nonEmpty)

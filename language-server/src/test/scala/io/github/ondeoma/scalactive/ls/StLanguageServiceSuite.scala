@@ -245,6 +245,27 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assert(scala.exists(_.startsWith("count")), scala)
   }
 
+  test("テンプレートの補完: HTMLの標準のタグ・要素ごとの属性・全体の属性・イベント") {
+    val tags = labels(counterUri, counter.replace("<button @click", "<tex|<button @click"))
+    assert(tags.contains("textarea") && tags.contains("details") && tags.contains("video"), tags)
+    val input = labels(counterUri, counter.replace("<button @click", "<input | /><button @click"))
+    assert(input.contains("type") && input.contains("placeholder") && input.contains(":value"), input)
+    assert(input.contains("id") && input.contains("aria-label"), "全体の属性")
+    assert(input.contains("@keydown") && input.contains("@blur"), "イベント")
+    assert(!input.contains("href"), "ほかの要素の属性は出さない")
+    val a = labels(counterUri, counter.replace("<span v-show", "<a | v-show"))
+    assert(a.contains("href") && a.contains("target"), a)
+  }
+
+  test("テンプレートの補完: 列挙された属性値(inputのtypeなど)") {
+    val types = labels(counterUri, counter.replace("<button @click", "<input type=\"|\" /><button @click"))
+    assert(types.contains("checkbox") && types.contains("email"), types)
+    val target = labels(counterUri, counter.replace("<button @click", "<a target=\"|\"></a><button @click"))
+    assertEquals(target.sorted, List("_blank", "_parent", "_self", "_top"))
+    val dir = labels(counterUri, counter.replace("<button @click", "<p dir=\"|\"></p><button @click"))
+    assertEquals(dir.sorted, List("auto", "ltr", "rtl"))
+  }
+
   test("テンプレートの補完: <slot name=\"\">に自分のPropsのスロット名") {
     val cardUri = srcRoot.resolve("app/Card.st").toUri.toString
     val text = new String(Files.readAllBytes(srcRoot.resolve("app/Card.st")), StandardCharsets.UTF_8)
