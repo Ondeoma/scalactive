@@ -6,9 +6,13 @@ case class State(count: RV[Int] = RV(0),
                  agree: RV[Boolean] = RV(false),
                  color: RV[String] = RV("red"),
                  tags: RV[List[String]] = RV(List("scala")),
-                 cardOpen: RV[Boolean] = RV(true))
+                 cardOpen: RV[Boolean] = RV(true),
+                 mountedAt: RV[String] = RV("-"))
 
 def initState() = State()
+
+// DOMに挿入された後に呼ばれる(ライフサイクルフック)
+def mounted(s: State): Unit = s.mountedAt := new scala.scalajs.js.Date().toLocaleTimeString()
 
 def add(s: State): Unit = {
   if (s.input.v.trim.nonEmpty) {
@@ -21,6 +25,7 @@ def add(s: State): Unit = {
 <template>
   <div class="st-sample">
     <h3>Counter <StBadge /> <StBadge label="props" :count="Some(s.count)" /></h3>
+    <p>mounted: {{ s.mountedAt }}</p>
     <p>count: <b>{{ s.count }}</b></p>
     <button @click="s.count := s.count.v + s.step.v">+{{ s.step }}</button>
     <button :disabled="s.count.mapC(_ <= 0)" @click="s.count := s.count.v - s.step.v">-{{ s.step }}</button>

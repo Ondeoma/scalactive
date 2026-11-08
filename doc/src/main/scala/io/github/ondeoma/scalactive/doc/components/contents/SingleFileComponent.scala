@@ -90,6 +90,26 @@ object SingleFileComponent extends StatelessComponent {
          |<select v-model="s.color">...</select>           <!-- RV[String] -->
          |""".stripMargin
 
+    val codeLifecycle = // language=html
+      s"""<script lang="scala">
+         |case class State(input: RV[String] = RV(""))
+         |
+         |def initState() = State()
+         |
+         |// DOMに挿入された後に実行される(引数はなし、またはProps・Stateを受け取れる)
+         |def mounted(s: State): Unit = {
+         |  Option(document.getElementById("search")).foreach(_.asInstanceOf[HTMLElement].focus())
+         |}
+         |
+         |// 片付けられた(DOMから取り除かれた)後に実行される
+         |def unmounted(): Unit = println("unmounted")
+         |</script>
+         |
+         |<template>
+         |  <input id="search" v-model="s.input">
+         |</template>
+         |""".stripMargin
+
     val codeUse = // language=scala
       s"""// 生成されたobject app.Counter は通常のコンポーネントとして使えます.
          |s\"\"\"<div>$${c(Counter())}</div>\"\"\"
@@ -111,6 +131,7 @@ object SingleFileComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("model"))}>v-model</a></li>
        |  <li><a ${evClick(setHash("props"))}>props</a></li>
        |  <li><a ${evClick(setHash("slot"))}>slot</a></li>
+       |  <li><a ${evClick(setHash("lifecycle"))}>ライフサイクルフック</a></li>
        |  <li><a ${evClick(setHash("demo"))}>デモ</a></li>
        |  <li><a ${evClick(setHash("editors"))}>エディタ対応</a></li>
        |  <li><a ${evClick(setHash("limitations"))}>制限事項</a></li>
@@ -254,6 +275,22 @@ object SingleFileComponent extends StatelessComponent {
        |<ul>
        |  <li>slotの内容は親のスコープで評価されるため、親の状態を参照できます. scoped CSSも親のものが適用されます.</li>
        |  <li>名前付きslot・スコープ付きslotは未対応です.</li>
+       |</ul>
+       |
+       |<h2 id="lifecycle">ライフサイクルフック</h2>
+       |
+       |<p>
+       |  <code>&lt;script&gt;</code> に <code>def mounted</code> / <code>def unmounted</code> を定義すると、
+       |  コンポーネントがDOMに挿入された後・片付けられた後に呼ばれます(Vueのmounted / unmounted).
+       |  引数はなし、または <code>Props</code>・Stateを受け取れます(順序は自由).
+       |</p>
+       |
+       |<pre><code class="language-html">${esc(codeLifecycle)}</code></pre>
+       |
+       |<ul>
+       |  <li><code>mounted</code> は現在の処理(描画・描き直し)が終わった直後に、子コンポーネントのものから順に呼ばれます.</li>
+       |  <li><code>unmounted</code> は描き直し・v-ifの切り替え・v-forの行の削除などでも呼ばれます.</li>
+       |  <li>Scalaで書く場合は、genHtmlの中で <code>onMounted {...}</code> / <code>onUnmounted {...}</code> を呼びます(コンポーネントのページを参照).</li>
        |</ul>
        |
        |<h2 id="demo">デモ</h2>

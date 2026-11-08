@@ -24,6 +24,17 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   private lazy val html: String = genHtml(this)
   private lazy val tmpReactives = ListBuffer[Reactive[?]]()
   private lazy val eventHandlerIds = ListBuffer[ID]()
+  private var hooks: Option[LifecycleHooks] = None
+
+  /** ライフサイクルフック(最初に使われたときに一時リアクティブ値として登録します) */
+  private[scalactive] def lifecycle: LifecycleHooks = {
+    hooks.getOrElse {
+      val h = new LifecycleHooks
+      hooks = Some(h)
+      addTmpReactive(h)
+      h
+    }
+  }
 
   def gen(): GenResult = genWithOwnLast().map(_._1)
 
@@ -42,6 +53,8 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
       cs <- children.traverse(_.init())
       ns = tmpDiv.childNodes.toList
       _ = tmpDiv.remove()
+      // 子コンポーネントの描画が終わった後に登録するので、onMountedは子から順に実行される
+      _ = hooks.filter(_.mounted.nonEmpty).foreach(MountQueue.enqueue)
     } yield ((ns, cs, tmpReactives.toList, eventHandlerIds.toList), nodes.last)
   }
 
@@ -144,6 +157,25 @@ object ComponentManager {
 
   private[scalactive] def genWithOwnLast(f: ComponentManager => HTML) = {
     new ComponentManager(f).genWithOwnLast()
+  }
+
+  /**
+   * コンポーネントがDOMに挿入された後に実行する処理を登録します(Vueのmounted).
+   * 現在の処理(描画・描き直し)が終わった直後に、子コンポーネントのものから順に実行されます.
+   * 実行前にコンポーネントが片付けられた場合は実行しません.
+   */
+  def onMounted(f: => Unit)
+               (using cm: ComponentManager): Unit = {
+    cm.lifecycle.mounted += (() => f)
+  }
+
+  /**
+   * コンポーネントが片付けられた(DOMから取り除かれた)後に実行する処理を登録します(Vueのunmounted).
+   * 描き直し・ifCの切り替え・forCの行の削除などでも実行されます. タイマーや外部のイベントの解除などに使います.
+   */
+  def onUnmounted(f: => Unit)
+                 (using cm: ComponentManager): Unit = {
+    cm.lifecycle.unmounted += (() => f)
   }
 
   def %(f: GenComponentF)

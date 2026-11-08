@@ -26,6 +26,7 @@ object StCompiler {
   private val PackageDecl = """(?s)^\s*package\s+([A-Za-z_][\w.]*)\s*;?[ \t]*(?:\r?\n|$)(.*)""".r
   private val InitState = """def\s+initState\s*(?:\(\s*([^)]*?)\s*\))?\s*(?::\s*([^=]+?))?\s*=""".r
   private val PropsDecl = """\bcase\s+class\s+Props\s*\(""".r
+  private val HookDecl = """\bdef\s+(mounted|unmounted)\b\s*(?:\(\s*([^)]*?)\s*\))?""".r
   private val PropParam = """(?s)^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:private|protected|override|final|val|var)\s+)*([A-Za-z_]\w*)\s*:(.+)$""".r
 
   def compile(in: StInput): Either[StError, StOutput] = {
@@ -97,9 +98,36 @@ object StCompiler {
 
     // ---- template ----
     val template = sfc.template.getOrElse(src.fail(0, "<template> block is required"))
-    val stateName = template.attr("state").flatMap(_.value).getOrElse("s")
+    val stateName0 = template.attr("state").flatMap(_.value).getOrElse("s")
+    val propsName0 = template.attr("props").flatMap(_.value).getOrElse("props")
+
+    // def mounted / def unmounted: ライフサイクルフック. 引数はなし、またはProps・Stateを受け取れる
+    val hookCalls: List[String] = HookDecl.findAllMatchIn(scriptBody).toList.groupBy(_.group(1)).toList.sortBy(_._1).map {
+      case (name, ms) =>
+        val m = ms.head
+        val scriptOffset = sfc.script.map(_.offset).getOrElse(0)
+        val args = Option(m.group(2)) match {
+          case None => ""
+          case Some(ps) =>
+            val types = splitTopLevel(ps, ',').filter(_.trim.nonEmpty).map {
+              case PropParam(_, t) => t.trim
+              case p => src.fail(scriptOffset, s"cannot parse parameter '${p.trim}' of 'def $name'")
+            }
+            val stateTypes = stateType.toList.flatMap(t => List(t, t.stripPrefix(s"${in.objectName}.")))
+            val propsTypes = propsType.toList.flatMap(t => List(t, "Props"))
+            types.map {
+              case t if stateTypes.contains(t) => stateName0
+              case t if propsTypes.contains(t) => propsName0
+              case t => src.fail(scriptOffset, s"'def $name' can take only Props and/or the state (found '$t')")
+            }.mkString("(", ", ", ")")
+        }
+        val fn = if (name == "mounted") "onMounted" else "onUnmounted"
+        s"__CM.$fn($name$args)"
+    }
+
+    val stateName = stateName0
     if (!stateName.matches(Identifier)) src.fail(template.offset, s"invalid state name '$stateName'")
-    val propsName = template.attr("props").flatMap(_.value).getOrElse("props")
+    val propsName = propsName0
     if (!propsName.matches(Identifier)) src.fail(template.offset, s"invalid props name '$propsName'")
     if (props.isDefined && stateType.isDefined && propsName == stateName) {
       src.fail(template.offset, s"props name and state name must differ ('$propsName')")
@@ -168,6 +196,7 @@ object StCompiler {
       case (None, Some(t)) => sb ++= s"  def genHtml($stateName: $t)(implicit __cm0: __CM): String = {\n"
       case (None, None) => sb ++= s"  def genHtml(implicit __cm0: __CM): String = {\n"
     }
+    hookCalls.foreach(h => sb ++= s"    $h\n")
     sb ++= s"    $htmlExpr\n"
     sb ++= "  }\n"
     sb ++= "\n}\n"

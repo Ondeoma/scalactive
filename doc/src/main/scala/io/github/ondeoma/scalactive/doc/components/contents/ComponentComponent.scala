@@ -97,7 +97,27 @@ object ComponentComponent extends StatelessComponent {
          |       :\"\"\".stripMargin(':')
          |  }
          |  
-         |}  
+         |}
+         |""".stripMargin
+
+    val codeLifecycle = // language=scala
+      s"""object ClockComponent extends StatelessComponent {
+         |
+         |  def genHtml(implicit cm: ComponentManager): HTML = {
+         |    val now = RV(new js.Date().toLocaleTimeString())
+         |    var timer = 0
+         |    // DOMに挿入された後に実行される
+         |    onMounted {
+         |      timer = window.setInterval(() => now := new js.Date().toLocaleTimeString(), 1000)
+         |    }
+         |    // 片付けられた(DOMから取り除かれた)後に実行される
+         |    onUnmounted {
+         |      window.clearInterval(timer)
+         |    }
+         |    s\"\"\"<p>$${%(TextComponent(now)(identity))}</p>\"\"\"
+         |  }
+         |
+         |}
          |""".stripMargin
 
     // language=html
@@ -112,6 +132,7 @@ object ComponentComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("StatefulComponent"))}>StatefulComponent</a></li>
        |  <li><a ${evClick(setHash("BaseComponent"))}>BaseComponent</a></li>
        |  <li><a ${evClick(setHash("Use"))}>コンポーネントの呼出し</a></li>
+       |  <li><a ${evClick(setHash("Lifecycle"))}>ライフサイクルフック</a></li>
        |</ul>
        |
        |
@@ -185,6 +206,30 @@ object ComponentComponent extends StatelessComponent {
        |  ${%(Sample4Component())}
        |</div>
        |
+       |<h2 id="Lifecycle">ライフサイクルフック</h2>
+       |
+       |<p>
+       |  genHtmlの中で <code>onMounted</code> / <code>onUnmounted</code> を呼ぶと、コンポーネントのライフサイクルに合わせて処理を実行できます.
+       |  Vue.jsのmounted / unmountedに当たります.
+       |</p>
+       |
+       |<ul>
+       |  <li>
+       |    <code>onMounted</code> : コンポーネントがDOMに挿入された後(現在の処理の直後)に実行されます.
+       |    子コンポーネントのものから順に実行されます. 要素の参照(フォーカスなど)や、外部ライブラリの組み込みに使います.
+       |  </li>
+       |  <li>
+       |    <code>onUnmounted</code> : コンポーネントが片付けられた(DOMから取り除かれた)後に実行されます.
+       |    描き直し・ifCの切り替え・forCの行の削除などでも実行されます. タイマーや外部のイベントの解除に使います.
+       |  </li>
+       |  <li>描き直し(リアクティブ値の変化によるifCなどの再描画)では、古い内容のonUnmountedの後に、新しい内容のonMountedが実行されます.</li>
+       |</ul>
+       |
+       |<pre><code class="language-scala">${esc(codeLifecycle)}</code></pre>
+       |
+       |<p>
+       |  単一ファイルコンポーネント(.st)では、<code>&lt;script&gt;</code> に <code>def mounted</code> / <code>def unmounted</code> を定義します.
+       |</p>
        |
        |""".stripMargin
   }

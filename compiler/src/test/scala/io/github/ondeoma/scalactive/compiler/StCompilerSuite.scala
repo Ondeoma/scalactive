@@ -103,6 +103,23 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(compileError("<template>\n<p :key=\"k\"></p></template>").line, 2)
   }
 
+  test("lifecycle hooks: def mounted / def unmounted") {
+    val c = compile(
+      """<script lang="scala">
+        |case class Props(n: Int)
+        |case class State(x: RV[Int] = RV(0))
+        |def initState() = State()
+        |def mounted(s: State, p: Props): Unit = ()
+        |def unmounted(): Unit = ()
+        |</script>
+        |<template><p>{{ s.x }}</p></template>
+        |""".stripMargin).code
+    assert(c.contains("    __CM.onMounted(mounted(s, props))\n    __CM.onUnmounted(unmounted())\n"), c)
+    val c2 = compile("<script>\ndef mounted: Unit = ()\n</script><template><p>a</p></template>").code
+    assert(c2.contains("__CM.onMounted(mounted)"))
+    assert(compileError("<script>\ndef mounted(x: Int): Unit = ()\n</script><template><p>a</p></template>").message.contains("mounted"))
+  }
+
   test("v-else-if chain evaluates each condition once") {
     val o = compile(
       """<template>
