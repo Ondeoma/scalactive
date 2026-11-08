@@ -178,14 +178,151 @@ object StRuntime {
     ComponentManager.clsSs(rv)
   }
 
+  /** 式の値が真か(Reactive[Boolean]・Boolean・Option). */
+  private def truthy(v: Any): Boolean = v match {
+    case r: Reactive[?] => truthy(r.v)
+    case b: Boolean => b
+    case None | null => false
+    case _ => true
+  }
+
+  /**
+   * クラス名と条件の組・Map(オブジェクト記法)、またはそれと文字列を混ぜたリスト.
+   * 条件はBooleanまたはReactive[Boolean]で、Reactiveの場合は変化に追従します.
+   * 例: `"active" -> s.on`、`Map("active" -> s.on, "big" -> true)`、`List("btn", "active" -> s.on)`
+   */
+  def cls(rv: Reactive[Map[String, Boolean]])
+         (using d1: DummyImplicit,
+          d2: DummyImplicit,
+          cm: ComponentManager): ATTR = {
+    ComponentManager.clsSs(CRV(rv, (m: Map[String, Boolean]) => m.toList.collect { case (k, true) => splitClasses(k) }.flatten))
+  }
+
   def cls(v: Any)
          (using cm: ComponentManager): ATTR = {
-    val clss = v match {
-      case s: String => splitClasses(s)
-      case xs: Iterable[?] => xs.toList.map(String.valueOf).flatMap(splitClasses)
-      case x => splitClasses(String.valueOf(x))
+    // 文字列の要素はそのまま、組の要素は条件付き
+    val entries: List[Either[String, (String, Any)]] = v match {
+      case s: String => List(Left(s))
+      case (k: String, c) => List(Right((k, c)))
+      case xs: Iterable[?] => xs.toList.map {
+        case (k: String, c) => Right((k, c))
+        case x => Left(String.valueOf(x))
+      }
+      case x => List(Left(String.valueOf(x)))
     }
-    ComponentManager.clsSs(new RV(clss))
+    val static = entries.collect { case Left(s) => splitClasses(s) }.flatten
+    val pairs = entries.collect { case Right(p) => p }
+    if (pairs.isEmpty) ComponentManager.clsSs(new RV(static))
+    else {
+      val reactives = pairs.collect { case (_, r: Reactive[?]) => r }
+      val calc = () => static ++ pairs.collect { case (k, c) if truthy(c) => splitClasses(k) }.flatten
+      if (reactives.isEmpty) ComponentManager.clsSs(new RV(calc()))
+      else ComponentManager.clsSs(derived(reactives, calc))
+    }
+  }
+
+  /**
+   * 複数のリアクティブ値から計算される値. 一時リアクティブ値として登録され、abort時に元の値の監視を解除します.
+   */
+  private final class Derived[A](srcs: Seq[Reactive[?]],
+                                 calc: () => A) extends RV[A](calc()) {
+
+    private val infos = srcs.map(_.addWatcher(_ => this := calc()))
+
+    override def abort(): Unit = {
+      infos.foreach(_.abort())
+      super.abort()
+    }
+
+  }
+
+  private def derived[A](srcs: Seq[Reactive[?]],
+                         calc: () => A)
+                        (using cm: ComponentManager): Reactive[A] = {
+    val d = new Derived(srcs, calc)
+    cm.addTmpReactive(d)
+    d
+  }
+
+  // :style="expr"
+
+  /** fontSize → font-size(カスタムプロパティ --x はそのまま) */
+  private def cssName(name: String): String = {
+    if (name.startsWith("--")) name
+    else name.flatMap(c => if (c.isUpper) s"-${c.toLower}" else c.toString)
+  }
+
+  /** スタイルの値. None・null・false・空文字はプロパティを外す. */
+  private def styleValue(v: Any): Option[String] = v match {
+    case r: Reactive[?] => styleValue(r.v)
+    case None | null | false => None
+    case Some(x) => styleValue(x)
+    case x =>
+      val s = String.valueOf(x)
+      if (s.isEmpty) None else Some(s)
+  }
+
+  private def setStyleProp(ele: HTMLElement, name: String, v: Any): Unit = {
+    styleValue(v) match {
+      case Some(s) => ele.style.setProperty(cssName(name), s)
+      case None => ele.style.removeProperty(cssName(name))
+    }
+  }
+
+  /** style属性全体を文字列で指定します(従来どおり). */
+  def style(rv: Reactive[String])
+           (using cm: ComponentManager): ATTR = {
+    ComponentManager.attrS("style", rv)
+  }
+
+  /** プロパティ名と値のMap全体がReactiveの場合. 値がなくなったプロパティは外します. */
+  def style(rv: Reactive[Map[String, String]])
+           (using d: DummyImplicit,
+            cm: ComponentManager): ATTR = {
+    ComponentManager.el(ele => AttrController { ac =>
+      var current = Map.empty[String, String]
+      val set = (m: Map[String, String]) => {
+        (current.keySet -- m.keySet).foreach(k => ele.style.removeProperty(cssName(k)))
+        m.foreach((k, v) => setStyleProp(ele, k, v))
+        current = m
+      }
+      ac.element = Some(ele)
+      set(rv.v)
+      ac.watchInfos = List(rv.addWatcher { case (_, n) => set(n) })
+      Right(ac)
+    })
+  }
+
+  def style[A](rv: Reactive[A])
+              (using d1: DummyImplicit,
+               d2: DummyImplicit,
+               cm: ComponentManager): ATTR = {
+    ComponentManager.attrS("style", CRV(rv, (a: A) => String.valueOf(a)))
+  }
+
+  /**
+   * 文字列はstyle属性として埋め込みます(従来どおり).
+   * プロパティ名と値の組・Map(オブジェクト記法)は、プロパティごとに設定し、静的なstyle属性と併用できます.
+   * 値がReactiveの場合は変化に追従します. 例: `Map("color" -> s.color, "fontSize" -> "12px")`
+   */
+  def style(v: Any)
+           (using cm: ComponentManager): ATTR = {
+    val pairs: Option[List[(String, Any)]] = v match {
+      case (k: String, x) => Some(List((k, x)))
+      case xs: Iterable[?] if xs.nonEmpty && xs.forall { case (_: String, _) => true; case _ => false } =>
+        Some(xs.toList.map { case (k: String, x) => (k, x); case _ => throw new IllegalStateException })
+      case _ => None
+    }
+    pairs match {
+      case None => attr("style", v)
+      case Some(ps) =>
+        ComponentManager.el(ele => AttrController { ac =>
+          ac.element = Some(ele)
+          ps.foreach((k, x) => setStyleProp(ele, k, x))
+          ac.watchInfos = ps.collect { case (k, r: Reactive[?]) => r.addWatcher(_ => setStyleProp(ele, k, r)) }
+          Right(ac)
+        })
+    }
   }
 
   // @event="stmt"

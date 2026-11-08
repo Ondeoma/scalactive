@@ -42,6 +42,9 @@ def add(s: State): Unit = {
 
     <h3>v-model</h3>
     <p><label><input type="checkbox" v-model="s.agree"> 同意する</label> → {{ s.agree }}</p>
+    <p :class='List("note", "agreed" -> s.agree)' :style='Map("fontWeight" -> s.agree.mapC(a => if (a) "bold" else "normal"))'>
+      :class / :style のオブジェクト記法(同意すると太字・緑色になります)
+    </p>
     <p>
       <label><input type="radio" name="st-color" value="red" v-model="s.color"> red</label>
       <label><input type="radio" name="st-color" value="blue" v-model="s.color"> blue</label>
@@ -78,4 +81,5 @@ def add(s: State): Unit = {
 .big { font-weight: bold; color: tomato; }
 .even { color: seagreen; }
 .odd { color: royalblue; }
+.agreed { color: seagreen; }
 </style>

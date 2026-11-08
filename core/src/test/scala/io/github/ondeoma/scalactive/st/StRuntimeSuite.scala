@@ -111,6 +111,57 @@ class StRuntimeSuite extends munit.FunSuite {
     assertEquals(q[HTMLElement](root, "i").className, "y z")
   }
 
+  test("cls: クラス名と条件の組・Map(オブジェクト記法)と、文字列との混在") {
+    val on = RV(false)
+    val flags = RV(Map("m1" -> true, "m2" -> false))
+    val root = mount { implicit cm =>
+      s"""<p class="x" ${StRuntime.cls("active" -> on)}></p>""" +
+        s"""<i ${StRuntime.cls(Map("a" -> true, "b" -> false, "c d" -> on))}></i>""" +
+        s"""<b ${StRuntime.cls(List("btn", "on" -> on))}></b>""" +
+        s"""<u class="y" ${StRuntime.cls(flags)}></u>"""
+    }
+    def classes(sel: String) = q[HTMLElement](root, sel).className
+    assertEquals(classes("p"), "x")
+    assertEquals(classes("i"), "a")
+    assertEquals(classes("b"), "btn")
+    assertEquals(classes("u"), "y m1")
+    on := true
+    flags := Map("m1" -> false, "m2" -> true)
+    assertEquals(classes("p"), "x active")
+    assertEquals(classes("i"), "a c d")
+    assertEquals(classes("b"), "btn on")
+    assertEquals(classes("u"), "y m2")
+  }
+
+  test("style: プロパティごとの組・Map(オブジェクト記法)は静的なstyleと併用でき、Reactiveに追従する") {
+    val color = RV("red")
+    val size = RV[Option[String]](Some("12px"))
+    val whole = RV(Map("color" -> "blue", "margin-top" -> "1px"))
+    val root = mount { implicit cm =>
+      s"""<p style="padding: 2px" ${StRuntime.style(Map("color" -> color, "fontSize" -> size, "--x" -> 1))}></p>""" +
+        s"""<i ${StRuntime.style("display" -> "none")}></i>""" +
+        s"""<b ${StRuntime.style(whole)}></b>""" +
+        s"""<u ${StRuntime.style("color: green")}></u>"""
+    }
+    val p = q[HTMLElement](root, "p")
+    assertEquals(p.style.getPropertyValue("padding"), "2px")
+    assertEquals(p.style.getPropertyValue("color"), "red")
+    assertEquals(p.style.getPropertyValue("font-size"), "12px")
+    assertEquals(p.style.getPropertyValue("--x"), "1")
+    assertEquals(q[HTMLElement](root, "i").style.display, "none")
+    assertEquals(q[HTMLElement](root, "u").style.color, "green")
+    val b = q[HTMLElement](root, "b")
+    assertEquals(b.style.getPropertyValue("margin-top"), "1px")
+    color := "blue"
+    size := None
+    whole := Map("color" -> "black")
+    assertEquals(p.style.getPropertyValue("color"), "blue")
+    assertEquals(p.style.getPropertyValue("font-size"), "")
+    assertEquals(p.style.getPropertyValue("padding"), "2px")
+    assertEquals(b.style.getPropertyValue("color"), "black")
+    assertEquals(b.style.getPropertyValue("margin-top"), "")
+  }
+
   test("elseIf/otherwise: 先行条件がすべて偽の分岐だけが真になり、変化した時だけ通知する") {
     val a = RV(false)
     val b = RV(true)

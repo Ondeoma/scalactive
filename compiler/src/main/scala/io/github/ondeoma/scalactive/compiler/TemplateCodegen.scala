@@ -356,6 +356,7 @@ final class TemplateCodegen(src: SourceText,
       val name = if (n.startsWith(":")) n.drop(1) else n.drop("v-bind:".length)
       if (name.isEmpty) src.fail(a.offset, s"attribute name expected in '$n'")
       if (name == "class") List(Code(s"__st.cls${attrExpr(a)}"))
+      else if (name == "style") List(Code(s"__st.style${attrExpr(a)}"))
       else List(Code(s"__st.attr(${StringLiteral(name)}, ${attrExpr(a)})"))
     } else if (n.startsWith("@") || n.startsWith("v-on:")) {
       n match {

@@ -75,6 +75,7 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("__CM.showIf(__st.cond(/* Foo.st:6 */ v))"))
     assert(c.contains("__st.attr(\"title\", (/* Foo.st:6 */ t))"))
     assert(c.contains("__st.cls(/* Foo.st:6 */ c)"))
+    assert(compile("""<template><p :style="m"></p></template>""").code.contains("__st.style(/* Foo.st:1 */ m)"))
     assert(c.contains("event.stopPropagation(); go(event)"))
     assert(c.contains("__st.component(Child())"))
   }

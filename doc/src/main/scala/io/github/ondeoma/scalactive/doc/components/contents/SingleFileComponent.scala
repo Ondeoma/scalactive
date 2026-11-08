@@ -163,7 +163,19 @@ object SingleFileComponent extends StatelessComponent {
        |  </td></tr>
        |  <tr><td><code>v-model="rv"</code></td><td>input/textarea/selectとRVの双方向バインディング. <code>.lazy</code> / <code>.trim</code> 修飾子が使えます(後述).</td></tr>
        |  <tr><td><code>:name="expr"</code><br><code>v-bind:name="expr"</code></td><td>属性バインディング. Reactive[Boolean]は属性の有無、それ以外は値として反映します.</td></tr>
-       |  <tr><td><code>:class="expr"</code></td><td>クラスバインディング. String(空白区切り)またはList[String]. 静的なclass属性と併用できます.</td></tr>
+       |  <tr><td><code>:class="expr"</code></td><td>
+       |    クラスバインディング. 静的なclass属性と併用できます. exprには次のものが使えます(Reactiveでも可).<br>
+       |    ・String(空白区切り)、List[String]<br>
+       |    ・オブジェクト記法: クラス名と条件の組 <code>"active" -&gt; s.on</code>、
+       |    <code>Map("active" -&gt; s.on, "big" -&gt; true)</code>(条件はBooleanまたはReactive[Boolean])<br>
+       |    ・配列記法: 文字列と組の混在 <code>List("btn", "active" -&gt; s.on)</code>
+       |  </td></tr>
+       |  <tr><td><code>:style="expr"</code></td><td>
+       |    スタイルバインディング. Stringの場合はstyle属性全体になります.<br>
+       |    オブジェクト記法 <code>Map("color" -&gt; s.color, "fontSize" -&gt; "12px")</code>(または組 <code>"display" -&gt; "none"</code>)は、
+       |    プロパティごとに設定され、静的なstyle属性と併用できます.
+       |    プロパティ名はキャメルケースでも書けます. 値がNone・false・空文字のプロパティは外します. 値にはReactiveも使えます.
+       |  </td></tr>
        |  <tr><td><code>@event="stmt"</code><br><code>v-on:event="stmt"</code></td><td>
        |    イベントハンドリング. 文の中では <code>event</code> でEventを参照できます.<br>
        |    修飾子: <code>.prevent</code> / <code>.stop</code> / <code>.self</code>、
@@ -177,6 +189,7 @@ object SingleFileComponent extends StatelessComponent {
        |
        |<p>
        |  属性値の中で <code>"</code> を使う場合は、属性を <code>'</code> で囲むか <code>&amp;quot;</code> と記述してください.
+       |  (例: <code>:class='Map("active" -&gt; s.on)'</code>)
        |</p>
        |
        |<h2 id="model">v-model</h2>
