@@ -97,6 +97,43 @@ class ListWatchSuite extends munit.FunSuite {
     assertWatched(Nil, rvs)
   }
 
+  test("RVList: 代入はリスト全体への通知を1回にまとめる(行ごとの監視には通知する)") {
+    val rvs = counted(100)
+    val list = RVList(rvs)
+    val count = notifications(list)
+    var rowLevel = 0
+    list.addWatcherRowLevel(_ => rowLevel += 1)
+    var rowChanges = 0
+    rvs.foreach(_.addWatcher(_ => rowChanges += 1))
+    list := List.tabulate(100)(_ + 1)
+    assertEquals(count(), 1)
+    assertEquals(rowLevel, 1)
+    assertEquals(rowChanges, 100, "各行の値の監視(行の表示など)には通知する")
+    assertEquals(list.v, List.tabulate(100)(_ + 1))
+  }
+
+  test("RVList: updateは1回だけ通知し、行レベルの監視には通知しない") {
+    val list = RVList(counted(3))
+    val count = notifications(list)
+    var rowLevel = 0
+    list.addWatcherRowLevel(_ => rowLevel += 1)
+    list.update(1, 10)
+    assertEquals(count(), 1)
+    assertEquals(rowLevel, 0)
+    assertEquals(list.v, List(0, 10, 2))
+  }
+
+  test("RVList: 要素のRVを直接変更すると1回通知し、行レベルの監視には通知しない") {
+    val rvs = counted(3)
+    val list = RVList(rvs)
+    val count = notifications(list)
+    var rowLevel = 0
+    list.addWatcherRowLevel(_ => rowLevel += 1)
+    rvs(2) := 5
+    assertEquals(count(), 1)
+    assertEquals(rowLevel, 0)
+  }
+
   // ---- RMList ----
 
   private final case class Item(n: Int)
