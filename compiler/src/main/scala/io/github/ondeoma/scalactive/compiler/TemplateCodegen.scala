@@ -176,10 +176,14 @@ final class TemplateCodegen(src: SourceText,
           case None => src.fail(a.offset, "v-for must be in the form \"item in expr\" or \"(item, index) in expr\"")
         }
         val id = nextId()
-        val idxName = idx.getOrElse(s"__idx$id")
+        // 添字の変数がなければforEachC(位置が変わった行を作り直さないので、削除や並べ替えが速い)
+        val (fn, params) = idx match {
+          case Some(i) => ("forC", s"__cm$id, $item, $i")
+          case None => ("forEachC", s"__cm$id, $item")
+        }
         val body = render(genElementCore(e), "      ")
         List(Code(
-          s"__CM.forC${userExpr(listExpr, a.offset)} { (__cm$id, $item, $idxName) =>\n" +
+          s"__CM.$fn${userExpr(listExpr, a.offset)} { ($params) =>\n" +
             s"      given __CM = __cm$id\n" +
             s"      $body\n" +
             "    }"

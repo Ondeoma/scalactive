@@ -153,7 +153,7 @@ object SingleFileComponent extends StatelessComponent {
        |  <tr><th>構文</th><th>説明</th></tr>
        |  <tr><td><code>{{ expr }}</code></td><td>テキスト展開. Reactiveの場合は値の変化に追従します(HTMLエスケープされます).</td></tr>
        |  <tr><td><code>v-if="expr"</code><br><code>v-else-if="expr"</code><br><code>v-else</code></td><td>条件付きレンダリング(ifC). exprはReactive[Boolean]またはBoolean. 各条件は1度だけ評価されます.</td></tr>
-       |  <tr><td><code>v-for="item in expr"</code><br><code>v-for="(item, i) in expr"</code></td><td>リストレンダリング(forC). RVListの場合itemはRV、RMListの場合はReactiveModelになります.</td></tr>
+       |  <tr><td><code>v-for="item in expr"</code><br><code>v-for="(item, i) in expr"</code></td><td>リストレンダリング. 添字の変数を書かなければforEachC(行の削除や並べ替えで行を作り直さないので速い)、書けばforC. RVListの場合itemはRV、RMListの場合はReactiveModelになります.</td></tr>
        |  <tr><td><code>&lt;template v-if/v-for&gt;</code></td><td>要素自体は出力せず、中身の複数要素をまとめて条件分岐・繰り返しします.</td></tr>
        |  <tr><td><code>v-show="expr"</code></td><td>表示切替(showIf).</td></tr>
        |  <tr><td><code>v-model="rv"</code></td><td>input/textarea/selectとRVの双方向バインディング. <code>.lazy</code> / <code>.trim</code> 修飾子が使えます(後述).</td></tr>

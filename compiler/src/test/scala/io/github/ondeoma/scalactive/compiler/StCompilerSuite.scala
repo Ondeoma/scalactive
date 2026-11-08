@@ -69,7 +69,8 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("__CM.ifC(__if1) { implicit __cm2 =>"))
     assert(c.contains("__CM.ifC(__st.otherwise(__if1)) { implicit __cm3 =>"))
     assert(c.contains("__CM.forC(/* Foo.st:4 */ xs) { (__cm4, x, i) =>"))
-    assert(c.contains("__CM.forC(/* Foo.st:5 */ ys) { (__cm5, y, __idx5) =>"))
+    // 添字の変数がなければforEachC
+    assert(c.contains("__CM.forEachC(/* Foo.st:5 */ ys) { (__cm5, y) =>"))
     assert(c.contains("given __CM = __cm4"))
     assert(c.contains("__CM.showIf(__st.cond(/* Foo.st:6 */ v))"))
     assert(c.contains("__st.attr(\"title\", (/* Foo.st:6 */ t))"))
