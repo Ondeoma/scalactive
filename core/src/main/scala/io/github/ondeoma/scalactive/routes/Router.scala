@@ -63,12 +63,19 @@ object Router {
   }
 
   /**
-   * pushStateは非同期処理なので完了後にhref値を書き換えるための措置
+   * pushStateの後にhref値を書き換えます.
+   * 通常はpushStateの直後にlocation.hrefが変わっているので、すぐに反映します(以前は最初の確認まで50ms待っていました).
+   * 変わっていない場合に備えて、しばらく定期的に確認します.
    */
   def startCheckHref(old: String): Unit = {
 
     val maxCount = 10
     val interval = 50.milliseconds
+
+    if (old != location.href) {
+      href := location.href
+      return
+    }
 
     def check(count: Int = 1): Unit = {
       window.setTimeout(() => {

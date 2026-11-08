@@ -183,6 +183,27 @@ object ReactiveComponent extends StatelessComponent {
          |watchInfo.abort()
          |""".stripMargin
 
+    val codeTiming = // language=scala
+      s"""import io.github.ondeoma.scalactive.ScalactiveConfig
+         |import scala.concurrent.duration.*
+         |
+         |// 既定(0)では、イベントハンドラーなどの処理が終わった直後に描き直します.
+         |// 最後の変更から一定時間待ってから描き直したい場合は、アプリの起動時に指定します.
+         |ScalactiveConfig.reloadTimerLazyDuration = 200.millis
+         |""".stripMargin
+
+    val codeAfterReload = // language=scala
+      s"""import scala.scalajs.js
+         |
+         |rv := false // ifCなどの描き直しが予約される
+         |// ここではまだ描き直されていない
+         |
+         |// 現在の処理の後(マイクロタスク)に実行すれば、描き直し後のDOMを参照できます
+         |js.Dynamic.global.queueMicrotask(() => {
+         |  // 描き直し後のDOMを参照する処理
+         |})
+         |""".stripMargin
+
     // language=html
     s"""<h1>リアクティブ</h1>
        |
@@ -201,6 +222,7 @@ object ReactiveComponent extends StatelessComponent {
        |  <li><a ${evClick(setHash("RMList"))}>RMList</a></li>
        |  <li><a ${evClick(setHash("CRV"))}>CRV</a></li> 
        |  <li><a ${evClick(setHash("Watch"))}>リアクティブ値の監視</a></li>
+       |  <li><a ${evClick(setHash("Timing"))}>画面に反映されるタイミング</a></li>
        |</ul>
        | 
        |<h2 id="RV">RV[A] extends Reactive[A]</h2>
@@ -273,6 +295,38 @@ object ReactiveComponent extends StatelessComponent {
        |
        |<pre><code class="language-scala">${esc(codeWatch)}</code></pre>
        |
+       |<h2 id="Timing">画面に反映されるタイミング</h2>
+       |
+       |<p>
+       |  テキスト・属性・classなどのバインディングは、リアクティブな値を変更するとその場で書き換わります.<br>
+       |  一方、ifC・forCなど要素を作り直すコンポーネントは、描き直しを予約し、
+       |  現在の処理(イベントハンドラーなど)が終わった直後にまとめて描き直します.<br>
+       |  そのため、1つの処理の中で何度値を変更しても、描き直しは1回で済みます.
+       |  親と子の両方が描き直しを予約した場合は、親だけが描き直されます.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeAfterReload)}</code></pre>
+       |
+       |<p>
+       |  描き直しを待つ時間は <code>ScalactiveConfig.reloadTimerLazyDuration</code> で変更できます.
+       |  0より大きい値を指定すると、最後の変更からその時間だけ待ってから描き直します.<br>
+       |  例えば、文字を入力するたびに大きなリストを絞り込んで描き直すと重くなる場合に、入力が落ち着くまで描き直しを遅らせることができます.<br>
+       |  ※v0.1.xまでは既定値が100msで、変更が画面に反映されるまで常に100ms以上かかっていました.
+       |</p>
+       |
+       |<pre><code class="language-scala">${esc(codeTiming)}</code></pre>
+       |
+       |<h3>注意: イベントの伝播中の描き直し</h3>
+       |
+       |<p>
+       |  Vue.jsと同様に、描き直しはマイクロタスクで行われます.
+       |  ブラウザはイベントリスナーを1つ呼び出すたびにマイクロタスクを実行するため、
+       |  クリックなどのイベントが親要素へ伝播する途中で描き直しが行われることがあります.<br>
+       |  例えば「クリックされた要素がメニューの内側か」を <code>contains(event.target)</code> で判定する処理を
+       |  documentに登録していると、クリックされた要素がすでに描き直しで取り除かれていて、外側のクリックと判定されることがあります.<br>
+       |  このような判定は、描き直しの影響を受けない要素(作り直されない親要素など)で行うか、
+       |  <code>event.composedPath()</code> で伝播経路を参照してください.
+       |</p>
        |
        |""".stripMargin
   }

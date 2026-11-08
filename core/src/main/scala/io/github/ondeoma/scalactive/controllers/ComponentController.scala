@@ -1,11 +1,7 @@
 package io.github.ondeoma.scalactive.controllers
 
 import io.github.ondeoma.scalactive.ScalactiveConfig
-import org.scalajs.dom.{document, window}
-
-import java.time.LocalDateTime
-import scala.concurrent.duration.*
-import scala.scalajs.js
+import org.scalajs.dom.window
 
 trait ComponentController[CC <: ComponentController[?]] {
 
@@ -15,17 +11,13 @@ trait ComponentController[CC <: ComponentController[?]] {
 
   private var scrollX: Double = 0
   private var scrollY: Double = 0
-  protected var reloadTimer = 0
 
+  /**
+   * 描き直し(clear + init)を予約します. 予約はReloadSchedulerがまとめて実行します.
+   * (ScalactiveConfig.reloadTimerLazyDuration が0なら現在の処理の直後、それより大きければその時間の後)
+   */
   def reload(): Unit = {
-    cancelReload()
-    reloadTimer = window.setTimeout(() => {
-      reloadTimer = 0
-      backupScrollPosition()
-      clear()
-      init()
-      restoreScrollPosition()
-    }, ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble)
+    ReloadScheduler.schedule(this)
   }
 
   /**
@@ -34,11 +26,11 @@ trait ComponentController[CC <: ComponentController[?]] {
    * 監視だけが登録されて解除されないままになるため、clearで呼びます.
    */
   protected def cancelReload(): Unit = {
-    if (reloadTimer != 0) {
-      window.clearTimeout(reloadTimer)
-      reloadTimer = 0
-    }
+    ReloadScheduler.cancel(this)
   }
+
+  /** DOM上の深さ. 親子の両方の描き直しが予約されたとき、親を先に描き直すために使います. */
+  private[scalactive] def depth: Int = 0
 
   def backupScrollPosition(): Unit = {
     if (ScalactiveConfig.keepWindowScrollPositionWhenReload) {
@@ -52,6 +44,5 @@ trait ComponentController[CC <: ComponentController[?]] {
       window.scrollTo(scrollX.toInt, scrollY.toInt)
     }
   }
-
 
 }

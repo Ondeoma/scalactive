@@ -42,6 +42,8 @@ lazy val core = project.in(file("core"))
     ),
     // DOMを使うテストのため、jsdom上で実行します(事前にリポジトリ直下で npm install が必要).
     Test / jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
+    // テストがScalactiveConfig(描き直しの待ち時間など)を書き換えるため、スイートを並行に実行しない
+    Test / parallelExecution := false,
     scalacOptions ++= Seq(
       "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
     )

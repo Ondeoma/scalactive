@@ -5,6 +5,8 @@ import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.toRM
 import io.github.ondeoma.scalactive.utils.TypeAlias.WatchInfos
 import org.scalajs.dom.window
 
+import scala.scalajs.js
+
 trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org] with Product {
   self: Self =>
 
@@ -23,15 +25,33 @@ trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org]
 
   protected var reloadTimer = 0
 
+  /** フィールドの変更をまとめて通知します(ScalactiveConfig.reloadTimerLazyDurationが0なら現在の処理の直後) */
+  private var notifyQueued = false
+
+  private def notifyWatchers(): Unit = {
+    notifyQueued = false
+    watchers.foreach(_._2(old, v))
+    old = v
+  }
+
   private def callWatchers(): Unit = {
     if (reloadTimer != 0) {
       window.clearTimeout(reloadTimer)
       reloadTimer = 0
     }
-    reloadTimer = window.setTimeout(() => {
-      watchers.foreach(_._2(old, v))
-      old = v
-    }, ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble)
+    val delay = ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble
+    if (delay <= 0) {
+      if (!notifyQueued) {
+        notifyQueued = true
+        js.Dynamic.global.queueMicrotask(() => if (notifyQueued) notifyWatchers())
+      }
+    } else {
+      notifyQueued = false
+      reloadTimer = window.setTimeout(() => {
+        reloadTimer = 0
+        notifyWatchers()
+      }, delay)
+    }
   }
 
   def reload(org: Org): Unit

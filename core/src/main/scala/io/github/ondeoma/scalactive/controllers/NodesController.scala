@@ -48,6 +48,16 @@ trait NodesController[CC <: ComponentController[CC]] extends ComponentController
     tmpReactives = Nil
   }
 
+  override private[scalactive] def depth: Int = {
+    var d = 0
+    var n: Node = nodes.headOption.orElse(parent).orNull
+    while (n != null) {
+      d += 1
+      n = n.parentNode
+    }
+    d
+  }
+
   private def saveParent(): Unit = {
     // 2度続けてclearされたときに、覚えている親を失わないようにする
     if (nodes.nonEmpty) {

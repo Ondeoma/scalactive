@@ -30,7 +30,7 @@ node run.mjs --compare results/before.json
 | `--impl scala,st` | 表の実装. `scala` はScala API(`RowsScala.scala`)、`st` は.st(`RowsSt.st`). 既定は両方 |
 | `--scenarios a,b` | 実行するシナリオ |
 | `--iterations N` / `--warmup N` | 計測回数(既定: シナリオごと、多くは10) / 計測前の空回し(既定: 3) |
-| `--delay ms` | `ScalactiveConfig.reloadTimerLazyDuration`. 既定は0(ライブラリの既定値は100ms) |
+| `--delay ms` | `ScalactiveConfig.reloadTimerLazyDuration`. 指定しなければライブラリの既定値(0: 現在の処理の直後に描き直す)のまま |
 | `--cpu-throttle N` | CPUをN倍遅くする(遅い端末の想定) |
 | `--fast` | fullLinkJSではなくfastLinkJSの出力を使う |
 

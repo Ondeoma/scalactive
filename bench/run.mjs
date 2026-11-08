@@ -16,7 +16,7 @@ const { values: args } = parseArgs({
     scenarios: { type: "string" },
     iterations: { type: "string" },
     warmup: { type: "string", default: "3" },
-    delay: { type: "string", default: "0" },
+    delay: { type: "string" },
     "cpu-throttle": { type: "string", default: "1" },
     out: { type: "string" },
     compare: { type: "string" },
@@ -33,7 +33,7 @@ if (args.help) {
   --scenarios a,b        実行するシナリオ(既定: すべて)
   --iterations N         計測回数(既定: シナリオごとの値)
   --warmup N             計測前の空回し(既定: 3)
-  --delay ms             ScalactiveConfig.reloadTimerLazyDuration(既定: 0)
+  --delay ms             ScalactiveConfig.reloadTimerLazyDuration(既定: ライブラリの既定値)
   --cpu-throttle N       CPUをN倍遅くする(既定: 1)
   --out file.json        結果の保存先(既定: results/<日時>-<コミット>.json)
   --compare base.json    前の結果と中央値を比較する
@@ -118,16 +118,18 @@ async function main() {
   const version = browser.version();
   const impls = args.impl.split(",").map((s) => s.trim()).filter(Boolean);
   const results = [];
+  let effectiveDelay = null;
   const warmup = Number(args.warmup);
   const throttle = Number(args["cpu-throttle"]);
 
   try {
     for (const impl of impls) {
-      const url = `${base}?impl=${impl}&delay=${args.delay}`;
+      const url = `${base}?impl=${impl}${args.delay !== undefined ? `&delay=${args.delay}` : ""}`;
       const listPage = await browser.newPage();
       await listPage.goto(url);
       await listPage.waitForFunction(() => window.scalactiveBench);
       let scenarios = await listPage.evaluate(() => window.scalactiveBench.scenarios());
+      effectiveDelay = await listPage.evaluate(() => window.scalactiveBench.delay);
       await listPage.close();
       if (args.scenarios) {
         const wanted = args.scenarios.split(",").map((s) => s.trim());
@@ -178,7 +180,7 @@ async function main() {
     date: new Date().toISOString(),
     ...gitInfo(),
     chrome: version,
-    delay: Number(args.delay),
+    delay: effectiveDelay,
     cpuThrottle: throttle,
     warmup,
     build: args.fast ? "fastLinkJS" : "fullLinkJS",

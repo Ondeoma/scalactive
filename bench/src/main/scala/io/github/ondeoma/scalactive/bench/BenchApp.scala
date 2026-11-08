@@ -15,7 +15,7 @@ import scala.scalajs.js.JSConverters.*
  *
  * URLパラメータ:
  *  - impl=scala|st  表をScala API(RowsScala)と.st(RowsSt)のどちらで描くか(既定: scala)
- *  - delay=ミリ秒    ScalactiveConfig.reloadTimerLazyDuration(既定: 0. ライブラリの既定値は100ms)
+ *  - delay=ミリ秒    ScalactiveConfig.reloadTimerLazyDuration(指定しなければライブラリの既定値のまま)
  */
 object BenchApp {
 
@@ -28,7 +28,9 @@ object BenchApp {
   def main(): Unit = {
     val params = new URLSearchParams(window.location.search)
     val impl = Option(params.get("impl")).getOrElse("scala")
-    ScalactiveConfig.reloadTimerLazyDuration = Option(params.get("delay")).map(_.toDouble.millis).getOrElse(0.millis)
+    Option(params.get("delay")).filter(_.nonEmpty).foreach { d =>
+      ScalactiveConfig.reloadTimerLazyDuration = d.toDouble.millis
+    }
     // スクロール位置の保存・復元は計測の邪魔になるので切る
     ScalactiveConfig.keepWindowScrollPositionWhenReload = false
 
