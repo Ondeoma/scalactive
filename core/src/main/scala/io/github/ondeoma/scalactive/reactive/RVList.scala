@@ -9,8 +9,7 @@ import scala.annotation.targetName
 
 // Scala 3.4.0~
 // import scala.annotation.publicInBinary
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 // class RVList[A] @publicInBinary(private var value: List[RV[A]]) extends Reactive[List[A]] {
 class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
@@ -18,12 +17,15 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
   val rowLevelWatchingIdPrefix = "RLW-"
 
   private val innerV: ListBuffer[RV[A]] = ListBuffer.from(value)
-  private val watchInfos: mutable.Map[Int, WatchInfo] = mutable.Map()
 
-  // 子要素ウォッチャーとして登録
-  innerV.zipWithIndex.foreach { (rv, i) =>
-    watchInfos.addOne(i -> rv.addWatcher(_ => updated(true)))
-  }
+  /**
+   * 各要素(RV)への監視. innerVと同じ順序・同じ長さに保ちます.
+   * (以前は添字をキーにしたMapで、削除や並べ替えの後に別の要素の監視を解除したり、解除し損ねたりしていました)
+   */
+  private val watchInfos: ArrayBuffer[WatchInfo] = ArrayBuffer.from(innerV.view.map(watchRow))
+
+  /** 子要素に変化があってもウォッチャーに通知する */
+  private def watchRow(rv: RV[A]): WatchInfo = rv.addWatcher(_ => updated(true))
 
   def addWatcherRowLevel(w: Watcher): WatchInfo = {
     val id = rowLevelWatchingIdPrefix + randomUUID()
@@ -53,29 +55,23 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
     val newL = newV.length
 
     // 更新分
-    val forUpdate = newV.take(nowL)
-    forUpdate.indices.foreach { i =>
-      innerV(i) := forUpdate(i).v
+    // (Listの添字アクセスは先頭からたどるので、順に読む)
+    newV.iterator.take(nowL).zipWithIndex.foreach { (rv, i) =>
+      innerV(i) := rv.v
     }
 
     // 追加分
     val forAdd = newV.drop(nowL)
     forAdd.foreach { a =>
       innerV.addOne(a)
-      // 子要素に変化があってもウォッチャーに通知
-      watchInfos.addOne((innerV.length - 1) -> a.addWatcher(_ => updated(true)))
+      watchInfos.addOne(watchRow(a))
     }
 
-    // 削除分
-    val forDel = innerV.drop(nowL - newL)
-    forDel.zipWithIndex.foreach { (rv, i) =>
-      val idx = i + newL
-      // ウォッチ解除
-      watchInfos.get(idx).foreach(_.abort())
-    }
-    watchInfos.filterInPlace((idx, _) => idx < newL)
-    if (nowL - newL >= 1) {
-      innerV.remove(newV.length, nowL - newL)
+    // 削除分(newL番目以降)の監視を解除
+    if (nowL > newL) {
+      (newL until nowL).foreach(i => watchInfos(i).abort())
+      watchInfos.remove(newL, nowL - newL)
+      innerV.remove(newL, nowL - newL)
     }
 
     updated(false)
@@ -121,17 +117,19 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
   
   def up(idx: Int): Unit = {
     innerV.up(idx)
+    watchInfos.up(idx)
     updated(false)
   }
 
   def down(idx: Int): Unit = {
     innerV.down(idx)
+    watchInfos.down(idx)
     updated(false)
   }
 
   def add(rv: RV[A]): Unit = {
     innerV.addOne(rv)
-    watchInfos.addOne((innerV.length - 1) -> rv.addWatcher(_ => updated(true)))
+    watchInfos.addOne(watchRow(rv))
     updated(false)
   }
 
@@ -142,14 +140,9 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
   }
   
   def rm(idx: Int): Unit = {
-    innerV.lift(idx).foreach { rv =>
-      // ウォッチ解除
-      watchInfos.get(idx).foreach(_.abort())
+    if (idx >= 0 && idx < innerV.length) {
+      watchInfos(idx).abort()
       watchInfos.remove(idx)
-      watchInfos.filter((cidx, _) => cidx > idx).foreach { (cidx, id) =>
-        watchInfos.remove(cidx)
-        watchInfos.addOne(cidx - 1 -> id)
-      }
       innerV.remove(idx)
     }
     updated(false)
@@ -158,7 +151,7 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
   override def abort(): Unit = {
     watchers.clear()
     innerV.clear()
-    watchInfos.foreach(_._2.abort())
+    watchInfos.foreach(_.abort())
     watchInfos.clear()
   }
 
