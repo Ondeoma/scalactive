@@ -419,6 +419,7 @@ object SingleFileComponent extends StatelessComponent {
        |<ul>
        |  <li>補完(テンプレートのHTMLの部分では、同じパッケージのコンポーネント名、子コンポーネントのprops・イベント・v-model、ディレクティブ、スロット名、HTMLの標準のタグ・属性・イベント・列挙された属性値(inputのtypeなど)も補完します)</li>
        |  <li>型エラーなどの表示(.st上の位置で表示されます)</li>
+       |  <li>子コンポーネントのタグの検査(未知のprop・スロット、必須のpropの不足を警告)</li>
        |  <li>ホバーでの型の表示(子コンポーネントのタグではPropsの一覧、属性ではpropの型、HTMLのタグ・属性・イベントでは説明)、引数のヒント</li>
        |  <li>定義へのジャンプ(同じ.st内と、プロジェクト内の .scala / .st. 子コンポーネントのタグ名・属性名からは、その.stのPropsへ)</li>
        |  <li>

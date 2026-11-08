@@ -176,6 +176,27 @@ final class StLanguageService(log: String => Unit) {
   // ---- 言語機能 ----
 
   def diagnostics(uri: String): List[Diagnostic] = {
+    val base = compilerDiagnostics(uri)
+    // 子コンポーネントのpropsの検査. 型検査が同じ位置で同じpropについて報告していれば、そちらを残す
+    base ++ propsDiagnostics(uri).filterNot { case (d, names) =>
+      base.exists(b => b.getRange.getStart == d.getRange.getStart && names.exists(n => b.getMessage.contains(n)))
+    }.map(_._1)
+  }
+
+  private def propsDiagnostics(uri: String): List[(Diagnostic, List[String])] = {
+    try {
+      val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
+      val text = textOf(uri, path)
+      val index = new LineIndex(text)
+      PropsCheck.check(text, path).map { p =>
+        (new Diagnostic(index.range(p.start, p.end), p.message, DiagnosticSeverity.Warning, Source), p.names)
+      }
+    } catch {
+      case NonFatal(_) => Nil
+    }
+  }
+
+  private def compilerDiagnostics(uri: String): List[Diagnostic] = {
     def at0(msg: String, severity: DiagnosticSeverity) = {
       val d = new Diagnostic(new Range(new Position(0, 0), new Position(0, 0)), msg, severity, Source)
       List(d)

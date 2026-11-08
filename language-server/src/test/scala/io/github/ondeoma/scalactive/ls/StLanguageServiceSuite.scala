@@ -313,6 +313,35 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("propsの検査: 未知のprop・スロット、必須のpropの不足を警告する") {
+    val text = counter.replace("<button @click", "<Card titel=\"t\" :count=\"s.count\" class=\"x\" v-if=\"true\"><template #heder>h</template></Card><button @click")
+    withText(counterUri, text) {
+      val ds = service.diagnostics(counterUri).filter(_.getSeverity == org.eclipse.lsp4j.DiagnosticSeverity.Warning)
+      val msgs = ds.map(_.getMessage)
+      assert(msgs.exists(_.contains("has no prop 'titel'")), msgs)
+      assert(msgs.exists(_.contains("has no slot 'heder'")), msgs)
+      assert(msgs.exists(_.contains("missing required prop: title")), msgs)
+      assert(!msgs.exists(m => m.contains("'class'") || m.contains("'count'") || m.contains("v-if")), msgs)
+      val titel = ds.find(_.getMessage.contains("titel")).get
+      assertEquals(titel.getRange.getStart, pos(text, "titel"))
+    }
+    val ok = counter.replace("<button @click", "<Card title=\"t\" @close=\"()\" v-model:count=\"s.count\"><template #footer>f</template>body</Card><button @click")
+    withText(counterUri, ok) {
+      val ws = service.diagnostics(counterUri).filter(_.getSeverity == org.eclipse.lsp4j.DiagnosticSeverity.Warning)
+      assertEquals(ws.map(_.getMessage), Nil)
+    }
+  }
+
+  test("propsの検査: ドキュメントサイトの.stには警告がない") {
+    val root = Seq("doc/src/main/scalactive", "../doc/src/main/scalactive").map(java.nio.file.Paths.get(_)).find(Files.exists(_)).get
+    val files = Files.walk(root).iterator().asScala.filter(_.toString.endsWith(".st")).toList
+    assert(files.nonEmpty)
+    files.foreach { f =>
+      val problems = PropsCheck.check(new String(Files.readAllBytes(f), StandardCharsets.UTF_8), f.toAbsolutePath)
+      assertEquals(problems, Nil, f.toString)
+    }
+  }
+
   test("整形: 変わる場合は全体を置き換える編集を返し、整形済みなら返さない") {
     val messy = counter.replace("    <p v-if", "<p v-if")
     withText(counterUri, messy) {
