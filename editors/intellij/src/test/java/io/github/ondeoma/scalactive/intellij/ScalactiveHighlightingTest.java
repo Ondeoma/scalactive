@@ -45,6 +45,14 @@ public class ScalactiveHighlightingTest extends BasePlatformTestCase {
         assertEquals(2, new ScalactiveBundleProvider().getBundles().size());
     }
 
+    public void testFileIcon() {
+        // プロジェクトビュー・タブと同じ経路(IconUtil)で.stのアイコンが選ばれる
+        com.intellij.openapi.vfs.VirtualFile st = myFixture.configureByText("Icon.st", "<template></template>").getVirtualFile();
+        javax.swing.Icon icon = com.intellij.util.IconUtil.getIcon(st, 0, getProject());
+        assertTrue("icon: " + icon, String.valueOf(icon).contains("st.svg") || icon == ScalactiveFileIconProvider.ICON);
+        assertNull(new ScalactiveFileIconProvider().getIcon(myFixture.configureByText("a.txt", "").getVirtualFile(), 0, getProject()));
+    }
+
     public void testStExtensionIsAssociated() {
         TextMateLanguageDescriptor d = TextMateService.getInstance().getLanguageDescriptorByExtension("st");
         assertNotNull("no TextMate grammar for .st", d);

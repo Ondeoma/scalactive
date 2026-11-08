@@ -75,6 +75,8 @@ cd editors/intellij
   [scala/vscode-scala-syntax](https://github.com/scala/vscode-scala-syntax)(MIT)の文法を同梱しています.
   `.scala` ファイルには関連付けないので、Scalaプラグインとは競合しません.
 - CSSの文法はIntelliJ同梱のTextMateバンドルを使います.
+- `.st` のファイルのアイコンは `intellij/src/main/resources/icons/st.svg`(ダークテーマ用は `st_dark.svg`)です.
+  `.st` はTextMateのファイルタイプとして開かれるため、`FileIconProvider` でアイコンを付けています.
 - 言語サーバーはIntelliJのLSP API(2025.2以降のプラットフォームに含まれます)で起動し、IDEのJava(JBR)で動かします.
   jarはプラグインの `server/` に同梱されます.
 - テストのサンドボックスの状態がおかしくなった場合は `.intellijPlatform/sandbox` を削除してください.

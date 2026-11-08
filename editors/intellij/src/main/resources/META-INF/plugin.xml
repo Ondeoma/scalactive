@@ -9,6 +9,7 @@
       <li>In <code>&lt;template&gt;</code>, <code>{{ expr }}</code>, <code>v-if</code> / <code>v-else-if</code> / <code>v-show</code> / <code>v-model</code> / <code>v-for</code>,
           <code>:attr</code> and <code>@event</code> values are highlighted as Scala.</li>
       <li>Component tags (starting with an uppercase letter) are highlighted separately.</li>
+      <li><code>.st</code> files get their own file icon.</li>
     </ul>
     <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
        the Scalactive language server (requires an IDE with LSP support and an sbt project that enables <code>ScalactivePlugin</code>;
@@ -19,6 +20,8 @@
   <depends>org.jetbrains.plugins.textmate</depends>
 
   <extensions defaultExtensionNs="com.intellij">
+    <!-- .stファイルのアイコン -->
+    <fileIconProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveFileIconProvider"/>
     <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>
     <!-- 補完・型エラーなど(言語サーバー). LSP APIはIntelliJ IDEA 2025.2以降のプラットフォームに含まれます. -->
     <platform.lsp.serverSupportProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLspServerSupportProvider"/>
