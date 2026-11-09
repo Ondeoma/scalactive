@@ -154,6 +154,17 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         // s""" で始まり、| は次の行から
         String t3 = enter("<script lang=\"scala\">\nval code =\n  s\"\"\"// a<caret>\n     |val b = 1" + tail);
         assertTrue(t3, t3.contains("  s\"\"\"// a\n     |\n     |val b = 1"));
+        // 文字列の中の </script>・<template> の後ろでも補う(コードサンプルの文字列)
+        String sample = "<script lang=\"scala\">\nval code =\n  \"\"\"|<script lang=\"scala\">\n     |val a = 1\n     |</script>\n     |\n"
+            + "     |<template>\n     |  <p>{{ a }}</p><caret>\n     |</template>\n     |<style scoped>\n     |p { color: red; }\n     |</style>" + tail;
+        String t6 = enter(sample);
+        assertTrue(t6, t6.contains("     |  <p>{{ a }}</p>\n     |  \n     |</template>"));
+        String t7 = enter(sample.replace("<caret>", "").replace("p { color: red; }", "p { color: red; }<caret>"));
+        assertTrue(t7, t7.contains("     |p { color: red; }\n     |\n     |</style>"));
+        // 本物の<template>は、文字列の中の<template>に惑わされない({{ }} の中ではScalaとして括弧を補う)
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\nval code = \"\"\"<template>{{\"\"\"\n</script>\n<template><p>{{ f<caret> }}</p></template>\n");
+        myFixture.type("(");
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains("{{ f() }}"));
         // stripMarginでない文字列・文字列の外では補わない
         String t4 = enter("<script lang=\"scala\">\nval code = \"\"\"a<caret>\nb\"\"\"\n</script>\n<template><p></p></template>\n");
         assertTrue(t4, t4.contains("\"\"\"a\n\nb\"\"\"") || t4.contains("\"\"\"a\nb\"\"\"".replace("a\nb", "a\n\nb")));

@@ -62,8 +62,9 @@ public final class ScalactiveRenameListenerProvider implements RefactoringElemen
             Document doc = pdm.getDocument(f);
             if (doc == null) continue;
             String text = doc.getText();
-            int start = text.indexOf("<template");
-            int end = text.lastIndexOf("</template>");
+            // scriptの中の文字列(コードサンプルなど)にあるタグは書き換えない
+            int start = ScalaScan.indexOfOutsideScript(text, "<template");
+            int end = ScalaScan.lastIndexOfOutsideScript(text, "</template>");
             if (start < 0 || end < start) continue;
             Matcher m = tag.matcher(text).region(start, end);
             List<int[]> ranges = new ArrayList<>();

@@ -53,7 +53,7 @@ public final class ScalactiveBracketHandler {
      */
     static Where templateContext(CharSequence text, int offset) {
         String t = text.toString();
-        int open = t.indexOf("<template");
+        int open = ScalaScan.indexOfOutsideScript(t, "<template"); // scriptの中の文字列にある <template は除く
         if (open < 0 || open >= offset) return Where.NONE;
         int i = t.indexOf('>', open);
         if (i < 0 || i >= offset) return Where.NONE;

@@ -40,6 +40,57 @@ final class ScalaScan {
         return result;
     }
 
+    /** offsetが&lt;script&gt;の中身の中か(閉じタグ &lt;/script の直前も含む) */
+    static boolean inScript(CharSequence text, int offset) {
+        for (TextRange r : scriptContents(text)) {
+            if (offset >= r.getStartOffset() && offset <= r.getEndOffset()) return true;
+        }
+        return false;
+    }
+
+    /** offsetが&lt;style&gt;の中身の中か(&lt;script&gt;の中の文字列にある &lt;style は数えない) */
+    static boolean inStyle(CharSequence text, int offset) {
+        List<TextRange> scripts = scriptContents(text);
+        int from = 0;
+        while (true) {
+            int open = indexOfOutside(text, "<style", from, scripts);
+            if (open < 0 || open >= offset) return false;
+            int tagEnd = indexOf(text, ">", open, text.length());
+            if (tagEnd < 0) return false;
+            int close = indexOf(text, "</style", tagEnd + 1, text.length());
+            int end = close < 0 ? text.length() : close;
+            if (offset > tagEnd && offset <= end) return true;
+            if (close < 0) return false;
+            from = close + 1;
+        }
+    }
+
+    /** &lt;script&gt;の中身の外にある、最初のneedleの位置(無ければ-1) */
+    static int indexOfOutsideScript(CharSequence text, String needle) {
+        return indexOfOutside(text, needle, 0, scriptContents(text));
+    }
+
+    /** &lt;script&gt;の中身の外にある、最後のneedleの位置(無ければ-1) */
+    static int lastIndexOfOutsideScript(CharSequence text, String needle) {
+        List<TextRange> scripts = scriptContents(text);
+        for (int k = text.length() - needle.length(); k >= 0; k--) {
+            if (startsWith(text, k, text.length(), needle) && !inAny(scripts, k)) return k;
+        }
+        return -1;
+    }
+
+    private static int indexOfOutside(CharSequence text, String needle, int from, List<TextRange> ranges) {
+        for (int k = from; k + needle.length() <= text.length(); k++) {
+            if (startsWith(text, k, text.length(), needle) && !inAny(ranges, k)) return k;
+        }
+        return -1;
+    }
+
+    private static boolean inAny(List<TextRange> ranges, int k) {
+        for (TextRange r : ranges) if (k >= r.getStartOffset() && k < r.getEndOffset()) return true;
+        return false;
+    }
+
     /** ファイル全体の、&lt;script&gt;の中の三重引用符の文字列 */
     static List<TripleString> tripleStrings(CharSequence text) {
         List<TripleString> result = new ArrayList<>();

@@ -50,12 +50,9 @@ public final class ScalactiveLineIndentProvider implements LineIndentProvider {
 
     /** offsetが &lt;script&gt; か &lt;style&gt; の中身にあるか */
     static boolean inRawBlock(CharSequence text, int offset) {
-        String before = text.subSequence(0, Math.min(offset, text.length())).toString();
-        for (String tag : new String[]{"script", "style"}) {
-            int open = before.lastIndexOf("<" + tag);
-            if (open >= 0 && before.lastIndexOf("</" + tag) < open && before.indexOf('>', open) >= 0) return true;
-        }
-        return false;
+        // scriptの中のScalaの文字列にある </script>・<style> などでは判定を変えない(コードサンプルの文字列のため)
+        int at = Math.min(offset, text.length());
+        return ScalaScan.inScript(text, at) || ScalaScan.inStyle(text, at);
     }
 
     private static int indentFor(Document doc, int prev, String rest) {
