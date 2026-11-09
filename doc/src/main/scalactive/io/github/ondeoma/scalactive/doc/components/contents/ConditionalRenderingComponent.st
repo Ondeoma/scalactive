@@ -1,34 +1,58 @@
 <script lang="scala">
 import Router.*
+import io.github.ondeoma.scalactive.doc.components.contents.cond.{IfElse, ShowToggle, TemplateIf}
 
-val codeIfC = // language=scala
-  s"""// rvBがtrueの時に表示.
-     |val rvB = RV(true)
-     |val ifComponent = ifC(rvB) { implicit cm =>
-     |  s\"\"\"<p>Hello ifC.</p>\"\"\".stripMargin
-     |}
-     |s\"\"\"<div>$${ifComponent}</div>\"\"\"
+val codeIf = // language=html
+  """<script lang="scala">
+     |case class State(score: RV[Int] = RV(70))
      |
-     |// 以下のように直接書いても問題ありません.
-     |s\"\"\"<div>$${ifC(rvB){ implicit cm => s\"\"\"<p>Hello ifC.</p>\"\"\" }}</div>\"\"\"
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <p><input type="number" v-model="s.score" style="width: 5em">点</p>
+     |  <p v-if="s.score.mapC(_ >= 80)">合格です!</p>
+     |  <p v-else-if="s.score.mapC(_ >= 60)">あと少しです.</p>
+     |  <p v-else>不合格です.</p>
+     |</template>
      |""".stripMargin
 
-val codeShowIf = // language=scala
-  s"""// rvBがtrueの時に表示.
-     |val rvB = RV(true)
-     |s\"\"\"<p $${showIf(rvB)}>Hello showIf.</p>\"\"\"
+val codeTemplateIf = // language=html
+  """<script lang="scala">
+     |case class State(loggedIn: RV[Boolean] = RV(false))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <button @click="s.loggedIn := !s.loggedIn.v">ログイン状態を切り替え</button>
+     |  <template v-if="s.loggedIn">
+     |    <p><b>ようこそ!</b></p>
+     |    <p>この2つの要素がまとめて表示されます.</p>
+     |  </template>
+     |  <p v-else>ログインしていません.</p>
+     |</template>
      |""".stripMargin
 
-val codeShowIf2 = // language=scala
-  s"""s\"\"\"<p $${showIf(rvB, "flex")}>This is flex.</p>\"\"\"
-     |s\"\"\"<p $${showFlexIf(rvB)}>This is flex.</p>\"\"\"
-     |s\"\"\"<p $${showGridIf(rvB)}>This is grid.</p>\"\"\"
-     |""".stripMargin
-
-val codeShowIfBriefly = // language=scala
-  s"""import scala.concurrent.duration.*
-     |// 3秒後に非表示
-     |s\"\"\"<p $${showIfBriefly(rvB, 3.seconds)}>showBriefly</p>\"\"\"
+val codeShow = // language=html
+  """<script lang="scala">
+     |case class State(open: RV[Boolean] = RV(true))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <label><input type="checkbox" v-model="s.open"> 表示する</label>
+     |  <p v-show="s.open">v-showで切り替えています(非表示の間もDOMは残ります).</p>
+     |  <!-- display: flex で表示したい場合 -->
+     |  <div class="row" :style='"display" -> s.open.mapC(o => if (o) "flex" else "none")'>
+     |    <span>flexの</span><span>要素です.</span>
+     |  </div>
+     |</template>
+     |
+     |<style scoped>
+     |.row { gap: 8px; }
+     |</style>
      |""".stripMargin
 </script>
 
@@ -40,43 +64,74 @@ val codeShowIfBriefly = // language=scala
   </p>
 
   <ul class="toc">
-    <li><a @click='setHash("ifC")'>ifC</a></li>
-    <li><a @click='setHash("showIf")'>showIf</a></li>
+    <li><a @click='setHash("vIf")'>v-if / v-else-if / v-else</a></li>
+    <li><a @click='setHash("templateIf")'>&lt;template v-if&gt;</a></li>
+    <li><a @click='setHash("vShow")'>v-show</a></li>
   </ul>
 
-  <h2 id="ifC">ifC</h2>
+  <h2 id="vIf">v-if / v-else-if / v-else</h2>
 
   <p>
-    vue.jsにおけるv-ifに相当するものになります. <br>
+    vue.jsにおけるv-ifと同じです.<br>
+    条件が真の時だけ要素を描画します.<br>
     非表示状態になっている時はDOMが存在しなくなります.<br>
-    一方、記述が比較的に煩雑なので、<br>
-    後述のshowIfで問題ない場合はそちらを推奨します.<br>
-    (※煩雑なのはScalactive実装者の実力問題なので助言お待ちしております.)
+    条件には <code>Reactive[Boolean]</code> または <code>Boolean</code> が使えます.<br>
+    Reactiveの場合は、値の変化に追従して描き直します.
   </p>
 
-  <pre><code class="language-scala">{{ codeIfC }}</code></pre>
+  <pre><code class="language-html">{{ codeIf }}</code></pre>
 
-  <h2 id="showIf">showIf</h2>
+  <div class="rendered">
+    <IfElse />
+  </div>
+
+  <ul>
+    <li>
+      <code>v-else-if</code> / <code>v-else</code> は、<br>
+      直前の <code>v-if</code> / <code>v-else-if</code> の要素に続けて書きます.
+    </li>
+    <li>
+      各条件は1度だけ評価されます.<br>
+      <code>s.score.mapC(_ &gt;= 80)</code> のような条件は、<br>
+      scoreが変わるたびではなく、真偽が切り替わった時だけ描き直されます.
+    </li>
+  </ul>
+
+  <h2 id="templateIf">&lt;template v-if&gt;</h2>
 
   <p>
-    vue.jsにおけるv-showに相当するものになります. <br>
+    複数の要素をまとめて切り替える場合は、<code>&lt;template&gt;</code> で囲みます.<br>
+    <code>&lt;template&gt;</code> 自体は出力されず、中身だけが描画されます.
+  </p>
+
+  <pre><code class="language-html">{{ codeTemplateIf }}</code></pre>
+
+  <div class="rendered">
+    <TemplateIf />
+  </div>
+
+  <h2 id="vShow">v-show</h2>
+
+  <p>
+    vue.jsにおけるv-showに相当するものになります.<br>
     非表示状態になっている時もDOMは存在します.<br>
-    ※displayスタイルがnoneとなっています.
+    ※displayスタイルがnoneとなっています.<br>
+    要素を作り直さないので、頻繁に切り替える場合に向いています.
   </p>
-
-  <pre><code class="language-scala">{{ codeShowIf }}</code></pre>
 
   <p>
-    表示状態では標準でdisplayスタイルにblockが設定されます.<br>
-    別の値を設定したい場合は、showIfの第2引数に指定できます.<br>
-    ※flexとgridについては専用のshowFlexIf, showGridIf関数でも可能です.
+    表示状態ではdisplayスタイルにblockが設定されます.<br>
+    flexなど別の値にしたい場合は、<br>
+    v-showの代わりに <code>:style</code> でdisplayを指定してください.
   </p>
 
-  <pre><code class="language-scala">{{ codeShowIf2 }}</code></pre>
+  <pre><code class="language-html">{{ codeShow }}</code></pre>
+
+  <div class="rendered">
+    <ShowToggle />
+  </div>
 
   <p>
-    showIfBriefly関数では指定時間後に自動的に非表示化させることができます.
+    従来のScalaでの書き方は<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照してください.
   </p>
-
-  <pre><code class="language-scala">{{ codeShowIfBriefly }}</code></pre>
 </template>

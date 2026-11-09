@@ -1,5 +1,133 @@
 <script lang="scala">
 import Router.*
+import io.github.ondeoma.scalactive.doc.components.contents.reactive.{CrvDemo, RmListDemo, RvCounter, RvListDemo, WatchDemo}
+
+val codeRvSt = // language=html
+  """<script lang="scala">
+     |case class State(name: RV[String] = RV("Taro"),
+     |                 count: RV[Int] = RV(0))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <p><input type="text" v-model="s.name"></p>
+     |  <p>{{ s.name }}さんのカウント: {{ s.count }}</p>
+     |  <button @click="s.count := s.count.v + 1">+1</button>
+     |  <button @click="s.count := 0">0に戻す</button>
+     |</template>
+     |""".stripMargin
+
+val codeRvListSt = // language=html
+  """<script lang="scala">
+     |case class State(nums: RVList[Int] = RVList(List(1, 2)))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <button @click="s.nums.add(s.nums.v.size + 1)">add</button>
+     |  <button @click="s.nums.liftV(0).foreach(n => s.nums.update(0, n * 10))">update(0)</button>
+     |  <button @click="if (s.nums.v.nonEmpty) s.nums.rm(0)">rm(0)</button>
+     |  <button @click="s.nums := List(1, 2)">:=</button>
+     |  <p>合計: {{ s.nums.mapC(_.sum) }}</p>
+     |  <ul>
+     |    <li v-for="n in s.nums">{{ n }}</li>
+     |  </ul>
+     |</template>
+     |""".stripMargin
+
+val codeRmListSt = // language=html
+  """<script lang="scala">
+     |import io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
+     |
+     |case class Human(name: String,
+     |                 age: Int)
+     |
+     |case class HumanRM(name: RV[String],
+     |                   age: RV[Int]) extends ReactiveModel[Human, HumanRM] {
+     |
+     |  val reactives = collectReactives(this)
+     |  val reactiveModels = collectReactiveModels(this)
+     |  def reload(s: O) = genReload(this, s)
+     |  def toOrigin = genToOrigin(this)
+     |
+     |}
+     |
+     |object HumanRM {
+     |  given RMCompatible[Human, HumanRM] = genToReactiveModel[Human, HumanRM](_)
+     |}
+     |
+     |case class State(humans: RMList[Human, HumanRM] = RMList(List(Human("Taro", 10), Human("Hanako", 20))))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <ul>
+     |    <!-- RMListの場合、hはHumanRMになります -->
+     |    <li v-for="h in s.humans">
+     |      <input type="text" v-model="h.name"> {{ h.age }}歳
+     |      <button @click="h.age := h.age.v + 1">+1歳</button>
+     |    </li>
+     |  </ul>
+     |  <button @click='s.humans.add(Human("Bob", 30))'>Bobを追加</button>
+     |  <p>s.humans.v = {{ s.humans }}</p>
+     |</template>
+     |""".stripMargin
+
+val codeCrvSt = // language=html
+  """<script lang="scala">
+     |case class State(price: RV[Int] = RV(100),
+     |                 qty: RV[Int] = RV(2))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <p>
+     |    単価 <input type="number" v-model="s.price" style="width: 5em">円
+     |    × <input type="number" v-model="s.qty" style="width: 4em">個
+     |  </p>
+     |  <p>合計: {{ CRV(s.price, s.qty, (p, q) => p * q) }}円</p>
+     |  <p v-if="s.qty.mapC(_ >= 10)">まとめ買いです!</p>
+     |</template>
+     |""".stripMargin
+
+val codeWatchSt = // language=html
+  """<script lang="scala">
+     |import io.github.ondeoma.scalactive.models.WatchInfo
+     |
+     |// コンポーネントの外のリアクティブな値(全てのインスタンスで共有されます)
+     |val shared = RV(0)
+     |
+     |case class State(count: RV[Int] = RV(0),
+     |                 log: RV[String] = RV("-"),
+     |                 sharedLog: RV[String] = RV("-"),
+     |                 var sharedWatch: Option[WatchInfo] = None)
+     |
+     |def initState() = {
+     |  val s = State()
+     |  // 自分のStateの値の監視(Stateと一緒に片付くので、解除は不要です)
+     |  s.count.addWatcher { case (oldV, newV) => s.log := s"count: $oldV -> $newV" }
+     |  s
+     |}
+     |
+     |// 外の値の監視は、mountedで始めて、unmountedで解除します
+     |def mounted(s: State): Unit = {
+     |  s.sharedWatch = Some(shared.addWatcher { case (oldV, newV) => s.sharedLog := s"shared: $oldV -> $newV" })
+     |}
+     |
+     |def unmounted(s: State): Unit = s.sharedWatch.foreach(_.abort())
+     |</script>
+     |
+     |<template>
+     |  <button @click="s.count := s.count.v + 1">count +1</button>
+     |  <button @click="shared := shared.v + 1">shared +1</button>
+     |  <p>{{ s.log }}</p>
+     |  <p>{{ s.sharedLog }}</p>
+     |</template>
+     |""".stripMargin
 
 val codeRV = // language=scala
   s"""import io.github.ondeoma.scalactive.reactive.*
@@ -74,7 +202,7 @@ val codeReactiveList = // language=scala
 
 val codeReactiveModel = // language=scala
   s"""import io.github.ondeoma.scalactive.reactive.*
-     |import io.github.ondeoma.scalactive.reactive.RM.*
+     |import io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
      |
      |//  *** 型定義 *** //
      |
@@ -194,7 +322,7 @@ val codeTiming = // language=scala
 val codeAfterReload = // language=scala
   s"""import scala.scalajs.js
      |
-     |rv := false // ifCなどの描き直しが予約される
+     |rv := false // v-ifなどの描き直しが予約される
      |// ここではまだ描き直されていない
      |
      |// 現在の処理の後(マイクロタスク)に実行すれば、描き直し後のDOMを参照できます
@@ -209,9 +337,11 @@ val codeAfterReload = // language=scala
 
   <p>
     Input要素に入力した値がリアルタイムにScala変数値に代入される、<br>
-    またはScalaの変数値に代入をすれば、それが画面のInput要素に反映される、<br>
+    またはScalaの変数値に代入をすれば、それが画面に反映される、<br>
     といった双方向バインディングに関する説明です.<br>
-    以下の型は全てReactive型を継承しています.
+    以下の型は全てReactive型を継承しています.<br>
+    .stのテンプレートでは、<code>&#123;&#123; &#125;&#125;</code>・<code>:属性名</code>・v-if・v-forなどにReactiveな値を渡すと、<br>
+    値の変化に追従して画面が更新されます.
   </p>
 
   <ul class="toc">
@@ -228,29 +358,56 @@ val codeAfterReload = // language=scala
   <h2 id="RV">RV[A] extends Reactive[A]</h2>
 
   <p>
-    RV[A]は最もシンプルなリアクティブな型です。<br>
+    RV[A]は最もシンプルなリアクティブな型です.<br>
     前の値と等しい値を代入した場合は、監視している側に通知されません.<br>
     ※v0.1.xまでは通知されていました.
   </p>
 
   <pre><code class="language-scala">{{ codeRV }}</code></pre>
 
+  <p>
+    .stでは、Stateのフィールドに持たせて使うのが基本です.<br>
+    テンプレートでは <code>&#123;&#123; s.count &#125;&#125;</code> で表示し、<br>
+    <code>v-model</code> で入力欄と同期できます.<br>
+    イベントハンドラーで <code>:=</code> で代入すると、画面に反映されます.
+  </p>
+
+  <pre><code class="language-html">{{ codeRvSt }}</code></pre>
+
+  <div class="rendered">
+    <RvCounter />
+  </div>
+
   <h2 id="RVList">RVList[A] extends Reactive[List[A]]</h2>
 
   <p>
     RVList[A]はRV[List[A]]と似ていますが、<br>
-    内部構造としてはRV[A]の可変コレクションです.要素の追加・更新・削除が可能です.<br>
+    内部構造としてはRV[A]の可変コレクションです.<br>
+    要素の追加・更新・削除が可能です.<br>
     <a @click='go("/listRendering")'>リストレンダリング</a>に利用できます.
   </p>
 
   <pre><code class="language-scala">{{ codeListRV }}</code></pre>
 
+  <p>
+    v-forでは、各行のitemがRV[A]になります.<br>
+    行の値が更新されると、その行の表示だけが書き換わります.
+  </p>
+
+  <pre><code class="language-html">{{ codeRvListSt }}</code></pre>
+
+  <div class="rendered">
+    <RvListDemo />
+  </div>
+
   <h2 id="ReactiveList">ReactiveList[A] extends Reactive[List[A]]</h2>
 
   <p>
     ReactiveList[A]はRVList[A]とほぼ同じです.<br>
-    内部構造としてはListBuffer[A]に近しいです. 要素の追加・更新・削除が可能です.<br>
-    RVListよりも少し単純な仕組みのため、状況次第でパフォーマンス面で有利なのかもしれません(未検証)。<br>
+    内部構造としてはListBuffer[A]に近しいです.<br>
+    要素の追加・更新・削除が可能です.<br>
+    RVListよりも少し単純な仕組みのため、<br>
+    状況次第でパフォーマンス面で有利なのかもしれません(未検証).<br>
     <a @click='go("/listRendering")'>リストレンダリング</a>に利用できます.
   </p>
 
@@ -279,37 +436,70 @@ val codeAfterReload = // language=scala
 
   <pre><code class="language-scala">{{ codeRMList }}</code></pre>
 
+  <p>
+    v-forでは、各行のitemがReactiveModelになります.<br>
+    フィールドのRVを、そのまま <code>v-model</code> や <code>&#123;&#123; &#125;&#125;</code> に使えます.<br>
+    ReactiveModelの型定義は、<code>&lt;script&gt;</code> に書くこともできます.
+  </p>
+
+  <pre><code class="language-html">{{ codeRmListSt }}</code></pre>
+
+  <div class="rendered">
+    <RmListDemo />
+  </div>
+
   <h2 id="CRV">CRV[A] extends Reactive[A]</h2>
 
   <p>
     他のリアクティブな値が変化した時に自動追従するリアクティブ型です.<br>
     Vue.jsにおけるComputedの概念に近いものです. 読取専用です.<br>
     計算し直した値が前の値と等しい場合は通知されません.<br>
-    例えば <code>count.mapC(_ &gt; 3)</code> を条件にしたifCは、<br>
+    例えば <code>v-if="count.mapC(_ &gt; 3)"</code> は、<br>
     countが変わるたびではなく、真偽が切り替わった時だけ描き直されます.
   </p>
 
   <pre><code class="language-scala">{{ codeCRV }}</code></pre>
 
+  <p>
+    テンプレートの中で作ったCRVは、<br>
+    コンポーネントが片付けられる時に、監視も一緒に解除されます.
+  </p>
+
+  <pre><code class="language-html">{{ codeCrvSt }}</code></pre>
+
+  <div class="rendered">
+    <CrvDemo />
+  </div>
+
   <h2 id="Watch">リアクティブ値の監視</h2>
 
   <p>
     リアクティブな値が変化した際に任意の処理を実行させることができます.<br>
-    Vue.jsにおけるwatchの概念に近いものです.<br>
-    コンポーネントの外のリアクティブな値(グローバルな状態やRouter.hrefなど)を、<br>
-    genHtmlの中で監視する場合は、<br>
-    <code>onUnmounted(watchInfo.abort())</code> で片付けるときに解除してください.<br>
-    解除しないと、描画のたびに監視が増えていきます.
+    Vue.jsにおけるwatchの概念に近いものです.
   </p>
 
   <pre><code class="language-scala">{{ codeWatch }}</code></pre>
+
+  <p>
+    Stateの値を監視する場合は、<code>initState</code> の中で監視を追加できます.<br>
+    Stateと一緒に片付けられるので、解除は不要です.<br>
+    コンポーネントの外のリアクティブな値(グローバルな状態やRouter.hrefなど)を監視する場合は、<br>
+    <code>def mounted</code> で監視を始めて、<code>def unmounted</code> で解除してください.<br>
+    解除しないと、描画のたびに監視が増えていきます.
+  </p>
+
+  <pre><code class="language-html">{{ codeWatchSt }}</code></pre>
+
+  <div class="rendered">
+    <WatchDemo />
+  </div>
 
   <h2 id="Timing">画面に反映されるタイミング</h2>
 
   <p>
     テキスト・属性・classなどのバインディングは、<br>
     リアクティブな値を変更するとその場で書き換わります.<br>
-    一方、ifC・forCなど要素を作り直すコンポーネントは、描き直しを予約し、<br>
+    一方、v-if・v-forなど要素を作り直すものは、描き直しを予約し、<br>
     現在の処理(イベントハンドラーなど)が終わった直後にまとめて描き直します.<br>
     そのため、1つの処理の中で何度値を変更しても、描き直しは1回で済みます.<br>
     親と子の両方が描き直しを予約した場合は、親だけが描き直されます.
@@ -342,5 +532,9 @@ val codeAfterReload = // language=scala
     外側のクリックと判定されることがあります.<br>
     このような判定は、描き直しの影響を受けない要素(作り直されない親要素など)で行うか、<br>
     <code>event.composedPath()</code> で伝播経路を参照してください.
+  </p>
+
+  <p>
+    従来のScalaでの書き方は<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照してください.
   </p>
 </template>
