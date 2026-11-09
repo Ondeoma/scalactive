@@ -1,0 +1,86 @@
+<idea-plugin>
+  <id>io.github.ondeoma.scalactive-st</id>
+  <name>Scalactive Single File Component (.st)</name>
+  <vendor url="https://github.com/Ondeoma/scalactive">Ondeoma</vendor>
+  <description><![CDATA[
+    <p>Language support for <a href="https://ondeoma.github.io/scalactive/">Scalactive</a> single file components (<code>.st</code>).</p>
+    <ul>
+      <li><code>&lt;script lang="scala"&gt;</code> is highlighted as Scala, <code>&lt;style&gt;</code> as CSS.</li>
+      <li>In <code>&lt;template&gt;</code>, <code>{{ expr }}</code>, <code>v-if</code> / <code>v-else-if</code> / <code>v-show</code> / <code>v-model</code> / <code>v-for</code>,
+          <code>:attr</code> and <code>@event</code> values are highlighted as Scala.</li>
+      <li>Component tags (starting with an uppercase letter) are highlighted separately.</li>
+      <li>The template is handled as HTML: IntelliJ's HTML completion, closing tag insertion, Emmet and structure view work there,
+          and <code>&lt;style&gt;</code> is handled as CSS (completion and inspections, with the CSS plugin).</li>
+      <li>Directives, component tags and their props are not reported as unknown HTML tags or attributes.</li>
+      <li>In the script, a triple-quoted string after a <code>// language=xxx</code> comment is injected with that language
+          (any language the IDE supports; <code>html</code> is handled as <code>.st</code>), with its highlighting, completion and inspections.</li>
+      <li>Comment with Line Comment uses <code>//</code> in the script, <code>/* */</code> in the style and HTML comments in the template.</li>
+      <li>In the script and the style, Enter keeps the indentation of the previous line (aligned after an open bracket),
+          and brackets and double quotes are closed automatically.</li>
+      <li>New → Scalactive Component creates a <code>.st</code> file from a template.</li>
+      <li>Renaming a <code>.st</code> file updates the component tags in the same package.</li>
+      <li>Open Generated Scala Source opens the Scala code generated from a <code>.st</code> file.</li>
+      <li>When <code>target/scalactive-lsp.json</code> is missing, a notification offers to run <code>sbt compile</code>.</li>
+      <li><code>.st</code> files get their own file type and icon.</li>
+    </ul>
+    <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
+       the Scalactive language server (requires an IDE with LSP support and an sbt project that enables <code>ScalactivePlugin</code>;
+       run <code>sbt compile</code> once so that <code>target/scalactive-lsp.json</code> is written).</p>
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.xml</depends>
+  <depends>org.jetbrains.plugins.textmate</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- .stはHTMLの方言として解析し、色付けは同梱のTextMateの文法で行う -->
+    <fileType name="Scalactive" language="Scalactive" extensions="st" fieldName="INSTANCE"
+              implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveFileType"/>
+    <lang.parserDefinition language="Scalactive" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveParserDefinition"/>
+    <lang.syntaxHighlighterFactory language="Scalactive"
+              implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateSyntaxHighlighterFactory"/>
+    <!-- ディレクティブ・子コンポーネントのタグをHTMLの検査で警告しない -->
+    <lang.inspectionSuppressor language="Scalactive" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveInspectionSuppressor"/>
+    <!-- コメントの切り替えをブロックごとの書き方に(script: //、style: /* */、template: HTMLのコメント) -->
+    <multiLangCommenter implementation="io.github.ondeoma.scalactive.intellij.ScalactiveCommentProvider"/>
+    <!-- .stの整形は言語サーバーだけに任せ、IntelliJのHTMLの整形(.stを崩す)は使わない -->
+    <formattingService id="ScalactiveFormattingGuard" order="after LspFormattingService, before CoreFormattingService"
+              implementation="io.github.ondeoma.scalactive.intellij.ScalactiveFormattingGuard"/>
+    <notificationGroup id="Scalactive" displayType="BALLOON"/>
+    <!-- script・styleの中で改行したときのインデント(HTMLの規則ではタグより1段深くなるため) -->
+    <lineIndentProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLineIndentProvider"/>
+    <!-- scriptの中の複数行の三重引用符の文字列を折りたたむ.
+         .stに登録するとHTMLのタグの折りたたみが使われなくなるため、HTMLに加え、.stのファイルでだけ働く -->
+    <lang.foldingBuilder language="HTML" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveFoldingBuilder"/>
+    <!-- scriptの中の // language=xxx に続く文字列に、その言語を注入する(IntelliJが扱える言語ならどれでも) -->
+    <multiHostInjector implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLanguageInjector"/>
+    <!-- script・styleの中の括弧・引用符の自動補完 -->
+    <typedHandler implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Typed" order="first"/>
+    <!-- 対になった括弧の間でのEnter -->
+    <enterHandlerDelegate implementation="io.github.ondeoma.scalactive.intellij.ScalactiveEnterHandler" order="first"/>
+    <backspaceHandlerDelegate implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Backspace"/>
+    <editorHighlighterProvider filetype="Scalactive"
+              implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
+    <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>
+    <!-- .stのファイル名を変えたら、同じパッケージの.stにあるタグも書き換える -->
+    <refactoring.elementListenerProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveRenameListenerProvider"/>
+    <!-- New → Scalactive Component のひな形 -->
+    <internalFileTemplate name="Scalactive Component"/>
+    <internalFileTemplate name="Scalactive Props Component"/>
+    <internalFileTemplate name="Scalactive Stateful Component"/>
+    <!-- 補完・型エラーなど(言語サーバー). LSP APIはIntelliJ IDEA 2025.2以降のプラットフォームに含まれます. -->
+    <platform.lsp.serverSupportProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLspServerSupportProvider"/>
+  </extensions>
+
+  <actions>
+    <action id="Scalactive.NewComponent" class="io.github.ondeoma.scalactive.intellij.NewScalactiveComponentAction">
+      <add-to-group group-id="NewGroup" anchor="last"/>
+    </action>
+    <action id="Scalactive.OpenGeneratedSource" class="io.github.ondeoma.scalactive.intellij.OpenGeneratedSourceAction"
+            text="Open Generated Scala Source" description="Open the Scala source generated from this .st file">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+      <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+      <add-to-group group-id="GoToCodeGroup" anchor="last"/>
+    </action>
+  </actions>
+</idea-plugin>

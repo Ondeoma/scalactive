@@ -1,11 +1,7 @@
 package io.github.ondeoma.scalactive.controllers
 
 import io.github.ondeoma.scalactive.ScalactiveConfig
-import org.scalajs.dom.{document, window}
-
-import java.time.LocalDateTime
-import scala.concurrent.duration.*
-import scala.scalajs.js
+import org.scalajs.dom.window
 
 trait ComponentController[CC <: ComponentController[?]] {
 
@@ -13,22 +9,41 @@ trait ComponentController[CC <: ComponentController[?]] {
 
   def clear(): Unit
 
+  /** 作られたときのエラーの境界. 描き直しで起きた例外はここへ知らせます. */
+  private[scalactive] val boundary: Option[io.github.ondeoma.scalactive.components.BoundaryHandle] =
+    io.github.ondeoma.scalactive.components.ErrorBoundaryContext.current
+
   private var scrollX: Double = 0
   private var scrollY: Double = 0
-  protected var reloadTimer = 0
 
+  /**
+   * 描き直し(clear + init)を予約します. 予約はReloadSchedulerがまとめて実行します.
+   * (ScalactiveConfig.reloadTimerLazyDuration が0なら現在の処理の直後、それより大きければその時間の後)
+   */
   def reload(): Unit = {
-    if (reloadTimer != 0) {
-      window.clearTimeout(reloadTimer)
-      reloadTimer = 0
-    }
-    reloadTimer = window.setTimeout(() => {
-      backupScrollPosition()
-      clear()
-      init()
-      restoreScrollPosition()
-    }, ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble)
+    ReloadScheduler.schedule(this)
   }
+
+  /**
+   * 予約された描き直しの本体. 既定ではclearしてinitし直します.
+   * 差分だけを反映できるコンポーネント(forCなど)は上書きします.
+   */
+  def refresh(): Unit = {
+    clear()
+    init()
+  }
+
+  /**
+   * 予約済みのreloadを取り消します.
+   * clearの後(親コンポーネントに片付けられた後など)に遅れてreloadが走ると、
+   * 監視だけが登録されて解除されないままになるため、clearで呼びます.
+   */
+  protected def cancelReload(): Unit = {
+    ReloadScheduler.cancel(this)
+  }
+
+  /** DOM上の深さ. 親子の両方の描き直しが予約されたとき、親を先に描き直すために使います. */
+  private[scalactive] def depth: Int = 0
 
   def backupScrollPosition(): Unit = {
     if (ScalactiveConfig.keepWindowScrollPositionWhenReload) {
@@ -42,6 +57,5 @@ trait ComponentController[CC <: ComponentController[?]] {
       window.scrollTo(scrollX.toInt, scrollY.toInt)
     }
   }
-
 
 }

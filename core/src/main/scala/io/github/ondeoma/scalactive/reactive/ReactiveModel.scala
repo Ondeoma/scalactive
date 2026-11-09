@@ -2,8 +2,11 @@ package io.github.ondeoma.scalactive.reactive
 
 import io.github.ondeoma.scalactive.ScalactiveConfig
 import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.toRM
+import io.github.ondeoma.scalactive.models.WatchInfo
 import io.github.ondeoma.scalactive.utils.TypeAlias.WatchInfos
 import org.scalajs.dom.window
+
+import scala.scalajs.js
 
 trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org] with Product {
   self: Self =>
@@ -16,22 +19,57 @@ trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org]
 
   private var old: Org = v
 
-  private lazy val watchInfos: WatchInfos = {
-    reactives.map(_.addWatcher(_ => callWatchers())) :::
-      reactiveModels.map(_.addWatcher((_, _) => callWatchers()))
+  /**
+   * フィールドの監視. 最初にこのモデルが監視されたときに登録します.
+   * (トレイトの本体の実行時点では、サブクラスのreactives/reactiveModelsがまだ初期化されていないため)
+   * 監視されるまではフィールドが変わっても知らせる相手がいないので、遅れて登録しても取りこぼしません.
+   */
+  private var watchInfos: Option[WatchInfos] = None
+
+  private def subscribe(): Unit = {
+    if (watchInfos.isEmpty && reactives != null && reactiveModels != null) {
+      old = v
+      watchInfos = Some(
+        reactives.map(_.addWatcher(_ => callWatchers())) :::
+          reactiveModels.map(_.addWatcher((_, _) => callWatchers()))
+      )
+    }
+  }
+
+  override def addWatcher(w: Watcher): WatchInfo = {
+    subscribe()
+    super.addWatcher(w)
   }
 
   protected var reloadTimer = 0
+
+  /** フィールドの変更をまとめて通知します(ScalactiveConfig.reloadTimerLazyDurationが0なら現在の処理の直後) */
+  private var notifyQueued = false
+
+  private def notifyWatchers(): Unit = {
+    notifyQueued = false
+    watchers.foreach(_._2(old, v))
+    old = v
+  }
 
   private def callWatchers(): Unit = {
     if (reloadTimer != 0) {
       window.clearTimeout(reloadTimer)
       reloadTimer = 0
     }
-    reloadTimer = window.setTimeout(() => {
-      watchers.foreach(_._2(old, v))
-      old = v
-    }, ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble)
+    val delay = ScalactiveConfig.reloadTimerLazyDuration.toMillis.toDouble
+    if (delay <= 0) {
+      if (!notifyQueued) {
+        notifyQueued = true
+        js.Dynamic.global.queueMicrotask(() => if (notifyQueued) notifyWatchers())
+      }
+    } else {
+      notifyQueued = false
+      reloadTimer = window.setTimeout(() => {
+        reloadTimer = 0
+        notifyWatchers()
+      }, delay)
+    }
   }
 
   def reload(org: Org): Unit
@@ -57,18 +95,12 @@ trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org]
   }
 
   override def abort(): Unit = {
-    watchInfos.foreach(_.abort())
+    watchInfos.foreach(_.foreach(_.abort()))
+    watchInfos = None
     watchers.clear()
   }
 
-  // サブタイプ側で初期化されるreactives/reactiveModelsを待ってから、
-  // watchInfosを割り当てるための苦しい実装.
-  def init(): Unit = {
-    window.setTimeout(() => {
-      Option(reactives).fold(init())(_ => watchInfos)
-    }, 100)
-  }
-
-  init()
+  /** フィールドの監視を今すぐ登録します(通常は最初の監視のときに自動で登録されるため、呼ぶ必要はありません) */
+  def init(): Unit = subscribe()
 
 }

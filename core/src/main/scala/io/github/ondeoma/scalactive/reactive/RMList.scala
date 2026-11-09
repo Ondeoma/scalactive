@@ -1,6 +1,5 @@
 package io.github.ondeoma.scalactive.reactive
 
-import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.WatchInfo
 import io.github.ondeoma.scalactive.reactive.RMCompatible.ext.*
 import io.github.ondeoma.scalactive.utils.ListBufferUtil.*
@@ -9,8 +8,7 @@ import scala.annotation.targetName
 
 // Scala 3.4.0~
 // import scala.annotation.publicInBinary
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 // class RMList[Org, RM <: ReactiveModel[A, RM]] @publicInBinary(private var value: List[RM]) extends Reactive[List[A]] {
 class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) extends Reactive[List[Org]] {
@@ -18,12 +16,13 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   val rowLevelWatchingIdPrefix = "RLW-"
 
   private val innerV: ListBuffer[RM] = ListBuffer.from(value)
-  private val watchInfos: mutable.Map[Int, WatchInfo] = mutable.Map()
+  /** 各要素への監視. innerVと同じ順序・同じ長さに保ちます. */
+  private val watchInfos: ArrayBuffer[WatchInfo] = ArrayBuffer()
 
   watchAll()
 
   def addWatcherRowLevel(w: Watcher): WatchInfo = {
-    val id = rowLevelWatchingIdPrefix + randomUUID()
+    val id = rowLevelWatchingIdPrefix + io.github.ondeoma.scalactive.utils.IdGen.next()
     watchers.addOne(id -> w)
     WatchInfo(this, id)
   }
@@ -37,11 +36,11 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   def rv: List[RM] = innerV.toList
 
   private def watchAll(): Unit = {
-    // 子要素に変化があってもウォッチャーに通知
-    innerV.zipWithIndex.foreach { (rmw, i) =>
-      watchInfos.addOne(i -> rmw.addWatcher(_ => updated(true)))
-    }
+    watchInfos.addAll(innerV.view.map(watchRow))
   }
+
+  /** 子要素に変化があってもウォッチャーに通知する */
+  private def watchRow(rm: RM): WatchInfo = rm.addWatcher(_ => updated(true))
 
   def updated(isDetail: Boolean): Unit = {
     watchers.foreach { (id, wf) =>
@@ -53,7 +52,7 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   }
 
   def apply(newRM: List[RM]): Unit = {
-    watchInfos.foreach(_._2.abort())
+    watchInfos.foreach(_.abort())
     watchInfos.clear()
 
     innerV.clear()
@@ -106,10 +105,9 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
 
   def update(idx: Int,
              rm: RM): Unit = {
-    watchInfos.get(idx).foreach(_.abort())
-    innerV.remove(idx)
-    innerV.insert(idx, rm)
-    watchInfos.addOne(idx -> rm.addWatcher(_ => updated(true)))
+    watchInfos(idx).abort()
+    innerV(idx) = rm
+    watchInfos(idx) = watchRow(rm)
     updated(true)
   }
 
@@ -123,17 +121,19 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
 
   def up(idx: Int): Unit = {
     innerV.up(idx)
+    watchInfos.up(idx)
     updated(false)
   }
 
   def down(idx: Int): Unit = {
     innerV.down(idx)
+    watchInfos.down(idx)
     updated(false)
   }
 
   def add(rm: RM): Unit = {
     innerV.addOne(rm)
-    watchInfos.addOne((innerV.length - 1) -> rm.addWatcher(_ => updated(true)))
+    watchInfos.addOne(watchRow(rm))
     updated(false)
   }
 
@@ -145,14 +145,9 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   }
 
   def rm(idx: Int): Unit = {
-    innerV.lift(idx).foreach { rv =>
-      // ウォッチ解除
-      watchInfos.get(idx).foreach(_.abort())
+    if (idx >= 0 && idx < innerV.length) {
+      watchInfos(idx).abort()
       watchInfos.remove(idx)
-      watchInfos.filter((cidx, _) => cidx > idx).foreach { (cidx, id) =>
-        watchInfos.remove(cidx)
-        watchInfos.addOne(cidx - 1 -> id)
-      }
       innerV.remove(idx)
     }
     updated(false)
@@ -165,7 +160,7 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   override def abort(): Unit = {
     watchers.clear()
     innerV.clear()
-    watchInfos.foreach(_._2.abort())
+    watchInfos.foreach(_.abort())
     watchInfos.clear()
   }
 

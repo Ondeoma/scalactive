@@ -51,6 +51,11 @@ object AddMethod {
   case class replaceWith(element: Element) extends AddMethodByNode
 
   /**
+   * ノード(コメントなど)の後. ノードがどこへ移動しても、その直後に追加します.
+   */
+  case class afterNode(node: Node) extends AddMethodByNode
+
+  /**
    * 子要素の末尾
    */
   case class appendS(selector: Selector) extends AddMethodBySelector

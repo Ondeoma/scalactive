@@ -1,10 +1,11 @@
 package io.github.ondeoma.scalactive.utils
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 
+/** ListBuffer/ArrayBufferなど、可変のBufferで要素を1つ前後に動かします. */
 object ListBufferUtil {
 
-  extension [A](l: ListBuffer[A]) {
+  extension [A](l: mutable.Buffer[A]) {
 
     def up(i: Int): Unit = {
       if (i <= 0) ()

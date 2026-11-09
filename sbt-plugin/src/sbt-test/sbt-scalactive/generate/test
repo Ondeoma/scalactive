@@ -1,0 +1,18 @@
+# .stから生成される
+> checkHello
+> checkCount 1
+
+# .stの追加・削除に追従する
+$ copy-file changes/World.st src/main/scalactive/app/sub/World.st
+> checkCount 2
+$ delete src/main/scalactive/app/sub/World.st
+> checkCount 1
+
+# .stの構文エラーでは生成タスクが失敗する
+$ copy-file changes/Broken.st src/main/scalactive/app/Broken.st
+-> Compile/scalactiveGenerate
+
+$ delete src/main/scalactive/app/Broken.st
+
+# 言語サーバー向けの設定を書き出す
+> checkLspConfig

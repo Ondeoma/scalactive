@@ -5,11 +5,16 @@ import scala.concurrent.duration.*
 object ScalactiveConfig {
 
   /**
-   * 連続的にコンポーネントがリロードされるのを防ぐため、
-   * 以下時間分遅延させ、後発リロード処理を優先し、
-   * 先発分は無効化されます。
+   * コンポーネントの描き直し(リロード)を待つ時間.
+   *
+   * 0(既定)の場合、現在の処理(イベントハンドラーなど)が終わった直後にまとめて描き直します.
+   * 同じ処理の中での複数の変更は、1回の描き直しにまとまります.
+   *
+   * 0より大きい場合、最後の変更からこの時間だけ待ってから描き直します.
+   * 文字入力のたびに大きなリストを描き直すのを避けたい場合などに指定してください.
+   * (v0.1.xまでの既定値は100msでした)
    */
-  var reloadTimerLazyDuration: FiniteDuration = 100.millis
+  var reloadTimerLazyDuration: FiniteDuration = 0.millis
 
   /**
    * コンポーネントをリロードする際に、
@@ -17,6 +22,18 @@ object ScalactiveConfig {
    * 有効にする場合はtrue。
    */
   var keepWindowScrollPositionWhenReload: Boolean = true
+
+  /**
+   * エラーの境界(ErrorBoundary)で受け止められなかった例外を受け取る関数(Vueのapp.config.errorHandler).
+   * 描き直し・onMounted・イベントハンドラーの中の例外が渡されます. 既定ではコンソールに出力します.
+   * エラーの報告サービスへの送信などに使います.
+   */
+  var errorHandler: Throwable => Unit = e => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e)
+
+  /**
+   * Router.goで遷移したときに、ウィンドウを先頭までスクロールする場合はtrue.
+   */
+  var scrollToTopOnNavigate: Boolean = true
 
   /**
    * Router.goで遷移する時/RouterComponentのベースパス

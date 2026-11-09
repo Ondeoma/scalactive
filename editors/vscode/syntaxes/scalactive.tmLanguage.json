@@ -1,0 +1,813 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Scalactive Single File Component",
+  "scopeName": "source.scalactive",
+  "fileTypes": [
+    "st"
+  ],
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#script-block"
+    },
+    {
+      "include": "#style-block"
+    },
+    {
+      "include": "#template-block"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "begin": "<!--",
+      "end": "-->",
+      "name": "comment.block.html",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.begin.html"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.end.html"
+        }
+      }
+    },
+    "entity": {
+      "match": "(&)(?:[a-zA-Z][a-zA-Z0-9]*|#[0-9]+|#x[0-9a-fA-F]+)(;)",
+      "name": "constant.character.entity.html",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.entity.html"
+        },
+        "2": {
+          "name": "punctuation.definition.entity.html"
+        }
+      }
+    },
+    "script-block": {
+      "begin": "(<)(script)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.script.html"
+        }
+      },
+      "end": "(</)(script)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.script.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.block.script.scalactive",
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.attributes.scalactive",
+          "patterns": [
+            {
+              "include": "#plain-attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</script\\s*>)",
+          "contentName": "meta.embedded.block.scala",
+          "patterns": [
+            {
+              "comment": "stripMarginの文字列に埋め込んだ.st(// language=html)で、行頭の | を余白の区切りとして読む(|</script> の | をScalaの演算子として読み、閉じタグを見落とさないため)",
+              "match": "^\\s*(\\|)",
+              "captures": {
+                "1": {
+                  "name": "punctuation.separator.margin.scala"
+                }
+              }
+            },
+            {
+              "include": "#language-injection"
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
+        }
+      ]
+    },
+    "style-block": {
+      "begin": "(<)(style)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.style.html"
+        }
+      },
+      "end": "(</)(style)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.style.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.block.style.scalactive",
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.attributes.scalactive",
+          "patterns": [
+            {
+              "include": "#plain-attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</style\\s*>)",
+          "contentName": "meta.embedded.block.css",
+          "patterns": [
+            {
+              "match": "^\\s*(\\|)",
+              "captures": {
+                "1": {
+                  "name": "punctuation.separator.margin.scala"
+                }
+              }
+            },
+            {
+              "include": "source.css"
+            }
+          ]
+        }
+      ]
+    },
+    "template-block": {
+      "begin": "(<)(template)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.template.html"
+        }
+      },
+      "end": "(</)(template)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.template.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.block.template.scalactive",
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.attributes.scalactive",
+          "patterns": [
+            {
+              "include": "#plain-attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</template\\s*>)",
+          "contentName": "meta.template.scalactive",
+          "patterns": [
+            {
+              "include": "#template-content"
+            }
+          ]
+        }
+      ]
+    },
+    "template-content": {
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#nested-template"
+        },
+        {
+          "include": "#raw-text-element"
+        },
+        {
+          "include": "#component-tag"
+        },
+        {
+          "include": "#html-tag"
+        },
+        {
+          "include": "#interpolation"
+        },
+        {
+          "include": "#entity"
+        }
+      ]
+    },
+    "nested-template": {
+      "begin": "(<)(template)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.template.html"
+        }
+      },
+      "end": "(</)(template)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.template.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.template.html",
+          "patterns": [
+            {
+              "include": "#attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</template\\s*>)",
+          "patterns": [
+            {
+              "include": "#template-content"
+            }
+          ]
+        }
+      ]
+    },
+    "raw-text-element": {
+      "begin": "(<)(textarea|script|style)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.html"
+        }
+      },
+      "end": "(</)(\\2)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.html",
+          "patterns": [
+            {
+              "include": "#attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</(?:textarea|script|style)\\s*>)",
+          "contentName": "string.unquoted.raw-text.html"
+        }
+      ]
+    },
+    "component-tag": {
+      "begin": "(</?)([A-Z][A-Za-z0-9_.]*)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "support.class.component.scalactive"
+        }
+      },
+      "end": "(/?>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.tag.component.scalactive",
+      "patterns": [
+        {
+          "include": "#attribute"
+        }
+      ]
+    },
+    "html-tag": {
+      "begin": "(</?)([a-z][A-Za-z0-9_:-]*)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.html"
+        }
+      },
+      "end": "(/?>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.tag.html",
+      "patterns": [
+        {
+          "include": "#attribute"
+        }
+      ]
+    },
+    "interpolation": {
+      "begin": "\\{\\{",
+      "end": "\\}\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.interpolation.begin.scalactive"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.interpolation.end.scalactive"
+        }
+      },
+      "name": "meta.interpolation.scalactive",
+      "contentName": "meta.embedded.inline.scala",
+      "patterns": [
+        {
+          "include": "source.scala"
+        }
+      ]
+    },
+    "attribute": {
+      "patterns": [
+        {
+          "include": "#v-for"
+        },
+        {
+          "include": "#directive"
+        },
+        {
+          "include": "#v-else"
+        },
+        {
+          "include": "#slot-directive"
+        },
+        {
+          "include": "#plain-attribute"
+        }
+      ]
+    },
+    "v-for": {
+      "begin": "(v-for)\\s*(=)\\s*([\"'])",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.other.attribute-name.directive.scalactive"
+        },
+        "2": {
+          "name": "punctuation.separator.key-value.html"
+        },
+        "3": {
+          "name": "punctuation.definition.string.begin.html"
+        }
+      },
+      "end": "\\3",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.html"
+        }
+      },
+      "contentName": "meta.embedded.inline.scala",
+      "patterns": [
+        {
+          "match": "\\G\\s*(?:(\\()\\s*([A-Za-z_]\\w*)\\s*(?:(,)\\s*([A-Za-z_]\\w*)\\s*)?(\\))|([A-Za-z_]\\w*))\\s+(in)\\b",
+          "captures": {
+            "1": {
+              "name": "punctuation.section.group.begin.scala"
+            },
+            "2": {
+              "name": "variable.parameter.scalactive"
+            },
+            "3": {
+              "name": "punctuation.separator.comma.scala"
+            },
+            "4": {
+              "name": "variable.parameter.scalactive"
+            },
+            "5": {
+              "name": "punctuation.section.group.end.scala"
+            },
+            "6": {
+              "name": "variable.parameter.scalactive"
+            },
+            "7": {
+              "name": "keyword.control.in.scalactive"
+            }
+          }
+        },
+        {
+          "include": "#attribute-scala"
+        }
+      ]
+    },
+    "directive": {
+      "begin": "(?:(v-(?:if|else-if|show|html|model(?::[A-Za-z_][\\w-]*)?)|ref(?=\\s*=))|(:|v-bind:)([A-Za-z_][\\w:-]*)|(@|v-on:)([A-Za-z_][\\w-]*))((?:\\.[\\w-]+)*)\\s*(=)\\s*([\"'])",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.other.attribute-name.directive.scalactive"
+        },
+        "2": {
+          "name": "punctuation.attribute-shorthand.bind.scalactive"
+        },
+        "3": {
+          "name": "entity.other.attribute-name.scalactive"
+        },
+        "4": {
+          "name": "punctuation.attribute-shorthand.event.scalactive"
+        },
+        "5": {
+          "name": "entity.other.attribute-name.event.scalactive"
+        },
+        "6": {
+          "name": "entity.other.attribute-name.modifier.scalactive"
+        },
+        "7": {
+          "name": "punctuation.separator.key-value.html"
+        },
+        "8": {
+          "name": "punctuation.definition.string.begin.html"
+        }
+      },
+      "end": "\\8",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.html"
+        }
+      },
+      "contentName": "meta.embedded.inline.scala",
+      "patterns": [
+        {
+          "include": "#attribute-scala"
+        }
+      ]
+    },
+    "v-else": {
+      "match": "v-else(?![\\w-])",
+      "name": "entity.other.attribute-name.directive.scalactive"
+    },
+    "slot-directive": {
+      "patterns": [
+        {
+          "begin": "(#|v-slot:)([A-Za-z_][\\w-]*)\\s*(=)\\s*([\"'])",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.attribute-shorthand.slot.scalactive"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.directive.scalactive"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.html"
+            },
+            "4": {
+              "name": "punctuation.definition.string.begin.html"
+            }
+          },
+          "end": "\\4",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.html"
+            }
+          },
+          "contentName": "meta.embedded.inline.scala",
+          "patterns": [
+            {
+              "include": "#attribute-scala"
+            }
+          ]
+        },
+        {
+          "match": "(#|v-slot:)([A-Za-z_][\\w-]*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.attribute-shorthand.slot.scalactive"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.directive.scalactive"
+            }
+          }
+        }
+      ]
+    },
+    "plain-attribute": {
+      "patterns": [
+        {
+          "begin": "([^\\s\"'<>/=]+)\\s*(=)\\s*([\"'])",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.html"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.html"
+            },
+            "3": {
+              "name": "punctuation.definition.string.begin.html"
+            }
+          },
+          "end": "\\3",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.html"
+            }
+          },
+          "contentName": "string.quoted.html",
+          "patterns": [
+            {
+              "include": "#entity"
+            }
+          ]
+        },
+        {
+          "match": "([^\\s\"'<>/=]+)\\s*(=)\\s*([^\\s\"'<>=`]+)",
+          "captures": {
+            "1": {
+              "name": "entity.other.attribute-name.html"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.html"
+            },
+            "3": {
+              "name": "string.unquoted.html"
+            }
+          }
+        },
+        {
+          "match": "[^\\s\"'<>/=]+",
+          "name": "entity.other.attribute-name.html"
+        }
+      ]
+    },
+    "scala-before-quote": {
+      "patterns": [
+        {
+          "match": "\\b(?:true|false|null)(?=[\"'])",
+          "name": "constant.language.scala"
+        },
+        {
+          "match": "\\b(?:this|super)(?=[\"'])",
+          "name": "variable.language.scala"
+        },
+        {
+          "match": "[A-Za-z_][A-Za-z0-9_]*(?=[\"'])",
+          "name": "meta.identifier.scalactive"
+        }
+      ]
+    },
+    "attribute-scala": {
+      "patterns": [
+        {
+          "include": "#entity"
+        },
+        {
+          "include": "#scala-before-quote"
+        },
+        {
+          "include": "source.scala"
+        }
+      ]
+    },
+    "language-injection": {
+      "patterns": [
+        {
+          "comment": "// language=scala のコメントに続く三重引用符の文字列を、scalaとして色付けする. while で、stripMarginの行(|で始まる)・文字列の始まりの行・定義の行(val x = / val x = {)の間だけ続け、埋め込んだ側が(\\\" などの)エスケープを読み違えても後ろのコードに影響しないようにする.",
+          "begin": "(//)\\s*(language\\s*=\\s*(?:scala))\\b.*$",
+          "beginCaptures": {
+            "0": {
+              "name": "comment.line.double-slash.scala"
+            },
+            "1": {
+              "name": "punctuation.definition.comment.scala"
+            }
+          },
+          "while": "^(?=\\s*\\|)|^(?=\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?\"\"\")|^(?=[^\"/]*=\\s*\\{?\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?(?:\"\"\"|$))",
+          "patterns": [
+            {
+              "begin": "([A-Za-z_][A-Za-z0-9_]*)?(\"\"\")",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.interpolation.scala"
+                },
+                "2": {
+                  "name": "punctuation.definition.string.begin.scala"
+                }
+              },
+              "end": "\"\"\"(?!\")",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.scala"
+                }
+              },
+              "name": "meta.string.injected.scala.scalactive",
+              "contentName": "meta.embedded.block.scala",
+              "patterns": [
+                {
+                  "match": "(?:\\G|^\\s*)(\\|)",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.separator.margin.scala"
+                    }
+                  }
+                },
+                {
+                  "include": "source.scala"
+                }
+              ]
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
+        },
+        {
+          "comment": "// language=html のコメントに続く三重引用符の文字列を、htmlとして色付けする. while で、stripMarginの行(|で始まる)・文字列の始まりの行・定義の行(val x = / val x = {)の間だけ続け、埋め込んだ側が(\\\" などの)エスケープを読み違えても後ろのコードに影響しないようにする.",
+          "begin": "(//)\\s*(language\\s*=\\s*(?:html|st|scalactive))\\b.*$",
+          "beginCaptures": {
+            "0": {
+              "name": "comment.line.double-slash.scala"
+            },
+            "1": {
+              "name": "punctuation.definition.comment.scala"
+            }
+          },
+          "while": "^(?=\\s*\\|)|^(?=\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?\"\"\")|^(?=[^\"/]*=\\s*\\{?\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?(?:\"\"\"|$))",
+          "patterns": [
+            {
+              "begin": "([A-Za-z_][A-Za-z0-9_]*)?(\"\"\")",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.interpolation.scala"
+                },
+                "2": {
+                  "name": "punctuation.definition.string.begin.scala"
+                }
+              },
+              "end": "\"\"\"(?!\")",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.scala"
+                }
+              },
+              "name": "meta.string.injected.html.scalactive",
+              "contentName": "meta.embedded.block.scalactive",
+              "patterns": [
+                {
+                  "match": "(?:\\G|^\\s*)(\\|)",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.separator.margin.scala"
+                    }
+                  }
+                },
+                {
+                  "include": "#comment"
+                },
+                {
+                  "include": "#script-block"
+                },
+                {
+                  "include": "#style-block"
+                },
+                {
+                  "include": "#template-block"
+                },
+                {
+                  "include": "#template-content"
+                }
+              ]
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
+        },
+        {
+          "comment": "// language=css のコメントに続く三重引用符の文字列を、cssとして色付けする. while で、stripMarginの行(|で始まる)・文字列の始まりの行・定義の行(val x = / val x = {)の間だけ続け、埋め込んだ側が(\\\" などの)エスケープを読み違えても後ろのコードに影響しないようにする.",
+          "begin": "(//)\\s*(language\\s*=\\s*(?:css))\\b.*$",
+          "beginCaptures": {
+            "0": {
+              "name": "comment.line.double-slash.scala"
+            },
+            "1": {
+              "name": "punctuation.definition.comment.scala"
+            }
+          },
+          "while": "^(?=\\s*\\|)|^(?=\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?\"\"\")|^(?=[^\"/]*=\\s*\\{?\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?(?:\"\"\"|$))",
+          "patterns": [
+            {
+              "begin": "([A-Za-z_][A-Za-z0-9_]*)?(\"\"\")",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.interpolation.scala"
+                },
+                "2": {
+                  "name": "punctuation.definition.string.begin.scala"
+                }
+              },
+              "end": "\"\"\"(?!\")",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.scala"
+                }
+              },
+              "name": "meta.string.injected.css.scalactive",
+              "contentName": "meta.embedded.block.css",
+              "patterns": [
+                {
+                  "match": "(?:\\G|^\\s*)(\\|)",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.separator.margin.scala"
+                    }
+                  }
+                },
+                {
+                  "include": "source.css"
+                }
+              ]
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

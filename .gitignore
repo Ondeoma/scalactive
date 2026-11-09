@@ -17,3 +17,5 @@ ehthumbs.db
 Thumbs.db
 **/node_modules
 .history
+/CLAUDE.md
+.vite

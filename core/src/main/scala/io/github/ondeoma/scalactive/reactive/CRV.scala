@@ -9,10 +9,11 @@ trait CRV[R] extends Reactive[R] {
 
   protected var watchInfos: List[WatchInfo] = Nil
 
+  /** 計算し直した値が前の値と等しい(==)場合は通知しません(例えば count.mapC(_ > 3) はcountが変わるたびには通知しない) */
   private def update(newV: R): Unit = {
     val old = value
     value = newV
-    watchers.foreach(_._2(old, newV))
+    if (old != newV) watchers.foreach(_._2(old, newV))
   }
 
   override def abort(): Unit = {
@@ -90,7 +91,7 @@ object CRV {
                                r2: Reactive[B],
                                r3: Reactive[C],
                                f: (A, B, C) => R): CRV[R] = {
-    val crv = apply(r1, r2, r3, f)
+    val crv = apply_(r1, r2, r3, f)
     registerCM(crv)
     crv
   }

@@ -1,7 +1,6 @@
 package io.github.ondeoma.scalactive.events
 
 
-import io.github.ondeoma.scalactive.facades.Crypto.randomUUID
 import io.github.ondeoma.scalactive.utils.DomUtil.*
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 
@@ -34,9 +33,16 @@ object EventManager {
     }
   }
 
-  def addHandler(h: Handler): ID = {
-    val id = randomUUID()
+  private def add(h: Handler): ID = {
+    val id = io.github.ondeoma.scalactive.utils.IdGen.next()
     State.handlers.addOne(id -> h)
+    id
+  }
+
+  // inlineにすることで、呼び出し側のComponentManagerにハンドラーが登録され、
+  // コンポーネントのクリア時に解除されます(以前はinlineでなかったため登録されず、解除されませんでした).
+  inline def addHandler(h: Handler): ID = {
+    val id = add(h)
     registerCM(id)
     id
   }

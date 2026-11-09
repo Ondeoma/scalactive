@@ -1,0 +1,308 @@
+package io.github.ondeoma.scalactive.routes
+
+import io.github.ondeoma.scalactive.ScalactiveConfig
+import io.github.ondeoma.scalactive.components.*
+import io.github.ondeoma.scalactive.components.ComponentManager.{AddMethod, HTML}
+import io.github.ondeoma.scalactive.components.routes.{Route, RouterComponent}
+import io.github.ondeoma.scalactive.routes.Router.*
+import io.github.ondeoma.scalactive.utils.TypeAlias.*
+import org.scalajs.dom.*
+
+import scala.concurrent.Future
+import scala.concurrent.duration.*
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
+
+/**
+ * Routerのナビゲーションガードと、RouterComponentのネストのテスト.
+ * jsdomにはURLPatternがないため、パス部分だけを扱う簡易的なものを用意します.
+ */
+class RouterSuite extends munit.FunSuite {
+
+  private var saved: (FiniteDuration, Boolean, Boolean, String) = null
+
+  override def beforeAll(): Unit = {
+    saved = (ScalactiveConfig.reloadTimerLazyDuration, ScalactiveConfig.keepWindowScrollPositionWhenReload,
+      ScalactiveConfig.scrollToTopOnNavigate, ScalactiveConfig.basePath)
+    ScalactiveConfig.reloadTimerLazyDuration = 0.millis
+    // jsdomはwindow.scrollToを実装していない
+    ScalactiveConfig.keepWindowScrollPositionWhenReload = false
+    ScalactiveConfig.scrollToTopOnNavigate = false
+    ScalactiveConfig.basePath = ""
+    if (js.typeOf(js.Dynamic.global.URLPattern) == "undefined") {
+      js.eval(
+        """window.URLPattern = class {
+          |  constructor(pattern, base) {
+          |    const full = new URL(pattern, base || location.origin + "/").pathname;
+          |    const esc = (s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+          |    let src = "", last = 0, idx = 0;
+          |    this.names = [];
+          |    full.replace(/:(\w+)(\*)?|\*/g, (m, n, star, off) => {
+          |      src += esc(full.slice(last, off));
+          |      if (n) { this.names.push(n); src += star ? "(.*)" : "([^/]+)"; }
+          |      else { this.names.push(String(idx++)); src += "(.*)"; }
+          |      last = off + m.length;
+          |      return m;
+          |    });
+          |    src += esc(full.slice(last));
+          |    this.re = new RegExp("^" + src + "$");
+          |  }
+          |  test(input) { return this.re.test(new URL(input).pathname); }
+          |  exec(input) {
+          |    const p = new URL(input).pathname, m = this.re.exec(p);
+          |    if (!m) return null;
+          |    const groups = {};
+          |    this.names.forEach((n, k) => groups[n] = m[k + 1]);
+          |    return { pathname: { input: p, groups } };
+          |  }
+          |};""".stripMargin)
+    }
+  }
+
+  override def afterAll(): Unit = {
+    ScalactiveConfig.reloadTimerLazyDuration = saved._1
+    ScalactiveConfig.keepWindowScrollPositionWhenReload = saved._2
+    ScalactiveConfig.scrollToTopOnNavigate = saved._3
+    ScalactiveConfig.basePath = saved._4
+  }
+
+  private def flush(): Future[Unit] = {
+    js.Promise.resolve[Unit](()).toFuture.flatMap(_ => js.Promise.resolve[Unit](()).toFuture)
+  }
+
+  private def path: String = window.location.pathname
+
+  private def mount(gen: ComponentManager => HTML): HTMLElement = {
+    val root = document.createElement("div").asInstanceOf[HTMLElement]
+    document.body.appendChild(root)
+    val component = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = gen(cm)
+    }
+    given HTMLElement = root
+    given AddMethod = AddMethod.append(root)
+    component().init() match {
+      case Left(e) => fail(e)
+      case Right(_) => root
+    }
+  }
+
+  // ページを開いた直後の確認は1度だけなので、最初に実行する
+  test("ページを開いた直後の場所もガードで確認し、リダイレクトできる") {
+    window.history.replaceState(js.Object(), "", "/secret")
+    var seen = List.empty[(String, Option[String])]
+    val remove = Router.beforeEach { (to, from) =>
+      seen :+= (to.path, from.map(_.path))
+      if (to.path == "/secret") Redirect("/login") else Continue
+    }
+    flush().map { _ =>
+      remove()
+      assertEquals(path, "/login")
+      assertEquals(seen, List(("/secret", None), ("/login", Some("/secret"))))
+    }
+  }
+
+  test("beforeEach: Cancelで遷移を取り消し、Redirectで別のパスへ遷移する. afterEachは遷移の後に呼ばれる") {
+    window.history.replaceState(js.Object(), "", "/home")
+    Router.href := window.location.href
+    var after = List.empty[String]
+    val removeGuard = Router.beforeEach { (to, _) =>
+      to.path match {
+        case "/blocked" => Cancel
+        case "/old" => Redirect("/new")
+        case _ => Continue
+      }
+    }
+    val removeAfter = Router.afterEach((to, from) => after :+= s"${from.map(_.path).getOrElse("-")}->${to.path}")
+    try {
+      Router.go("/blocked")
+      assertEquals(path, "/home")
+      Router.go("/old")
+      assertEquals(path, "/new")
+      assertEquals(Router.href.v, window.location.href)
+      Router.go("/a?x=1")
+      assertEquals(path, "/a")
+      assertEquals(after, List("/home->/new", "/new->/a"))
+    } finally {
+      removeGuard()
+      removeAfter()
+    }
+    Router.go("/blocked")
+    assertEquals(path, "/blocked", "解除したガードは呼ばれない")
+  }
+
+  test("beforeEach: 戻る・進む(popstate)もガードで確認し、Cancelなら元のURLに戻す") {
+    window.history.replaceState(js.Object(), "", "/page1")
+    Router.href := window.location.href
+    val remove = Router.beforeEach((to, _) => if (to.path == "/page0") Cancel else Continue)
+    try {
+      // 戻るボタンでURLが変わった状態を再現する
+      window.history.replaceState(js.Object(), "", "/page0")
+      window.dispatchEvent(new Event("popstate"))
+      assertEquals(path, "/page1")
+      window.history.replaceState(js.Object(), "", "/page2")
+      window.dispatchEvent(new Event("popstate"))
+      assertEquals(Router.href.v, window.location.href)
+      assertEquals(path, "/page2")
+    } finally remove()
+  }
+
+  test("リダイレクトがループしても止まる") {
+    window.history.replaceState(js.Object(), "", "/start")
+    val remove = Router.beforeEach((to, _) => if (to.path == "/x") Redirect("/y") else if (to.path == "/y") Redirect("/x") else Continue)
+    try {
+      Router.go("/x")
+      assertEquals(path, "/start")
+    } finally remove()
+  }
+
+  test("ネストしたルート: 子のパスだけが変わったときは外側(レイアウト)を作り直さない") {
+    window.history.replaceState(js.Object(), "", "/guide/a")
+    Router.href := window.location.href
+    var layoutRenders = 0
+    val layout: GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = {
+        layoutRenders += 1
+        val inner = RouterComponent.nested("/guide")(List(
+          ("a", _ => new StatelessComponent { def genHtml(implicit cm: ComponentManager): HTML = "<i>A</i>" }.apply()(_, _)),
+          ("b", _ => new StatelessComponent { def genHtml(implicit cm: ComponentManager): HTML = "<i>B</i>" }.apply()(_, _)),
+        ))
+        s"""<section>layout ${%(inner)}</section>"""
+      }
+    }.apply()(_, _)
+    val other: GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = "<p>other</p>"
+    }.apply()(_, _)
+    val routes: PathPatternRoutes = List(("/guide/*", _ => layout), ("/other", _ => other))
+    val root = mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent(routes))}</main>")
+    assertEquals(root.querySelector("main").textContent.trim, "layout A")
+    Router.go("/guide/b")
+    flush().flatMap { _ =>
+      assertEquals(root.querySelector("main").textContent.trim, "layout B")
+      assertEquals(layoutRenders, 1)
+      Router.go("/other")
+      flush()
+    }.map { _ =>
+      assertEquals(root.querySelector("main").textContent.trim, "other")
+    }
+  }
+
+  test("ネストしたルート: prefix引数で書いても nested と同じように選ぶ") {
+    window.history.replaceState(js.Object(), "", "/docs/b")
+    Router.href := window.location.href
+    def comp(text: String): GenComponentF =
+      new StatelessComponent { def genHtml(implicit cm: ComponentManager): HTML = s"<i>$text</i>" }.apply()(_, _)
+    val layout: GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = {
+        val routes: PathPatternRoutes = List(("a", _ => comp("A")), ("b", _ => comp("B")))
+        val inner = RouterComponent(routes, prefix = "/docs")
+        s"""<section>${%(inner)}</section>"""
+      }
+    }.apply()(_, _)
+    val outer: PathPatternRoutes = List(("/docs/*", _ => layout))
+    val root = mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent(outer))}</main>")
+    assertEquals(root.querySelector("main").textContent.trim, "B")
+    Router.go("/docs/a")
+    flush().map { _ =>
+      assertEquals(root.querySelector("main").textContent.trim, "A")
+    }
+  }
+
+  test("名前付きのパスパラメータが変わったときは描き直す") {
+    window.history.replaceState(js.Object(), "", "/users/1")
+    Router.href := window.location.href
+    val root = mount { implicit cm =>
+      val routes: PathPatternRoutes = List(("/users/:id", r => {
+        val id = r.pathname.groups("id")
+        new StatelessComponent { def genHtml(implicit cm: ComponentManager): HTML = s"<b>user $id</b>" }.apply()(_, _)
+      }))
+      s"<div>${ComponentManager.%(RouterComponent(routes))}</div>"
+    }
+    assertEquals(root.textContent, "user 1")
+    Router.go("/users/2")
+    flush().map(_ => assertEquals(root.textContent, "user 2"))
+  }
+
+  /** クリックして、RouterLinkがデフォルトの動作(ページの移動)を止めたかを返す */
+  private def click(e: Element, ctrl: Boolean = false): Boolean = {
+    var prevented = false
+    // 親要素で記録してから止める(jsdomはページの移動に対応していないため)
+    val record: js.Function1[Event, Unit] = ev => {
+      prevented = ev.defaultPrevented
+      ev.preventDefault()
+    }
+    document.addEventListener("click", record)
+    try {
+      e.dispatchEvent(new MouseEvent("click", new MouseEventInit {
+        bubbles = true
+        cancelable = true
+        ctrlKey = ctrl
+      }))
+    } finally document.removeEventListener("click", record)
+    prevented
+  }
+
+  test("RouterLink: hrefを描き、クリックで遷移する. 現在の場所に応じてクラスを付ける") {
+    window.history.replaceState(js.Object(), "", "/guide/intro")
+    Router.href := window.location.href
+    val root = mount { implicit cm =>
+      s"""<nav>${ComponentManager.linkC("/guide")(_ => "guide")}${ComponentManager.linkC("/guide/intro")(_ => "intro")}${ComponentManager.linkC("/other", activeClass = "on")(_ => "other")}</nav>"""
+    }
+    def a(i: Int) = root.querySelectorAll("a")(i).asInstanceOf[HTMLAnchorElement]
+    assertEquals(a(0).getAttribute("href"), "/guide")
+    assertEquals(a(0).className, "router-link-active")
+    assertEquals(a(1).className, "router-link-active router-link-exact-active")
+    assertEquals(a(2).className, "")
+    assert(!click(a(2), ctrl = true), "Ctrl+クリックはブラウザに任せる")
+    assertEquals(path, "/guide/intro")
+    assert(click(a(2)))
+    assertEquals(path, "/other")
+    flush().map { _ =>
+      assert(a(2).classList.contains("on") && a(2).classList.contains("router-link-exact-active"), a(2).className)
+      assertEquals(a(0).className, "")
+    }
+  }
+
+  test("Route: beforeEnterは別のルートから入るときだけ呼ばれ、metaはガードのto.metaで参照できる") {
+    window.history.replaceState(js.Object(), "", "/top")
+    Router.href := window.location.href
+    var enters = 0
+    var loggedIn = false
+    def page(name: String): GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = s"<b>$name</b>"
+    }.apply()(_, _)
+    val routes = List(
+      Route("/top", _ => page("top")),
+      Route("/login", _ => page("login")),
+      Route("/items/:id", _ => page("item"), beforeEnter = (_, _) => { enters += 1; Continue }),
+      Route("/admin", _ => page("admin"), meta = Map("requiresAuth" -> true)),
+    )
+    val removeGuard = Router.beforeEach { (to, _) =>
+      if (to.meta.get("requiresAuth").contains(true) && !loggedIn) Redirect("/login") else Continue
+    }
+    val root = mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent.of(routes))}</main>")
+    try {
+      Router.go("/items/1")
+      Router.go("/items/2")
+      assertEquals(enters, 1, "同じルートの中での移動では呼ばない")
+      Router.go("/top")
+      Router.go("/items/3")
+      assertEquals(enters, 2)
+      Router.go("/admin")
+      assertEquals(path, "/login")
+      loggedIn = true
+      Router.go("/admin")
+      assertEquals(path, "/admin")
+    } finally removeGuard()
+    flush().map(_ => assertEquals(root.textContent, "admin"))
+  }
+
+  test("RouteLocation: ベースパスを除いたパス") {
+    ScalactiveConfig.basePath = "app"
+    try {
+      assertEquals(RouteLocation("http://localhost/app/users/1?q=1#h").path, "/users/1")
+      assertEquals(RouteLocation("http://localhost/app").path, "/")
+      assertEquals(RouteLocation("http://localhost/other").path, "/other")
+    } finally ScalactiveConfig.basePath = ""
+  }
+
+}

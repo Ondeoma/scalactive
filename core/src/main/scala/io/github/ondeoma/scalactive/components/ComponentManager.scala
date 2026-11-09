@@ -24,31 +24,106 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   private lazy val html: String = genHtml(this)
   private lazy val tmpReactives = ListBuffer[Reactive[?]]()
   private lazy val eventHandlerIds = ListBuffer[ID]()
+  private var hooks: Option[LifecycleHooks] = None
 
-  def gen(): GenResult = {
-    val tmpDiv = mkDiv()
-    // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
-    val nodes = html.toNodes.orDummyNode
-    for {
-      _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
-      children = genChildren(tmpDiv)
-      cs <- children.traverse(_.init())
-      ns = tmpDiv.childNodes.toList
-      _ = tmpDiv.remove()
-    } yield (ns, cs, tmpReactives.toList, eventHandlerIds.toList)
+  // 目印(子コンポーネントのコメント・要素の効果の属性)のID. このComponentManagerの中で一意であればよい
+  // (挿入位置はコメントのノードそのもので覚えるため). 同じ形の描画は同じHTMLになり、解析結果を使い回せる.
+  private var idCounter = 0
+
+  private[scalactive] def nextId(): String = {
+    idCounter += 1
+    "cm-" + idCounter
   }
 
-  private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {
-    bufGC.toList.map { (commentId, gen) =>
-      gen(ele, AddMethod.afterC(commentId))
+  /** ライフサイクルフック(最初に使われたときに一時リアクティブ値として登録します) */
+  private[scalactive] def lifecycle: LifecycleHooks = {
+    hooks.getOrElse {
+      val h = new LifecycleHooks
+      hooks = Some(h)
+      addTmpReactive(h)
+      h
     }
-  } ::: bufEE.toList.flatMap { (dataId, gen) =>
-    val attr = s"data-$dataId"
-    if (ele.hasAttribute(attr)) {
-      Some(gen(ele))
-    } else withElement(ele)(AttrSelector(attr, SelectorAttributeOperator.Has), el => {
-      gen(el)
-    })
+  }
+
+  def gen(): GenResult = genWithOwnLast().map(_._1)
+
+  /**
+   * genに加えて、HTML自身の最後のノード(子コンポーネントが足したノードを除く)を返します.
+   * 子コンポーネントはプレースホルダーの後ろにノードを足すだけで、HTML自身のノードは取り除かないため、
+   * HTML自身の最初と最後のノードはコンポーネントが片付けられるまで変わりません(forCの行の範囲に使います).
+   */
+  private[scalactive] def genWithOwnLast(): Either[String, ((List[Node], ChildrenComponents, TemporaryReactiveValues, EventHandlerIds), Node)] = {
+    val tmpDiv = mkDiv()
+    val inited = ListBuffer[ComponentController[?]]()
+    try {
+      // 要素が空の場合は後に親ノードを特定できるようにダミーノードを含める。
+      val nodes = html.toNodesCached.orDummyNode
+      for {
+        _ <- addNodes(tmpDiv)(AddMethod.append(tmpDiv), nodes *).toRight("ComponentManagerError")
+        children = genChildren(tmpDiv)
+        cs <- children.traverse(c => c.init().map { r => inited += c; r })
+        ns = tmpDiv.childNodes.toList
+        _ = tmpDiv.remove()
+        // 子コンポーネントの描画が終わった後に登録するので、onMountedは子から順に実行される
+        _ = hooks.filter(_.mounted.nonEmpty).foreach(MountQueue.enqueue)
+      } yield ((ns, cs, tmpReactives.toList, eventHandlerIds.toList), nodes.last)
+    } catch {
+      case e: Throwable =>
+        // 描画の途中で例外が起きたら、それまでに作ったもの(子コンポーネント・一時リアクティブ値・ハンドラー)を片付ける
+        inited.foreach(_.clear())
+        tmpReactives.foreach(_.abort())
+        eventHandlerIds.foreach(io.github.ondeoma.scalactive.events.EventManager.rmHandler)
+        tmpDiv.remove()
+        throw e
+    }
+  }
+
+  /**
+   * 目印を1回の走査でまとめて探し、子コンポーネントと要素の効果を作ります.
+   * 子コンポーネントはコメントのノードの直後に挿入します.
+   */
+  private def genChildren(ele: HTMLElement): List[ComponentController[?]] = {
+    if (bufGC.isEmpty && bufEE.isEmpty) Nil
+    else {
+      val comments = scala.collection.mutable.HashMap[String, Node]()
+      val elements = scala.collection.mutable.HashMap[String, HTMLElement]()
+      val walker = document.createTreeWalker(ele, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null, false)
+      var n: Node = walker.nextNode()
+      while (n != null) {
+        n match {
+          case c: Comment =>
+            if (bufGC.nonEmpty && c.data.startsWith("cm-")) comments.update(c.data, c)
+          case e: HTMLElement if bufEE.nonEmpty =>
+            val attrs = e.attributes
+            var i = attrs.length - 1
+            while (i >= 0) {
+              val name = attrs(i).name
+              // 目印の属性は残す(取り除くと1,000行あたり数ms遅くなる. IDは連番で、属性名は使い回される)
+              if (name.startsWith("data-cm-")) elements.update(name.drop("data-".length), e)
+              i -= 1
+            }
+          case _ => ()
+        }
+        n = walker.nextNode()
+      }
+      val gcs = bufGC.toList.flatMap { (commentId, gen) =>
+        comments.get(commentId) match {
+          case Some(c) => Some(gen(ele, AddMethod.afterNode(c)))
+          case None =>
+            io.github.ondeoma.scalactive.utils.ConsoleUtil.error(s"Not Found Comment: `$commentId`")
+            None
+        }
+      }
+      val ees = bufEE.toList.flatMap { (dataId, gen) =>
+        elements.get(dataId) match {
+          case Some(e) => Some(gen(e))
+          case None =>
+            io.github.ondeoma.scalactive.utils.ConsoleUtil.error(s"Not Found Element: `data-$dataId`")
+            None
+        }
+      }
+      gcs ::: ees
+    }
   }
 
   def addTmpReactive(rv: Reactive[?]): Unit = {
@@ -63,6 +138,15 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 
 object ComponentManager {
 
+  export io.github.ondeoma.scalactive.components.Slot
+  export io.github.ondeoma.scalactive.components.ScopedSlot
+  export io.github.ondeoma.scalactive.components.ElementRef
+  export io.github.ondeoma.scalactive.components.Teleport
+  export io.github.ondeoma.scalactive.components.ErrorBoundary
+  export io.github.ondeoma.scalactive.components.ErrorInfo
+  export io.github.ondeoma.scalactive.components.Await
+  export io.github.ondeoma.scalactive.components.routes.Route
+  export io.github.ondeoma.scalactive.components.routes.RouterLink
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
   export io.github.ondeoma.scalactive.components.fors.ForLRComponent
   export io.github.ondeoma.scalactive.components.fors.ForRMComponent
@@ -118,6 +202,8 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.reactive.RVList
   export io.github.ondeoma.scalactive.reactive.Reactive
   export io.github.ondeoma.scalactive.reactive.ReactiveModel
+  export io.github.ondeoma.scalactive.reactive.ReactiveModelOf
+  export io.github.ondeoma.scalactive.reactive.RMConversion
   export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro
   export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
   export io.github.ondeoma.scalactive.reactive.RMCompatible
@@ -134,6 +220,43 @@ object ComponentManager {
     new ComponentManager(f).gen()
   }
 
+  private[scalactive] def genWithOwnLast(f: ComponentManager => HTML) = {
+    new ComponentManager(f).genWithOwnLast()
+  }
+
+  /**
+   * 要素をElementRefに結び付けます(テンプレート参照). 例: `<input ${ref(input)}>`
+   * 要素が作られたときに設定され、コンポーネントが片付けられると空に戻ります.
+   */
+  def ref[E <: Element](r: ElementRef[E])
+                       (using cc: ComponentManager): ATTR = {
+    el(ele => AttrController { ac =>
+      ac.element = Some(ele)
+      r.set(Some(ele.asInstanceOf[E]))
+      ac.onClear = () => if (r.get.exists(_ eq ele)) r.set(None)
+      Right(ac)
+    })
+  }
+
+  /**
+   * コンポーネントがDOMに挿入された後に実行する処理を登録します(Vueのmounted).
+   * 現在の処理(描画・描き直し)が終わった直後に、子コンポーネントのものから順に実行されます.
+   * 実行前にコンポーネントが片付けられた場合は実行しません.
+   */
+  def onMounted(f: => Unit)
+               (using cm: ComponentManager): Unit = {
+    cm.lifecycle.mounted += (() => f)
+  }
+
+  /**
+   * コンポーネントが片付けられた(DOMから取り除かれた)後に実行する処理を登録します(Vueのunmounted).
+   * 描き直し・ifCの切り替え・forCの行の削除などでも実行されます. タイマーや外部のイベントの解除などに使います.
+   */
+  def onUnmounted(f: => Unit)
+                 (using cm: ComponentManager): Unit = {
+    cm.lifecycle.unmounted += (() => f)
+  }
+
   def %(f: GenComponentF)
        (using cc: ComponentManager): HTML = {
     componentWithComment(f)
@@ -144,9 +267,38 @@ object ComponentManager {
     componentWithComment(f)
   }
 
+  /**
+   * 子コンポーネントを展開し、そのルート要素(最初の要素)にattrsを付け加えます(属性の引き継ぎ).
+   * 子が描き直されたときも、新しいルート要素に付け直します.
+   * attrsにはStRuntimeのrootCls/rootStyle/rootAttrや、要素に効果を付けるコントローラーを渡します.
+   */
+  def c(f: GenComponentF,
+        attrs: ElementEffectF*)
+       (using cc: ComponentManager): HTML = {
+    if (attrs.isEmpty) componentWithComment(f)
+    else componentWithComment((parent, am) => {
+      val ctrl = f(parent, am)
+      ctrl match {
+        case n: NodesComponentController =>
+          n.afterInit = n.afterInit :+ { (nc: NodesComponentController) =>
+            nc.elements.headOption match {
+              case Some(root) =>
+                attrs.map(_(root)).toList.traverse(_.init()) match {
+                  case Right(cs) => nc.children = nc.children ++ cs
+                  case Left(e) => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e)
+                }
+              case None => io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on a component without a root element are ignored")
+            }
+          }
+        case _ => io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on this component are ignored")
+      }
+      ctrl
+    })
+  }
+
   def componentWithComment(f: GenComponentF)
                           (using cc: ComponentManager): HTML = {
-    val id = "cm-" + randomUUID()
+    val id = cc.nextId()
     cc.bufGC.addOne(id -> f)
     // language=html
     s"<!--$id-->"
@@ -159,7 +311,7 @@ object ComponentManager {
 
   def elementByDataAttr(fs: ElementEffectF*)
                        (using cc: ComponentManager): ATTR = {
-    val id = "cm-" + randomUUID()
+    val id = cc.nextId()
     fs.foreach(f => cc.bufEE.addOne(id -> f))
     // language=html
     s""" data-$id"""
@@ -251,6 +403,63 @@ object ComponentManager {
     el(StyleBrieflyController(rv, duration, "display", showStyle, "none"))
   }
 
+  /**
+   * 中身を別の要素(toのセレクター)の末尾に描画します(VueのTeleport、ReactのPortal).
+   * 例: `teleportC("body") { implicit cm => "<div class='modal'>...</div>" }`
+   */
+  def teleportC(to: String,
+                disabled: Boolean = false)
+               (genHtml: ComponentManager => HTML)
+               (using ComponentManager): HTML = {
+    %(Teleport(to, disabled, Slot(genHtml))(_, _))
+  }
+
+  /**
+   * 中身で起きたエラーを受け止め、fallbackの表示に切り替えます(エラーの境界).
+   * 例: `errorBoundaryC(err => implicit cm => s"<p>${err.message}</p>") { implicit cm => ... }`
+   */
+  def errorBoundaryC(fallback: ErrorInfo => ComponentManager => HTML,
+                     onError: Throwable => Unit = e => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e))
+                    (genHtml: ComponentManager => HTML)
+                    (using ComponentManager): HTML = {
+    %(ErrorBoundary(ScopedSlot(fallback), onError, Slot(genHtml))(_, _))
+  }
+
+  /**
+   * 非同期の処理(Future)の状態に応じて表示を切り替えます(VueのSuspense).
+   * 完了するまでpending、完了したらdone、失敗したらerrorを表示します. errorのretryでfutureをもう1度評価します.
+   * 例: `awaitC(fetchUser(id), pending = _ => "読み込み中")(user => implicit cm => s"<p>${user.name}</p>")`
+   */
+  def awaitC[A](future: => scala.concurrent.Future[A],
+                pending: ComponentManager => HTML = _ => "",
+                error: ErrorInfo => ComponentManager => HTML = null)
+               (done: A => ComponentManager => HTML)
+               (using ComponentManager): HTML = {
+    val errorSlot = if (error == null) ScopedSlot.empty else ScopedSlot(error)
+    %(Await[A](() => future, Slot(pending), errorSlot, ScopedSlot(done))(_, _))
+  }
+
+  /**
+   * 読み込みが終わってから描画するコンポーネント(遅延読み込み). ルートなどにそのまま使えます.
+   * 例: `asyncComponent(() => js.dynamicImport(HeavyComponent()).toFuture)`
+   */
+  def asyncComponent(load: () => scala.concurrent.Future[GenComponentF],
+                     pending: ComponentManager => HTML = _ => ""): GenComponentF = {
+    Await.component(load, Slot(pending))
+  }
+
+  /**
+   * Router.goで遷移するリンク(Vue Routerのrouter-link). 現在の場所に応じてactiveClass/exactActiveClassを付けます.
+   * 例: `linkC("/guide")(_ => "ガイド")`
+   */
+  def linkC(to: String,
+            activeClass: String = "router-link-active",
+            exactActiveClass: String = "router-link-exact-active")
+           (genHtml: ComponentManager => HTML)
+           (using ComponentManager): HTML = {
+    %(RouterLink(to, activeClass, exactActiveClass, Slot(genHtml))(_, _))
+  }
+
   def ifC(ifV: Reactive[Boolean])
          (genHtml: ComponentManager => HTML)
          (using ComponentManager): HTML = {
@@ -291,6 +500,120 @@ object ComponentManager {
              (genHtml: (ComponentManager, A, IDX) => HTML)
              (using ComponentManager): HTML = {
     %(ForLRComponent(forV)(genHtml))
+  }
+
+  // forEachC: 添字を渡さないforC. 行の位置が変わっても作り直さず使い回すため、削除や並べ替えが速くなります.
+  // (forCは、添字を使う行を正しく描くために、位置が変わった行を作り直します)
+
+  def forEachC[A](forV: List[A])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForStaticComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RVList[A])
+                 (genHtml: (ComponentManager, RV[A]) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForRVComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM])
+                                             (genHtml: (ComponentManager, RM) => HTML)
+                                             (using ComponentManager): HTML = {
+    %(ForRMComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: CRV[List[A]])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RV[List[A]])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: ReactiveList[A])
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, usesIndex = false)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  // key付きのforC/forEachC: keyで行を対応付けます(Vueのv-forの:key).
+  // キーが同じでも値が変わった行は作り直します.
+
+  def forC[A](forV: List[A], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForStaticComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: RVList[A], key: RV[A] => Any)
+             (genHtml: (ComponentManager, RV[A], IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForRVComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM], key: RM => Any)
+                                         (genHtml: (ComponentManager, RM, IDX) => HTML)
+                                         (using ComponentManager): HTML = {
+    %(ForRMComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: CRV[List[A]], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: RV[List[A]], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, true, key)(genHtml))
+  }
+
+  def forC[A](forV: ReactiveList[A], key: A => Any)
+             (genHtml: (ComponentManager, A, IDX) => HTML)
+             (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, true, key)(genHtml))
+  }
+
+  def forEachC[A](forV: List[A], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForStaticComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RVList[A], key: RV[A] => Any)
+                 (genHtml: (ComponentManager, RV[A]) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForRVComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A, RM <: ReactiveModel[A, RM]](forV: RMList[A, RM], key: RM => Any)
+                                             (genHtml: (ComponentManager, RM) => HTML)
+                                             (using ComponentManager): HTML = {
+    %(ForRMComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: CRV[List[A]], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: RV[List[A]], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
+  }
+
+  def forEachC[A](forV: ReactiveList[A], key: A => Any)
+                 (genHtml: (ComponentManager, A) => HTML)
+                 (using ComponentManager): HTML = {
+    %(ForLRComponent(forV, false, key)((cm, a, _) => genHtml(cm, a)))
   }
 
   def ev(et: EventType | List[EventType],

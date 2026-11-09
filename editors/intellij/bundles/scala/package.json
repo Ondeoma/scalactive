@@ -1,0 +1,15 @@
+{
+  "name": "scala-grammar",
+  "displayName": "Scala grammar (for .st)",
+  "description": "scala/vscode-scala-syntax の文法(commit 6dbe37fdda3610967e28717b31697e9699865641, MIT). .stの<script>や式の埋め込みにのみ使い、.scalaファイルには関連付けません.",
+  "version": "0.0.0",
+  "license": "MIT",
+  "contributes": {
+    "grammars": [
+      {
+        "scopeName": "source.scala",
+        "path": "./syntaxes/Scala.tmLanguage.json"
+      }
+    ]
+  }
+}

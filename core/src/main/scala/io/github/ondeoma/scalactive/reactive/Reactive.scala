@@ -1,6 +1,5 @@
 package io.github.ondeoma.scalactive.reactive
 
-import io.github.ondeoma.scalactive.facades.Crypto.*
 import io.github.ondeoma.scalactive.models.WatchInfo
 import io.github.ondeoma.scalactive.utils.TypeAlias.ID
 
@@ -19,16 +18,21 @@ abstract class Reactive[A] {
   def apply(): A = v
 
   def addWatcher(w: Watcher): WatchInfo = {
-    val id = randomUUID()
+    val id = io.github.ondeoma.scalactive.utils.IdGen.next()
     watchers.addOne(id -> w)
     WatchInfo(this, id)
   }
+
+  /** 監視している数(Devtools.watcherCountで使います) */
+  private[scalactive] def numWatchers: Int = watchers.size
 
   def rmWatcher(id: ID): Unit = {
     watchers.remove(id)
   }
 
-  def mapC[B](f: A => B): CRV[B] = {
+  // inlineにすることで、呼び出し側のComponentManagerに一時リアクティブ値として登録され、
+  // コンポーネントのクリア時に監視が解除されます.
+  inline def mapC[B](f: A => B): CRV[B] = {
     CRV(this, f)
   }
 
