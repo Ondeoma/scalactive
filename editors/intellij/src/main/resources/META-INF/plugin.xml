@@ -15,6 +15,10 @@
       <li>Comment with Line Comment uses <code>//</code> in the script, <code>/* */</code> in the style and HTML comments in the template.</li>
       <li>In the script and the style, Enter keeps the indentation of the previous line (aligned after an open bracket),
           and brackets and double quotes are closed automatically.</li>
+      <li>New → Scalactive Component creates a <code>.st</code> file from a template.</li>
+      <li>Renaming a <code>.st</code> file updates the component tags in the same package.</li>
+      <li>Open Generated Scala Source opens the Scala code generated from a <code>.st</code> file.</li>
+      <li>When <code>target/scalactive-lsp.json</code> is missing, a notification offers to run <code>sbt compile</code>.</li>
       <li><code>.st</code> files get their own file type and icon.</li>
     </ul>
     <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
@@ -49,7 +53,25 @@
     <editorHighlighterProvider filetype="Scalactive"
               implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
     <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>
+    <!-- .stのファイル名を変えたら、同じパッケージの.stにあるタグも書き換える -->
+    <refactoring.elementListenerProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveRenameListenerProvider"/>
+    <!-- New → Scalactive Component のひな形 -->
+    <internalFileTemplate name="Scalactive Component"/>
+    <internalFileTemplate name="Scalactive Props Component"/>
+    <internalFileTemplate name="Scalactive Stateful Component"/>
     <!-- 補完・型エラーなど(言語サーバー). LSP APIはIntelliJ IDEA 2025.2以降のプラットフォームに含まれます. -->
     <platform.lsp.serverSupportProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLspServerSupportProvider"/>
   </extensions>
+
+  <actions>
+    <action id="Scalactive.NewComponent" class="io.github.ondeoma.scalactive.intellij.NewScalactiveComponentAction">
+      <add-to-group group-id="NewGroup" anchor="last"/>
+    </action>
+    <action id="Scalactive.OpenGeneratedSource" class="io.github.ondeoma.scalactive.intellij.OpenGeneratedSourceAction"
+            text="Open Generated Scala Source" description="Open the Scala source generated from this .st file">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+      <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+      <add-to-group group-id="GoToCodeGroup" anchor="last"/>
+    </action>
+  </actions>
 </idea-plugin>

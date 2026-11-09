@@ -89,7 +89,16 @@ cd editors/intellij
   - script・styleの中で改行したときは、前の行のインデントを引き継ぎます(閉じていない括弧の直後にそろえる、`{` `=` `=>` の後は1段深く、
     閉じ括弧の前は1段浅く. `ScalactiveLineIndentProvider`). HTMLの規則のままだと、中身がタグより1段深くなるためです.
   - script・styleの中では `(` `[` `{` `"` を入力すると閉じる文字を補い、閉じる文字は上書きせずに通り過ぎ、空の組はBackspaceでまとめて消します
-    (`ScalactiveBracketHandler`. 単語の直前では補いません).
+    (`ScalactiveBracketHandler`. 単語の直前では補いません). テンプレートでも、Scalaを書く部分(`{{ }}` と、ディレクティブ・`:attr`・`@event`・`#slot`
+    の属性値)では同じように補います(属性値の中の `"` は、属性を `'` で囲んだときだけ).
+- New → Scalactive Component で、.stのひな形(ふつう・Props付き・State付き)から作れます(`NewScalactiveComponentAction`、
+  `src/main/resources/fileTemplates/internal/`).
+- `.st` のファイル名(コンポーネントの名前)を変えると、同じディレクトリの `.st` のテンプレートにあるそのタグも書き換えます
+  (`ScalactiveRenameListenerProvider`. `.scala` からの参照と、別のパッケージへの移動は対象外).
+- `.st` を開いたときに `target/scalactive-lsp.json` が見つからなければ、通知を出します. 通知の「sbt compile を実行」で、
+  build.sbtのある最も外側のディレクトリで `sbt -batch compile` を実行し、終わったら言語サーバーを再起動します(`ScalactiveSbtCompile`).
+- エディタ・プロジェクトビューの右クリックメニューと Navigate メニューの「Open Generated Scala Source」で、`.st` から生成された
+  Scalaのソース(`scalactive-lsp.json` の `generatedDirectory` の下)を開けます(`OpenGeneratedSourceAction`).
   - 言語サーバーには `initializationOptions` で `{"htmlCompletion": false}` を渡し、HTMLの標準のタグ・属性・属性値の補完を
     IntelliJの補完と重ならないようにしています(子コンポーネント・prop・ディレクティブ・`:attr`・`@event` は言語サーバーが補完します).
 - `.st` のファイルのアイコンは `intellij/src/main/resources/icons/st.svg`(ダークテーマ用は `st_dark.svg`)です.

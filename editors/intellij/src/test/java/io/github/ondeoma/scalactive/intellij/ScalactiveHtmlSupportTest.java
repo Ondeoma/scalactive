@@ -177,6 +177,34 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         assertTrue(text, text.contains(".a {}\n"));
     }
 
+    /** テンプレートのScalaの部分({{ }}・ディレクティブの属性値)でも括弧を補う */
+    public void testBracketPairsInTemplateScala() {
+        myFixture.configureByText("A.st", "<template>\n  <p>{{ <caret> }}</p>\n</template>\n");
+        myFixture.type("f(\"");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("{{ f(\"\") }}"));
+
+        myFixture.configureByText("A.st", "<template>\n  <p :class=\"s.count.mapC(_ >= 3)\" @click=\"<caret>\">a</p>\n</template>\n");
+        myFixture.type("add(");
+        text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("@click=\"add()\""));
+        // 属性を " で囲んでいるときは " を補わない
+        myFixture.type("\"");
+        text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("@click=\"add(\")\""));
+
+    }
+
+    public void testTemplateContext() {
+        String t = "<script lang=\"scala\">val a = 1</script>\n<template>\n  <p :x=\"a > b\" title=\"t\" disabled @y='f(\"x\")'>{{ a < b }} <!-- {{ --> text</p>\n</template>\n";
+        assertEquals(ScalactiveBracketHandler.Where.SCALA_NO_QUOTE, ScalactiveBracketHandler.templateContext(t, t.indexOf("a > b") + 2));
+        assertEquals(ScalactiveBracketHandler.Where.NONE, ScalactiveBracketHandler.templateContext(t, t.indexOf("\"t\"") + 1));
+        assertEquals(ScalactiveBracketHandler.Where.SCALA, ScalactiveBracketHandler.templateContext(t, t.indexOf("f(") + 1));
+        assertEquals(ScalactiveBracketHandler.Where.SCALA, ScalactiveBracketHandler.templateContext(t, t.indexOf("a < b") + 2));
+        assertEquals(ScalactiveBracketHandler.Where.NONE, ScalactiveBracketHandler.templateContext(t, t.indexOf(" text")));
+        assertEquals(ScalactiveBracketHandler.Where.NONE, ScalactiveBracketHandler.templateContext(t, t.indexOf("val a")));
+    }
+
     public void testCssCompletionInStyle() {
         myFixture.configureByText("A.st", "<template><p class=\"x\"></p></template>\n<style scoped>\n.x { backgr<caret> }\n</style>\n");
         myFixture.completeBasic();

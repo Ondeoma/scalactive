@@ -14,6 +14,7 @@ public final class ScalactiveLspServerSupportProvider implements LspServerSuppor
     public void fileOpened(@NotNull Project project, @NotNull VirtualFile file, @NotNull LspServerStarter serverStarter) {
         if (ScalactiveLspServerDescriptor.isStFile(file)) {
             serverStarter.ensureServerStarted(new ScalactiveLspServerDescriptor(project));
+            ScalactiveSbtCompile.checkConfig(project, file);
         }
     }
 
