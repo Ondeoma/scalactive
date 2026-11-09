@@ -76,6 +76,17 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
             com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
                     () -> { com.intellij.psi.codeStyle.CodeStyleManager.getInstance(getProject()).reformat(myFixture.getFile()); });
             waitUntil("formatting", () -> original.equals(document.getText()));
+
+            // <style>のCSSも整形される(1行のルールの空白を整える)
+            String rule = ".big { font-weight: bold; color: tomato; }";
+            int ruleStart = original.indexOf(rule);
+            assertTrue(ruleStart >= 0);
+            com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
+                    () -> document.replaceString(ruleStart, ruleStart + rule.length(), ".big{font-weight:bold;color:tomato}"));
+            com.intellij.psi.PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+            com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
+                    () -> { com.intellij.psi.codeStyle.CodeStyleManager.getInstance(getProject()).reformat(myFixture.getFile()); });
+            waitUntil("css formatting", () -> original.equals(document.getText()));
         } finally {
             // 編集したドキュメントは保存せず、ファイルも元に戻す(リポジトリのサンプルを変えないため)
             com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().reloadFiles(sample);

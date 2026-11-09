@@ -7,7 +7,9 @@ package io.github.ondeoma.scalactive.compiler
  *  - テンプレート: 要素の入れ子に合わせて2スペースずつインデントし直す.
  *    複数行にまたがる開始タグの続きの行は、タグより4スペース深くする.
  *    <pre>・<textarea>の中身、複数行のコメント、{{ }} の中は変えない
- *  - <script>・<style>: インデントは変えず、前後の空行と行末の空白を整える
+ *  - <style>(CSS): CssFormatterで整形する(1行のルールは1行のまま、複数行のルールは宣言を1行ずつ).
+ *    lang付き(scssなど)や、読めないCSSは<script>と同じ扱い
+ *  - <script>: インデントは変えず、前後の空行と行末の空白を整える
  *  - ファイル全体: 行末の空白を取り除き、最後を改行1つにする
  * 構文エラーなどで読めない場合は、そのまま返します.
  */
@@ -30,7 +32,11 @@ object StFormatter {
     blocks.foreach { b =>
       sb ++= normalized.substring(last, b.contentStart)
       val content = normalized.substring(b.contentStart, b.contentEnd)
-      sb ++= (if (b.name == "template") formatTemplate(content) else formatBlock(content))
+      sb ++= {
+        if (b.name == "template") formatTemplate(content)
+        else if (b.name == "style" && b.attr("lang").flatMap(_.value).forall(_ == "css")) CssFormatter.format(content).getOrElse(formatBlock(content))
+        else formatBlock(content)
+      }
       last = b.contentEnd
     }
     sb ++= normalized.substring(last)

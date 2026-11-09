@@ -425,7 +425,8 @@ object SingleFileComponent extends StatelessComponent {
        |  <li>定義へのジャンプ(同じ.st内と、プロジェクト内の .scala / .st. 子コンポーネントのタグ名・属性名からは、その.stのPropsへ)</li>
        |  <li>
        |    ドキュメントのフォーマット(整形). テンプレートは要素の入れ子に合わせて2スペースずつインデントし直します.
-       |    <code>&lt;script&gt;</code>・<code>&lt;style&gt;</code> の中はインデントを変えず、前後の空行と行末の空白だけを整えます.
+       |    <code>&lt;style&gt;</code> のCSSは、1行で書いたルールは1行のまま空白を整え、複数行のルールは宣言を1行ずつインデントします.
+       |    <code>&lt;script&gt;</code> の中はインデントを変えず、前後の空行と行末の空白だけを整えます.
        |  </li>
        |</ul>
        |
