@@ -202,6 +202,8 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.reactive.RVList
   export io.github.ondeoma.scalactive.reactive.Reactive
   export io.github.ondeoma.scalactive.reactive.ReactiveModel
+  export io.github.ondeoma.scalactive.reactive.ReactiveModelOf
+  export io.github.ondeoma.scalactive.reactive.RMConversion
   export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro
   export io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
   export io.github.ondeoma.scalactive.reactive.RMCompatible
