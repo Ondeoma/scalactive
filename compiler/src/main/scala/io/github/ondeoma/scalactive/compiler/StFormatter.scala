@@ -22,7 +22,11 @@ object StFormatter {
   /** 中身をそのまま残す要素 */
   private val rawElements = Set("pre", "textarea", "script", "style")
 
-  def format(source: String): String = {
+  /**
+   * @param scriptSpacing <script>の行の途中の余分な空白を取り除くか(scalafmtで整形済みのときはfalse.
+   *                      scalafmtが位置をそろえた空白を崩さないため)
+   */
+  def format(source: String, scriptSpacing: Boolean = true): String = {
     val normalized = source.replace("\r\n", "\n")
     val sfc = try SfcParser.parse(new SourceText(normalized)) catch {
       case _: StCompileException => return source
@@ -36,7 +40,7 @@ object StFormatter {
       sb ++= {
         if (b.name == "template") formatTemplate(content)
         else if (b.name == "style" && b.attr("lang").flatMap(_.value).forall(_ == "css")) CssFormatter.format(content).getOrElse(formatBlock(content))
-        else if (b.name == "script") formatBlock(ScalaSpacing.format(content).getOrElse(content))
+        else if (b.name == "script" && scriptSpacing) formatBlock(ScalaSpacing.format(content).getOrElse(content))
         else formatBlock(content)
       }
       last = b.contentEnd

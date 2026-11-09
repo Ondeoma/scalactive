@@ -38,8 +38,12 @@ VS CodeとIntelliJ IDEAに提供します.
   子コンポーネントのタグ名・属性名からは、同じディレクトリの `.st` のProps(のパラメータ)へジャンプします(`TemplateNavigation`).
 - 整形(ドキュメントのフォーマット)は `compiler/` の `StFormatter` が行います.
   テンプレートは入れ子に合わせてインデントし直し、`<style>` のCSSは `CssFormatter` で整えます(1行のルールは1行のまま、
-  複数行のルールは宣言を1行ずつ. `lang` 付きのstyleは対象外). `<script>` はインデントを変えず、前後の空行と行末の空白を整え、
-  行の途中の余分な空白を `ScalaSpacing` で取り除きます(連続した空白を1つに、`(` `[` の直後と `)` `]` `,` の直前の空白をなしに.
+  複数行のルールは宣言を1行ずつ. `lang` 付きのstyleは対象外).
+  `<script>` は言語サーバーが scalafmt で整形します(`ScriptFormatter`. 中身を `object` の本体として整形し、全体のインデントは保ちます).
+  .stのディレクトリから上に `.scalafmt.conf` があればその設定を使い(`runner.dialect` がなければ `scala3`、`version` がなければ既定のものを補います)、
+  なければ組み込みの設定(書いた人の改行の位置を保つ `newlines.source = keep` など. `ScriptFormatter.DefaultConfig`)を使います.
+  scalafmt本体は設定のバージョンのものを初回にcoursierで取得します. 構文エラーなどでscalafmtが整形できないときは、
+  `compiler/` の `ScalaSpacing` で行の途中の余分な空白だけを取り除きます(連続した空白を1つに、`(` `[` の直後と `)` `]` `,` の直前の空白をなしに.
   文字列・コメントの中は変えません).
   IntelliJでは「コードの整形」を言語サーバーだけに任せます(IntelliJのHTMLの整形は `{{ }}` などを崩すため使いません).
   言語サーバーが起動していないときは、`ScalactiveFormattingGuard` が何もせずに引き受け、通知を出します.

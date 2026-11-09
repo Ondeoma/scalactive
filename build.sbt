@@ -85,6 +85,8 @@ lazy val languageServer = project.in(file("language-server"))
       "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.24.0",
       "org.scalameta" % "mtags-interfaces" % "1.6.2",
       "io.get-coursier" % "interface" % "1.0.18",
+      // <script>の整形(scalafmt本体は、設定のバージョンのものを実行時に取得します)
+      "org.scalameta" %% "scalafmt-dynamic" % "3.11.5",
       "org.scalameta" %% "munit" % munitV % Test
     ),
     // テストでは、coreのクラスパスで.stを型検査します
@@ -114,6 +116,9 @@ lazy val languageServer = project.in(file("language-server"))
       case "module-info.class" => MergeStrategy.discard
       case PathList("META-INF", xs @ _*) if xs.lastOption.exists(n => n.endsWith(".SF") || n.endsWith(".DSA") || n.endsWith(".RSA")) =>
         MergeStrategy.discard
+      // scalafmt-dynamicの依存(coursier・plexus)で重複する、動作に関係しない情報ファイル
+      case "scala-collection-compat.properties" => MergeStrategy.first
+      case PathList("META-INF", "sisu", _ @ _*) => MergeStrategy.discard
       case x => (assembly / assemblyMergeStrategy).value(x)
     }
   )

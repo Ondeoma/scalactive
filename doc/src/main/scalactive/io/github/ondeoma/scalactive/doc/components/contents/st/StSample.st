@@ -19,10 +19,12 @@ def initState() = State()
 // 0.8秒後に完了する非同期の処理(Awaitのデモ)
 def fetchQuote(fail: Boolean): scala.concurrent.Future[String] = {
   val p = scala.concurrent.Promise[String]()
-  window.setTimeout(() => {
-    if (fail) p.failure(new RuntimeException("読み込みに失敗しました"))
-    else p.success("Scalactiveは、Scala.jsのリアクティブなフレームワークです.")
-  }, 800)
+  window.setTimeout(
+    () => {
+      if (fail) p.failure(new RuntimeException("読み込みに失敗しました"))
+      else p.success("Scalactiveは、Scala.jsのリアクティブなフレームワークです.")
+    },
+    800)
   p.future
 }
 

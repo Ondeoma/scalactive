@@ -481,6 +481,24 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assertEquals(service.formatting(counterUri), Nil)
   }
 
+  test("整形: <script>はscalafmtで整形する(演算子の空白・余分な空白. インデントは保つ)") {
+    val messy = counter.replace("  def twice(n: Int): Int = n * 2", "  def twice(n: Int): Int = n *2\n  val pair = ( twice( 1 ),twice(2)    )")
+    withText(counterUri, messy) {
+      val edits = service.formatting(counterUri)
+      assertEquals(edits.size, 1)
+      val out = edits.head.getNewText
+      assert(out.contains("\n  def twice(n: Int): Int = n * 2\n"), out)
+      assert(out.contains("\n  val pair = (twice(1), twice(2))\n"), out)
+      assert(out.contains("\n  case class State(count: RV[Int] = RV(0), name: RV[String] = RV(\"\"))\n"), out)
+    }
+    // 構文エラーでscalafmtが整形できないときは、余分な空白だけを取り除く
+    val broken = counter.replace("  def twice(n: Int): Int = n * 2", "  def twice(n: Int): Int = (n    * 2")
+    withText(counterUri, broken) {
+      val out = service.formatting(counterUri).head.getNewText
+      assert(out.contains("  def twice(n: Int): Int = (n * 2\n"), out)
+    }
+  }
+
   test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
     import TemplateCompletion._
     def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))

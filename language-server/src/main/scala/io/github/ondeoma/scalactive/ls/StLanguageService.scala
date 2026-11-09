@@ -20,6 +20,8 @@ import scala.util.control.NonFatal
  */
 final class StLanguageService(log: String => Unit) {
 
+  private val scriptFormatter = new ScriptFormatter(log)
+
   /** テンプレートでHTMLの標準のタグ・属性・属性値も補完するか(initializationOptionsの htmlCompletion) */
   @volatile var htmlCompletion: Boolean = true
 
@@ -486,7 +488,11 @@ final class StLanguageService(log: String => Unit) {
     try {
       val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
       val text = textOf(uri, path)
-      val formatted = io.github.ondeoma.scalactive.compiler.StFormatter.format(text)
+      // <script>はscalafmtで整形し、できなければ(構文エラーなど)空白の整理だけを行う
+      val formatted = scriptFormatter.format(text, path) match {
+        case Some(t) => io.github.ondeoma.scalactive.compiler.StFormatter.format(t, scriptSpacing = false)
+        case None => io.github.ondeoma.scalactive.compiler.StFormatter.format(text)
+      }
       if (formatted == text) Nil
       else {
         val index = new LineIndex(text)
