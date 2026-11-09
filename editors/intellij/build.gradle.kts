@@ -53,6 +53,16 @@ intellijPlatform {
 }
 
 tasks {
+    // 新規作成のひな形は、VS Code拡張と同じもの(../vscode/templates)を使う
+    processResources {
+        from(layout.projectDirectory.dir("../vscode/templates")) {
+            into("fileTemplates/internal")
+            rename("^Component\\.st$", "Scalactive Component.st.ft")
+            rename("^PropsComponent\\.st$", "Scalactive Props Component.st.ft")
+            rename("^StatefulComponent\\.st$", "Scalactive Stateful Component.st.ft")
+        }
+    }
+
     // VS Code拡張(../vscode)の文法をそのままTextMateバンドルとして同梱する.
     // IntelliJのTextMateプラグインはVS Code拡張の形式(package.json)のバンドルを読めます.
     // (prepareSandbox / prepareTestSandbox などすべてのサンドボックスに配置する)

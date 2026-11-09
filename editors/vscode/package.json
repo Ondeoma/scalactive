@@ -60,6 +60,16 @@
         "command": "scalactive.restartLanguageServer",
         "title": "Restart Language Server",
         "category": "Scalactive"
+      },
+      {
+        "command": "scalactive.newComponent",
+        "title": "New Scalactive Component",
+        "category": "Scalactive"
+      },
+      {
+        "command": "scalactive.openGeneratedSource",
+        "title": "Open Generated Scala Source",
+        "category": "Scalactive"
       }
     ],
     "configuration": {
@@ -97,6 +107,33 @@
           "description": "Traces the communication between VS Code and the language server."
         }
       }
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "scalactive.newComponent",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@9"
+        },
+        {
+          "command": "scalactive.openGeneratedSource",
+          "when": "resourceExtname == .st",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "scalactive.openGeneratedSource",
+          "when": "resourceLangId == scalactive",
+          "group": "navigation@9"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "scalactive.openGeneratedSource",
+          "when": "resourceLangId == scalactive"
+        }
+      ]
     }
   },
   "scripts": {

@@ -153,6 +153,29 @@ async function run() {
   await poll("formatting", async () => doc.getText() === original);
   console.log("  + formatting: restored the indentation");
   await vscode.commands.executeCommand("workbench.action.files.revert");
+
+  // 生成コードを開く
+  const generated = await vscode.commands.executeCommand("scalactive.openGeneratedSource", doc.uri);
+  assert.ok(generated && generated.endsWith(path.join("st", "StSample.scala")), String(generated));
+  assert.ok(vscode.window.activeTextEditor.document.uri.fsPath.endsWith("StSample.scala"));
+  console.log(`  + open generated source: ${path.basename(generated)}`);
+
+  // 新規作成のひな形
+  const os = require("node:os");
+  const fs = require("node:fs");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "scalactive-"));
+  const created = await vscode.commands.executeCommand("scalactive.newComponent", vscode.Uri.file(tmp), "UserCard", "PropsComponent.st");
+  assert.equal(created, path.join(tmp, "UserCard.st"));
+  assert.ok(fs.readFileSync(created, "utf8").includes("case class Props(title: String"));
+  assert.equal(vscode.window.activeTextEditor.document.languageId, "scalactive");
+  console.log("  + new component: UserCard.st");
+
+  // scalactive-lsp.json の探し方
+  const api = vscode.extensions.all.find((e) => e.packageJSON.name === require("../../package.json").name).exports;
+  assert.ok(api.project.findConfig(sample));
+  assert.equal(api.project.findConfig(created), undefined);
+  console.log("  + project config: found for the doc site, not for a file outside sbt projects");
+  await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 }
 
 module.exports = { run };

@@ -74,6 +74,12 @@ code --install-extension scalactive-st-0.1.0.vsix
   なければ安定版をダウンロードします.
 - Marketplaceへの公開は `npx vsce publish`(publisher `ondeoma` のアクセストークンが必要).
 
+VS Code拡張のコマンド:
+
+- **New Scalactive Component**(エクスプローラーのフォルダの右クリック・コマンドパレット): ひな形(`templates/*.st`)から.stを作ります.
+- **Open Generated Scala Source**(.stの右クリック・コマンドパレット): .stから生成されたScalaのソースを開きます.
+- .stを開いたときに `target/scalactive-lsp.json` がなければ通知し、「sbt compile を実行」でタスクとして実行して、終わったら言語サーバーを再起動します.
+
 ## IntelliJプラグイン
 
 ```sh
@@ -104,8 +110,8 @@ cd editors/intellij
   - script・styleの中では `(` `[` `{` `"` を入力すると閉じる文字を補い、閉じる文字は上書きせずに通り過ぎ、空の組はBackspaceでまとめて消します
     (`ScalactiveBracketHandler`. 単語の直前では補いません). テンプレートでも、Scalaを書く部分(`{{ }}` と、ディレクティブ・`:attr`・`@event`・`#slot`
     の属性値)では同じように補います(属性値の中の `"` は、属性を `'` で囲んだときだけ).
-- New → Scalactive Component で、.stのひな形(ふつう・Props付き・State付き)から作れます(`NewScalactiveComponentAction`、
-  `src/main/resources/fileTemplates/internal/`).
+- New → Scalactive Component で、.stのひな形(ふつう・Props付き・State付き)から作れます(`NewScalactiveComponentAction`).
+  ひな形はVS Code拡張と同じ `vscode/templates/*.st` を、ビルド時に `fileTemplates/internal/` へ写して使います.
 - `.st` のファイル名(コンポーネントの名前)を変えると、同じディレクトリの `.st` のテンプレートにあるそのタグも書き換えます
   (`ScalactiveRenameListenerProvider`. `.scala` からの参照と、別のパッケージへの移動は対象外).
 - `.st` を開いたときに `target/scalactive-lsp.json` が見つからなければ、通知を出します. 通知の「sbt compile を実行」で、
