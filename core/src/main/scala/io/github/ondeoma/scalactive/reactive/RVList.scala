@@ -47,7 +47,11 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
   private def fix(v: ArrayBuffer[RV[A]]): List[A] = v.iterator.map(_.v).toList
 
-  override def v: List[A] = fix(innerV)
+  // 行のRVは依存に入れない(このリストが行の変化も通知するため)
+  override def v: List[A] = {
+    Tracking.record(this)
+    Tracking.untracked(fix(innerV))
+  }
 
   def rv: List[RV[A]] = innerV.toList
 

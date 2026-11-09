@@ -26,6 +26,9 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   private lazy val eventHandlerIds = ListBuffer[ID]()
   private var hooks: Option[LifecycleHooks] = None
 
+  /** 描画(gen)が終わっていればtrue. その後に作られた一時リアクティブ値はtmpReactivesに入れても片付けられない */
+  private var generated = false
+
   // 目印(子コンポーネントのコメント・要素の効果の属性)のID. このComponentManagerの中で一意であればよい
   // (挿入位置はコメントのノードそのもので覚えるため). 同じ形の描画は同じHTMLになり、解析結果を使い回せる.
   private var idCounter = 0
@@ -64,6 +67,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
         cs <- children.traverse(c => c.init().map { r => inited += c; r })
         ns = tmpDiv.childNodes.toList
         _ = tmpDiv.remove()
+        _ = generated = true
         // 子コンポーネントの描画が終わった後に登録するので、onMountedは子から順に実行される
         _ = hooks.filter(_.mounted.nonEmpty).foreach(MountQueue.enqueue)
       } yield ((ns, cs, tmpReactives.toList, eventHandlerIds.toList), nodes.last)
@@ -127,7 +131,14 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
   }
 
   def addTmpReactive(rv: Reactive[?]): Unit = {
-    tmpReactives.addOne(rv)
+    if (!generated) tmpReactives.addOne(rv)
+    else {
+      // 描画の後(onMountedのクロージャの中など)に作られたものは、ライフサイクルフック経由で片付ける
+      hooks.orElse(Option(LifecycleHooks.running)) match {
+        case Some(h) => h.adopt(rv)
+        case None => ()
+      }
+    }
   }
 
   def addEventHandlers(id: ID): Unit = {
@@ -145,6 +156,7 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.components.ErrorBoundary
   export io.github.ondeoma.scalactive.components.ErrorInfo
   export io.github.ondeoma.scalactive.components.Await
+  export io.github.ondeoma.scalactive.components.MountHandle
   export io.github.ondeoma.scalactive.components.routes.Route
   export io.github.ondeoma.scalactive.components.routes.RouterLink
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
@@ -209,6 +221,8 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.reactive.RMCompatible
   export io.github.ondeoma.scalactive.reactive.RMCompatible.*
   export io.github.ondeoma.scalactive.reactive.RV
+  export io.github.ondeoma.scalactive.reactive.WatchHandle
+  export io.github.ondeoma.scalactive.reactive.ReactiveFunctions.*
 
   export io.github.ondeoma.scalactive.routes.Router
 
@@ -256,6 +270,37 @@ object ComponentManager {
                  (using cm: ComponentManager): Unit = {
     cm.lifecycle.unmounted += (() => f)
   }
+
+  /**
+   * コンポーネントを要素elの末尾に描画します. 外部のライブラリが管理する要素の中に描く場合などに使います.
+   * 例: `mount(div, gen)` (genは `(HTMLElement, AddMethod) => ComponentController[?]`)
+   *
+   * 戻り値の `unmount()` で片付けます(onUnmountedも実行されます).
+   * コンポーネントの中(onMountedを含む)で呼んだ場合は、そのコンポーネントが片付けられたときにも自動で片付けます.
+   */
+  inline def mount(el: Element,
+                   component: GenComponentF): Either[String, MountHandle] = {
+    val r = Mount.start(el, component)
+    r.foreach(h => Reactive.registerCM(h))
+    r
+  }
+
+  /**
+   * コンポーネントを要素elの末尾に描画します(`mount(el, gen)` と同じ).
+   * 例: `mount(div) { Counter(start = 1) }`
+   */
+  @scala.annotation.targetName("mountCurried")
+  inline def mount(el: Element)
+                  (component: (HTMLElement, AddMethod) ?=> ComponentController[?]): Either[String, MountHandle] = {
+    mount(el, (p, am) => component(using p, am))
+  }
+
+  /**
+   * 予約された描き直しと、onMountedの実行がすべて終わったときに完了するFutureを返します(VueのnextTick).
+   * 値を書き換えた後に、描き直された要素の大きさを測る・フォーカスを当てる、などに使います.
+   * 例: `count := 1; nextTick().foreach(_ => ...)`
+   */
+  def nextTick(): scala.concurrent.Future[Unit] = NextTick()
 
   def %(f: GenComponentF)
        (using cc: ComponentManager): HTML = {

@@ -49,6 +49,9 @@ private[scalactive] object ReloadScheduler {
 
   def isPending(c: ComponentController[?]): Boolean = pending.contains(c)
 
+  /** 予約された描き直しがなければtrue */
+  def isIdle: Boolean = pending.isEmpty
+
   private def flush(): Unit = {
     if (pending.nonEmpty) {
       // 親(DOMの浅い位置)から描き直す. 深さは描き直しの前に計算しておく
@@ -65,6 +68,7 @@ private[scalactive] object ReloadScheduler {
       }
       if (keepScroll) window.scrollTo(x.toInt, y.toInt)
     }
+    NextTick.check()
   }
 
 }

@@ -88,7 +88,11 @@ trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org]
 
   def toOrigin: Org
 
-  def v: Org = toOrigin
+  // 項目のリアクティブ値は依存に入れない(このモデルが項目の変化も通知するため)
+  def v: Org = {
+    Tracking.record(this)
+    Tracking.untracked(toOrigin)
+  }
 
   def clone(using rmc: RMCompatible[Org, Self]): Self = {
     toOrigin.toRM
