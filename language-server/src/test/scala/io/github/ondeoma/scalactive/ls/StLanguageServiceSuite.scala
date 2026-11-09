@@ -548,6 +548,43 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("コンポーネントの抽出: 範囲の外の値はprops、scriptのメンバーは元の名前で参照し、元の場所をタグに置き換える") {
+    val text = counter
+      .replace("<span v-show", "<i v-for=\"c in s.name.mapC(_.toList)\"><b class=\"big\" @click=\"println(event)\">{{ c }} {{ twice(1) }}</b></i><span v-show")
+      .replace("</template>\n", "</template>\n<style scoped>\n.big { color: red; }\n.other { color: blue; }\n</style>\n")
+    withText(counterUri, text) {
+      val index = new LineIndex(text)
+      // テンプレートで完結したHTMLを選んだときだけ、コードアクションを出す
+      val buttonStart = text.indexOf("<button")
+      val buttonEnd = text.indexOf("</button>") + "</button>".length
+      assert(service.extractComponentAction(counterUri, index.range(buttonStart, buttonEnd)).nonEmpty)
+      assert(service.extractComponentAction(counterUri, index.range(buttonStart + 3, buttonEnd)).isEmpty, "タグの途中から")
+      assert(service.extractComponentAction(counterUri, index.range(text.indexOf("def twice"), text.indexOf("def twice") + 5)).isEmpty, "script")
+
+      val r1 = service.extractComponent(counterUri, index.range(buttonStart, buttonEnd)).toOption.get
+      assertEquals(r1.file.getFileName.toString, "Extracted.st")
+      assertEquals(r1.replacement, "<Extracted :s=\"s\" />")
+      assert(r1.content.contains("case class Props(s: Counter.State)"), r1.content)
+      assert(r1.content.contains("<button @click=\"props.s.count := Counter.twice(props.s.count.v)\">+</button>"), r1.content)
+
+      // 外側のv-forの変数はprop. イベントのevent・ライブラリの名前はそのまま. 使っているクラスのルールを写す
+      val bStart = text.indexOf("<b class")
+      val bEnd = text.indexOf("</b>") + "</b>".length
+      val r2 = service.extractComponent(counterUri, index.range(bStart, bEnd)).toOption.get
+      assert(r2.content.contains("case class Props(c: Char)"), r2.content)
+      assert(r2.content.contains("@click=\"println(event)\""), r2.content)
+      assert(r2.content.contains("{{ props.c }} {{ Counter.twice(1) }}"), r2.content)
+      assert(r2.content.contains("<style scoped>\n.big { color: red; }\n</style>"), r2.content)
+      assertEquals(r2.replacement, "<Extracted :c=\"c\" />")
+
+      // 作ったコンポーネントは.stとして正しい(元のコンポーネントを参照する型検査は、sbtでコンパイルした後でないとできない)
+      Seq(r1, r2).foreach { r =>
+        val in = io.github.ondeoma.scalactive.compiler.StInput(r.content, "Extracted.st", "Extracted", Some("app"))
+        assert(io.github.ondeoma.scalactive.compiler.StCompiler.compile(in).isRight, r.content)
+      }
+    }
+  }
+
   test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
     import TemplateCompletion._
     def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))

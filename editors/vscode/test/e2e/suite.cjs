@@ -154,6 +154,39 @@ async function run() {
   console.log("  + formatting: restored the indentation");
   await vscode.commands.executeCommand("workbench.action.files.revert");
 
+  // コンポーネントの抽出: 選んだ範囲を新しい.stにし、元の場所をタグに置き換える
+  {
+    const fs = require("node:fs");
+    const extracted = path.join(path.dirname(sample), "Extracted.st");
+    const start = doc.getText().indexOf("<p>mounted:");
+    const end = doc.getText().indexOf("</p>", start) + "</p>".length;
+    const range = new vscode.Range(doc.positionAt(start), doc.positionAt(end));
+    try {
+      const actions = await poll("extract action", async () => {
+        const as = await vscode.commands.executeCommand("vscode.executeCodeActionProvider", doc.uri, range, "refactor.extract");
+        return as.find((a) => a.title === "Extract component");
+      });
+      await vscode.commands.executeCommand(actions.command.command, ...actions.command.arguments);
+      await poll("extracted", async () => fs.existsSync(extracted) && doc.getText().includes('<Extracted :s="s" />'));
+      const content = fs.readFileSync(extracted, "utf8");
+      assert.ok(content.includes("case class Props(s: StSample.State)"), content);
+      assert.ok(content.includes("<p>mounted: {{ props.s.mountedAt }}</p>"), content);
+      // 新しいコンポーネントは型検査を通る(docはsbtでコンパイル済み)
+      const created = await vscode.workspace.openTextDocument(extracted);
+      await sleep(3000);
+      const errors = await poll("extracted diagnostics", async () => {
+        const ds = vscode.languages.getDiagnostics(created.uri);
+        return ds.length >= 0 ? ds.filter((d) => d.severity === vscode.DiagnosticSeverity.Error) : undefined;
+      });
+      assert.deepEqual(errors.map((d) => d.message), []);
+      console.log("  + extract component: Extracted.st (props: s)");
+    } finally {
+      if (fs.existsSync(extracted)) fs.unlinkSync(extracted);
+      await vscode.window.showTextDocument(doc);
+      await vscode.commands.executeCommand("workbench.action.files.revert");
+    }
+  }
+
   // 生成コードを開く
   const generated = await vscode.commands.executeCommand("scalactive.openGeneratedSource", doc.uri);
   assert.ok(generated && generated.endsWith(path.join("st", "StSample.scala")), String(generated));

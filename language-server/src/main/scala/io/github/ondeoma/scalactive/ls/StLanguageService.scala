@@ -300,6 +300,73 @@ final class StLanguageService(log: String => Unit) {
     }
   }
 
+  /** 開いているファイルの現在の内容(開いていなければディスクの内容) */
+  def currentText(uri: String): String = textOf(uri, pathOf(uri))
+
+  /** コンポーネントの抽出のコマンド名 */
+  val ExtractComponentCommand = "scalactive.extractComponent"
+
+  /** テンプレートで完結したHTMLを選んでいれば、「コンポーネントの抽出」のコードアクション(実行はコマンドで行う) */
+  def extractComponentAction(uri: String, range: Range): Option[CodeAction] = {
+    try {
+      val text = textOf(uri, pathOf(uri))
+      val index = new LineIndex(text)
+      ComponentExtractor.selection(text, index.offset(range.getStart), index.offset(range.getEnd)).map { _ =>
+        val action = new CodeAction("Extract component")
+        action.setKind(CodeActionKind.RefactorExtract)
+        action.setCommand(new Command("Extract component", ExtractComponentCommand, java.util.Arrays.asList[AnyRef](
+          uri, Int.box(range.getStart.getLine), Int.box(range.getStart.getCharacter), Int.box(range.getEnd.getLine), Int.box(range.getEnd.getCharacter))))
+        action
+      }
+    } catch {
+      case NonFatal(_) => None
+    }
+  }
+
+  /**
+   * コンポーネントの抽出. 名前の解決はpresentation compilerに問い合わせます(定義の位置で、範囲の外の値・scriptのメンバー・そのままを分ける).
+   */
+  def extractComponent(uri: String, range: Range): Either[String, ComponentExtractor.Result] = {
+    val path = pathOf(uri)
+    val text = textOf(uri, path)
+    val index = new LineIndex(text)
+    val (start, end) = (index.offset(range.getStart), index.offset(range.getEnd))
+    val doc = prepare(uri).right.toOption
+    val sfc = io.github.ondeoma.scalactive.compiler.SfcParser.parse(new io.github.ondeoma.scalactive.compiler.SourceText(text))
+    val inScript = (o: Int) => sfc.script.exists(b => o >= b.contentStart && o < b.contentEnd)
+    val (selStart, selEnd) = ComponentExtractor.selection(text, start, end).getOrElse((start, end))
+    def resolve(id: ComponentExtractor.Ident): ComponentExtractor.Resolution = {
+      doc.flatMap { d =>
+        d.out.sourceMap.toGen(id.offset).map { gen =>
+          val params = PositionParams(d.genUri, d.out.code, gen + 1)
+          val locations = try await(d.pc.definition(params)).locations().asScala.toList catch {
+            case NonFatal(_) => Nil
+          }
+          def typeOf: String = {
+            val h = try await(d.pc.hover(params)) catch {
+              case NonFatal(_) => java.util.Optional.empty[scala.meta.pc.HoverSignature]()
+            }
+            val sig = if (h.isPresent) Option(h.get.signature().orElse(null)) else None
+            sig.flatMap(x => Some(x.indexOf(": ")).filter(_ >= 0).map(i => x.substring(i + 2).trim)).getOrElse("Any")
+          }
+          locations.headOption match {
+            case Some(loc) if isGenerated(d, loc.getUri) =>
+              d.out.sourceMap.toSt(d.genIndex.offset(loc.getRange.getStart)) match {
+                case Some(st) if st >= selStart && st < selEnd => ComponentExtractor.Keep
+                case Some(st) if inScript(st) => ComponentExtractor.ScriptMember
+                case Some(_) => ComponentExtractor.External(typeOf) // テンプレートの、範囲の外の変数
+                case None =>
+                  // 生成コードの引数(s・props)
+                  if (id.name == "s" || id.name == "props") ComponentExtractor.External(typeOf) else ComponentExtractor.Keep
+              }
+            case _ => ComponentExtractor.Keep
+          }
+        }
+      }.getOrElse(ComponentExtractor.Keep)
+    }
+    ComponentExtractor.extract(text, path, start, end, resolve)
+  }
+
   /**
    * クイックフィックス(子コンポーネントのタグの未知のprop・スロットの候補、足りない必須のpropの書き足し).
    * rangeに重なる問題のものを返します.

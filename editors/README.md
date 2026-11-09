@@ -37,6 +37,11 @@ VS CodeとIntelliJ IDEAに提供します.
   その位置のホバーから型を求めて出します.
 - テンプレートのScalaの部分(`{{ }}`、`:attr`・`v-if`・`v-model`・`ref` などの属性値、`v-for` の `in` の右側、`@event` の文)も、
   まとめて1回scalafmtに掛けて整形します(`ScriptFormatter.formatTemplate`. 1行に収まるものだけ. 文字参照を含む値と複数行の値は対象外).
+- コンポーネントの抽出(`ComponentExtractor`): テンプレートで完結したHTMLを選ぶと、コードアクション「Extract component」が出ます.
+  実行すると、言語サーバーが同じディレクトリに `Extracted.st`(既にあれば `Extracted2.st` …)を書き、元の場所を `<Extracted :s="s" />` に置き換える編集を
+  クライアントに頼みます(`workspace/executeCommand` → `workspace/applyEdit`). 名前はあとでファイル名の変更で変えてください.
+  範囲の外で定義された値(`s`・`props`・外側の `v-for` の変数など)はpropsに、元のscriptで定義したものは `元の名前.名前` に書き換えます
+  (名前の定義の位置と型はpresentation compilerに問い合わせます). 使っているクラスの `<style scoped>` のルールも写します.
 - CSSのクラス(`CssClasses`): `class="..."` で同じファイルの `<style>` のクラスを補完し、クラス名からセレクタへジャンプできます.
   `<style scoped>` のクラスで、テンプレートとscriptのどこにも名前が出てこないものは、使われていないことを薄く表示します(Hint).
 - 定義ジャンプは、同じ `.st` 内に加えて、プロジェクトのソースディレクトリにある `.scala` / `.st` を名前で探します.

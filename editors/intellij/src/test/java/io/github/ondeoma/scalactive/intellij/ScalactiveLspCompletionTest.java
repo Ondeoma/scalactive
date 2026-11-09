@@ -94,6 +94,13 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
                     () -> document.replaceString(titleAt, titleAt + "title".length(), "titel"));
             com.intellij.psi.PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
             myFixture.getEditor().getCaretModel().moveToOffset(titleAt + 2);
+            // 言語サーバーの診断が届くまで、ハイライトを始めずに待つ
+            // (テスト環境では、ハイライトの途中に診断が届くとハイライトをやり直せず、その診断が失われるため)
+            long settle = System.currentTimeMillis() + 10_000;
+            while (System.currentTimeMillis() < settle) {
+                PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                Thread.sleep(200);
+            }
             com.intellij.codeInsight.intention.IntentionAction[] fix = new com.intellij.codeInsight.intention.IntentionAction[1];
             waitUntil("quick fix", () -> {
                 myFixture.doHighlighting();
@@ -102,6 +109,27 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
             });
             myFixture.launchAction(fix[0]);
             assertEquals(original, document.getText());
+
+            // コンポーネントの抽出(Alt+Enter): 選んだ範囲を新しい.stにし、元の場所をタグに置き換える
+            Path extracted = SAMPLE.resolveSibling("Extracted.st");
+            try {
+                int start = original.indexOf("<p>mounted:");
+                int end = original.indexOf("</p>", start) + "</p>".length();
+                myFixture.getEditor().getSelectionModel().setSelection(start, end);
+                myFixture.getEditor().getCaretModel().moveToOffset(end);
+                com.intellij.codeInsight.intention.IntentionAction[] extract = new com.intellij.codeInsight.intention.IntentionAction[1];
+                waitUntil("extract action", () -> {
+                    myFixture.getEditor().getSelectionModel().setSelection(start, end);
+                    extract[0] = myFixture.getAvailableIntentions().stream().filter(a -> a.getText().contains("Extract component")).findFirst().orElse(null);
+                    return extract[0] != null;
+                });
+                myFixture.launchAction(extract[0]);
+                waitUntil("extracted", () -> Files.exists(extracted) && document.getText().contains("<Extracted :s=\"s\" />"));
+                String content = Files.readString(extracted);
+                assertTrue(content, content.contains("case class Props(s: StSample.State)"));
+            } finally {
+                Files.deleteIfExists(extracted);
+            }
         } finally {
             // 編集したドキュメントは保存せず、ファイルも元に戻す(リポジトリのサンプルを変えないため)
             com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().reloadFiles(sample);

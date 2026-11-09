@@ -83,7 +83,8 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
     caps.setDocumentFormattingProvider(true)
     caps.setReferencesProvider(true)
     caps.setInlayHintProvider(true)
-    caps.setCodeActionProvider(new CodeActionOptions(java.util.Collections.singletonList(CodeActionKind.QuickFix)))
+    caps.setExecuteCommandProvider(new ExecuteCommandOptions(java.util.Collections.singletonList(service.ExtractComponentCommand)))
+    caps.setCodeActionProvider(new CodeActionOptions(java.util.Arrays.asList(CodeActionKind.QuickFix, CodeActionKind.RefactorExtract)))
     caps.setRenameProvider(LspEither.forRight[java.lang.Boolean, RenameOptions](new RenameOptions(true)))
     caps.setSignatureHelpProvider(new SignatureHelpOptions(List("(", ",").asJava))
     CompletableFuture.completedFuture(new InitializeResult(caps, new ServerInfo("scalactive-language-server", BuildInfo.version)))
@@ -184,7 +185,8 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
 
     override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[LspEither[Command, CodeAction]]] = {
       async[java.util.List[LspEither[Command, CodeAction]]](java.util.Collections.emptyList()) {
-        service.codeActions(params.getTextDocument.getUri, params.getRange)
+        (service.codeActions(params.getTextDocument.getUri, params.getRange) ++
+          service.extractComponentAction(params.getTextDocument.getUri, params.getRange))
           .map(a => LspEither.forRight[Command, CodeAction](a)).asJava
       }
     }
@@ -199,6 +201,41 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
 
   override val getWorkspaceService: WorkspaceService = new WorkspaceService {
     override def didChangeConfiguration(params: DidChangeConfigurationParams): Unit = ()
+
+    /** コンポーネントの抽出: 新しい.stをディスクに書き、元のファイルの選んだ範囲をタグに置き換える編集をクライアントに頼む */
+    override def executeCommand(params: ExecuteCommandParams): CompletableFuture[AnyRef] = {
+      CompletableFuture.supplyAsync(() => {
+        if (params.getCommand != service.ExtractComponentCommand) null
+        else {
+          def arg(i: Int): String = params.getArguments.get(i) match {
+            case j: com.google.gson.JsonPrimitive => j.getAsString
+            case other => String.valueOf(other)
+          }
+          val uri = arg(0)
+          def num(i: Int) = arg(i).toDouble.toInt
+          val range = new Range(new Position(num(1), num(2)), new Position(num(3), num(4)))
+          service.extractComponent(uri, range) match {
+            case Right(r) =>
+              java.nio.file.Files.write(r.file, r.content.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+              val text = service.currentText(uri)
+              val index = new LineIndex(text)
+              val edit = new WorkspaceEdit(java.util.Collections.singletonMap(uri,
+                java.util.Collections.singletonList(new TextEdit(index.range(r.replaceStart, r.replaceEnd), r.replacement))))
+              client.foreach { c =>
+                c.applyEdit(new ApplyWorkspaceEditParams(edit, "Extract component"))
+                // 作ったファイルを開く(対応していないクライアントでは何もしない)
+                try c.showDocument(new ShowDocumentParams(r.file.toUri.toString)) catch {
+                  case NonFatal(_) =>
+                }
+              }
+              r.file.toUri.toString
+            case Left(msg) =>
+              client.foreach(_.showMessage(new MessageParams(MessageType.Warning, msg)))
+              null
+          }
+        }
+      }, requests)
+    }
 
     override def didChangeWatchedFiles(params: DidChangeWatchedFilesParams): Unit = ()
   }
