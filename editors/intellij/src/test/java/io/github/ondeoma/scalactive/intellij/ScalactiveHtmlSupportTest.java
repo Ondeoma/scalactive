@@ -106,6 +106,77 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         assertTrue(text, text.contains("  <div>\n  </div>") || text.contains("  <div>\n    \n  </div>"));
     }
 
+    private String enter(String text) {
+        myFixture.configureByText("A.st", text);
+        myFixture.type("\n");
+        return myFixture.getEditor().getDocument().getText();
+    }
+
+    /** scriptの中の改行: 前の行のインデントを引き継ぐ(タグより1段深くしない) */
+    public void testEnterInScriptKeepsIndent() {
+        String text = enter("<script lang=\"scala\">\nval a = 10<caret>\n</script>\n<template><p></p></template>\n");
+        assertTrue(text, text.contains("val a = 10\n\n</script>") || text.contains("val a = 10\n</script>"));
+        myFixture.type("val b = 20");
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains("val a = 10\nval b = 20"));
+    }
+
+    public void testEnterInScriptBracketsAndBlocks() {
+        // 閉じていない括弧の直後にそろえる
+        enter("<script lang=\"scala\">\ncase class Props(title: String,<caret>\n</script>\n");
+        myFixture.type("x: Int)");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("case class Props(title: String,\n                 x: Int)"));
+        // 括弧が閉じたら、開いた行のインデントに戻す
+        myFixture.type("\nval a = 1");
+        text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("x: Int)\nval a = 1"));
+        // { の後は1段深く
+        enter("<script lang=\"scala\">\ndef f(s: State): Unit = {<caret>\n</script>\n");
+        myFixture.type("g()");
+        text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("= {\n  g()"));
+    }
+
+    public void testEnterInStyle() {
+        enter("<template><p></p></template>\n<style scoped>\n.a {<caret>\n</style>\n");
+        myFixture.type("color: red;\n}");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains(".a {\n  color: red;\n}"));
+    }
+
+    public void testBracketPairsInScript() {
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\nval a = <caret>\n</script>\n");
+        myFixture.type("f(");
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains("val a = f()\n"));
+        myFixture.type("List[");
+        myFixture.type("Int]");
+        myFixture.type("(\"");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("val a = f(List[Int](\"\"))\n"));
+        // 補った閉じる文字は上書きせずに通り過ぎる
+        myFixture.type("x\"))");
+        text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("val a = f(List[Int](\"x\"))\n"));
+        // 単語の直前では補わない
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\nval a = <caret>foo\n</script>\n");
+        myFixture.type("(");
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains("val a = (foo\n"));
+    }
+
+    public void testBackspaceDeletesEmptyPair() {
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\nval a = <caret>\n</script>\n");
+        myFixture.type("{");
+        myFixture.performEditorAction(com.intellij.openapi.actionSystem.IdeActions.ACTION_EDITOR_BACKSPACE);
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains("val a = \n"));
+    }
+
+    public void testBracketPairsInStyle() {
+        myFixture.configureByText("A.st", "<template><p></p></template>\n<style scoped>\n.a <caret>\n</style>\n");
+        myFixture.type("{");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains(".a {}\n"));
+    }
+
     public void testCssCompletionInStyle() {
         myFixture.configureByText("A.st", "<template><p class=\"x\"></p></template>\n<style scoped>\n.x { backgr<caret> }\n</style>\n");
         myFixture.completeBasic();

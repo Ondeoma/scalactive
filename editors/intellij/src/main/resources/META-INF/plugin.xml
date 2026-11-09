@@ -13,6 +13,8 @@
           and <code>&lt;style&gt;</code> is handled as CSS (completion and inspections, with the CSS plugin).</li>
       <li>Directives, component tags and their props are not reported as unknown HTML tags or attributes.</li>
       <li>Comment with Line Comment uses <code>//</code> in the script, <code>/* */</code> in the style and HTML comments in the template.</li>
+      <li>In the script and the style, Enter keeps the indentation of the previous line (aligned after an open bracket),
+          and brackets and double quotes are closed automatically.</li>
       <li><code>.st</code> files get their own file type and icon.</li>
     </ul>
     <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
@@ -39,6 +41,11 @@
     <formattingService id="ScalactiveFormattingGuard" order="after LspFormattingService, before CoreFormattingService"
               implementation="io.github.ondeoma.scalactive.intellij.ScalactiveFormattingGuard"/>
     <notificationGroup id="Scalactive" displayType="BALLOON"/>
+    <!-- script・styleの中で改行したときのインデント(HTMLの規則ではタグより1段深くなるため) -->
+    <lineIndentProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLineIndentProvider"/>
+    <!-- script・styleの中の括弧・引用符の自動補完 -->
+    <typedHandler implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Typed" order="first"/>
+    <backspaceHandlerDelegate implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Backspace"/>
     <editorHighlighterProvider filetype="Scalactive"
               implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
     <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>

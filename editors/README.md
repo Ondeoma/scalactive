@@ -86,6 +86,10 @@ cd editors/intellij
   - ディレクティブ(`v-if`・`:attr`・`@event`・`#slot`・`ref`)、子コンポーネントのタグとその属性、`<script lang>`・`<style scoped>` は、
     HTMLの検査で「未知のタグ・属性」と警告しないようにしています(`ScalactiveInspectionSuppressor`. propの間違いは言語サーバーが警告します).
   - コメントの切り替え(Cmd+/)は、scriptでは `//`、styleでは `/* */`、templateではHTMLのコメントです(`ScalactiveCommentProvider`).
+  - script・styleの中で改行したときは、前の行のインデントを引き継ぎます(閉じていない括弧の直後にそろえる、`{` `=` `=>` の後は1段深く、
+    閉じ括弧の前は1段浅く. `ScalactiveLineIndentProvider`). HTMLの規則のままだと、中身がタグより1段深くなるためです.
+  - script・styleの中では `(` `[` `{` `"` を入力すると閉じる文字を補い、閉じる文字は上書きせずに通り過ぎ、空の組はBackspaceでまとめて消します
+    (`ScalactiveBracketHandler`. 単語の直前では補いません).
   - 言語サーバーには `initializationOptions` で `{"htmlCompletion": false}` を渡し、HTMLの標準のタグ・属性・属性値の補完を
     IntelliJの補完と重ならないようにしています(子コンポーネント・prop・ディレクティブ・`:attr`・`@event` は言語サーバーが補完します).
 - `.st` のファイルのアイコンは `intellij/src/main/resources/icons/st.svg`(ダークテーマ用は `st_dark.svg`)です.
