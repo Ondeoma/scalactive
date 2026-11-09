@@ -208,6 +208,32 @@ async function run() {
   assert.ok(api.project.findConfig(sample));
   assert.equal(api.project.findConfig(created), undefined);
   console.log("  + project config: found for the doc site, not for a file outside sbt projects");
+
+  // stripMarginの文字列の | の行で改行すると、同じ位置に | を補う
+  const marginDoc = await vscode.workspace.openTextDocument({
+    language: "scalactive",
+    content: '<script lang="scala">\nval code =\n  """|<div>\n     |  <p>x</p>\n     |""".stripMargin\n</script>\n',
+  });
+  const marginEditor = await vscode.window.showTextDocument(marginDoc);
+  const lineEnd = marginDoc.lineAt(3).range.end;
+  marginEditor.selection = new vscode.Selection(lineEnd, lineEnd);
+  await vscode.commands.executeCommand("type", { text: "\n" });
+  // | の後ろのインデントも引き継ぐ
+  await poll("margin", () => marginDoc.lineAt(4).text === "     |  " || undefined, 10_000);
+  assert.equal(marginEditor.selection.active.character, "     |  ".length);
+  // 開きの """| の行
+  const openEnd = marginDoc.lineAt(2).range.end;
+  marginEditor.selection = new vscode.Selection(openEnd, openEnd);
+  await vscode.commands.executeCommand("type", { text: "\n" });
+  await poll("margin on the opening line", () => marginDoc.lineAt(3).text === "     |" || undefined, 10_000);
+  // 文字列の外では補わない
+  const outEnd = marginDoc.lineAt(1).range.end;
+  marginEditor.selection = new vscode.Selection(outEnd, outEnd);
+  await vscode.commands.executeCommand("type", { text: "\n" });
+  await new Promise((r) => setTimeout(r, 500));
+  assert.ok(!marginDoc.lineAt(2).text.includes("|"), marginDoc.lineAt(2).text);
+  console.log("  + enter in a stripMargin string adds |");
+  await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 }
 

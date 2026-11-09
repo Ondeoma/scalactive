@@ -47,6 +47,9 @@
     <notificationGroup id="Scalactive" displayType="BALLOON"/>
     <!-- script・styleの中で改行したときのインデント(HTMLの規則ではタグより1段深くなるため) -->
     <lineIndentProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLineIndentProvider"/>
+    <!-- scriptの中の複数行の三重引用符の文字列を折りたたむ.
+         .stに登録するとHTMLのタグの折りたたみが使われなくなるため、HTMLに加え、.stのファイルでだけ働く -->
+    <lang.foldingBuilder language="HTML" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveFoldingBuilder"/>
     <!-- script・styleの中の括弧・引用符の自動補完 -->
     <typedHandler implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Typed" order="first"/>
     <!-- 対になった括弧の間でのEnter -->

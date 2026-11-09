@@ -88,6 +88,8 @@ VS Code拡張のコマンド:
 
 - **New Scalactive Component**(エクスプローラーのフォルダの右クリック・コマンドパレット): ひな形(`templates/*.st`)から.stを作ります.
 - **Open Generated Scala Source**(.stの右クリック・コマンドパレット): .stから生成されたScalaのソースを開きます.
+- stripMarginの文字列の中でEnterを押すと、次の行の同じ位置に `|` を補います(`src/margin.js`). `<script>` の中は埋め込みのScalaの設定が使われ、
+  `onEnterRules` が効かないため、改行の入力を見て補います. 複数行の文字列は、VS Codeのインデントによる折りたたみで折りたためます.
 - .stを開いたときに `target/scalactive-lsp.json` がなければ通知し、「sbt compile を実行」でタスクとして実行して、終わったら言語サーバーを再起動します.
 
 ## IntelliJプラグイン
@@ -109,6 +111,9 @@ cd editors/intellij
   - 解析はIntelliJのHTMLのものを使うため、テンプレートでHTMLのタグ・属性の補完、閉じタグの挿入、Emmet(Tabキーでの展開)、
     構造ビューが使え、`<style>` の中はCSS(補完・検査)として扱われます(CSSの機能にはCSSプラグインが必要で、IntelliJ IDEA Ultimateなどに含まれます).
   - `<script>` の中はJavaScriptとして扱わず、そのままのテキストにします(`ScalactiveLexer`).
+    Scalaの文字列・コメントの中の `</script>` では `<script>` を閉じません(コンパイラーの `SfcParser` と同じ判定. `ScalaScan`).
+  - `<script>` の中の複数行の三重引用符の文字列を折りたためます(`ScalactiveFoldingBuilder`. HTMLのタグの折りたたみに加えて登録しています).
+  - stripMarginの文字列の中でEnterを押すと、次の行の同じ位置に `|` を補い、`|` の後ろのインデントも引き継ぎます(`ScalactiveEnterHandler`).
   - 色付けは解析とは別に、同梱のTextMateの文法で行います(`TextMateSyntaxHighlighterFactory` / `TextMateEditorHighlighterProvider` を登録).
   - ディレクティブ(`v-if`・`:attr`・`@event`・`#slot`・`ref`)、子コンポーネントのタグとその属性、`<script lang>`・`<style scoped>` は、
     HTMLの検査で「未知のタグ・属性」と警告しないようにしています(`ScalactiveInspectionSuppressor`. propの間違いは言語サーバーが警告します).

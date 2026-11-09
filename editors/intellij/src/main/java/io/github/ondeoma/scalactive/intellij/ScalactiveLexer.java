@@ -14,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * .stの字句解析. HTMLの字句解析と同じですが、
@@ -67,9 +66,6 @@ public final class ScalactiveLexer extends LexerBase {
             return List.of(new ScriptAsRawText(lexer));
         }
     };
-
-    /** &lt;script ...&gt; の開始タグ */
-    private static final Pattern SCRIPT_START_TAG = Pattern.compile("<script\\b[^>]*>", Pattern.CASE_INSENSITIVE);
 
     private final HtmlPart html;
     private CharSequence original = "";
@@ -140,80 +136,16 @@ public final class ScalactiveLexer extends LexerBase {
     /** scriptの中身の、本当の終わりより前にある &lt;/script の &lt; を空白にしたテキスト(無ければ元のまま) */
     static CharSequence masked(CharSequence text) {
         StringBuilder sb = null;
-        java.util.regex.Matcher m = SCRIPT_START_TAG.matcher(text);
-        int from = 0;
-        while (from < text.length() && m.find(from)) {
-            int contentStart = m.end();
-            int end = scriptEnd(text, contentStart, text.length());
-            for (int k = contentStart; k < end; k++) {
-                if (text.charAt(k) == '<' && startsWithIgnoreCase(text, k, Math.min(end + 8, text.length()), "</script")) {
+        for (com.intellij.openapi.util.TextRange r : ScalaScan.scriptContents(text)) {
+            int end = r.getEndOffset();
+            for (int k = r.getStartOffset(); k < end; k++) {
+                if (text.charAt(k) == '<' && ScalaScan.startsWithIgnoreCase(text, k, Math.min(end + 8, text.length()), "</script")) {
                     if (sb == null) sb = new StringBuilder(text);
                     sb.setCharAt(k, ' ');
                 }
             }
-            from = Math.max(end, contentStart);
-            if (from == contentStart && end == contentStart) from = contentStart + 1;
         }
         return sb == null ? text : sb;
-    }
-
-    /**
-     * scriptの中身の終わり(&lt;/script の位置). Scalaの文字列・コメント・文字リテラルの中は飛ばします.
-     * コードの中に見つからなければ(閉じていない文字列など)単純に探します. どちらも無ければend.
-     * (コンパイラーの SfcParser / StCompiler.codeOnly と同じ考え方)
-     */
-    static int scriptEnd(CharSequence s, int from, int end) {
-        int i = from;
-        while (i < end) {
-            char c = s.charAt(i);
-            if (c == '<' && startsWithIgnoreCase(s, i, end, "</script")) {
-                return i;
-            } else if (c == '/' && startsWith(s, i, end, "//")) {
-                while (i < end && s.charAt(i) != '\n') i++;
-            } else if (c == '/' && startsWith(s, i, end, "/*")) {
-                int depth = 0;
-                while (i < end) {
-                    if (startsWith(s, i, end, "/*")) { depth++; i += 2; }
-                    else if (startsWith(s, i, end, "*/")) { depth--; i += 2; if (depth == 0) break; }
-                    else i++;
-                }
-            } else if (c == '"' && startsWith(s, i, end, "\"\"\"")) {
-                int j = indexOf(s, "\"\"\"", i + 3, end);
-                i = j < 0 ? end : j + 3;
-                while (i < end && s.charAt(i) == '"') i++;
-            } else if (c == '"') {
-                int j = i + 1;
-                while (j < end && s.charAt(j) != '"' && s.charAt(j) != '\n') j += s.charAt(j) == '\\' ? 2 : 1;
-                i = Math.min(j + 1, end);
-            } else if (c == '\'' && i + 2 < end && (s.charAt(i + 2) == '\'' || s.charAt(i + 1) == '\\')) {
-                int j = indexOf(s, "'", i + 2, end);
-                i = j < 0 ? end : j + 1;
-            } else {
-                i++;
-            }
-        }
-        // コードの中に無い: 単純に探す
-        for (int k = from; k < end; k++) {
-            if (s.charAt(k) == '<' && startsWithIgnoreCase(s, k, end, "</script")) return k;
-        }
-        return end;
-    }
-
-    private static boolean startsWith(CharSequence s, int at, int end, String p) {
-        if (at + p.length() > end) return false;
-        for (int k = 0; k < p.length(); k++) if (s.charAt(at + k) != p.charAt(k)) return false;
-        return true;
-    }
-
-    private static boolean startsWithIgnoreCase(CharSequence s, int at, int end, String p) {
-        if (at + p.length() > end) return false;
-        for (int k = 0; k < p.length(); k++) if (Character.toLowerCase(s.charAt(at + k)) != p.charAt(k)) return false;
-        return true;
-    }
-
-    private static int indexOf(CharSequence s, String p, int from, int end) {
-        for (int k = from; k + p.length() <= end; k++) if (startsWith(s, k, end, p)) return k;
-        return -1;
     }
 
 }

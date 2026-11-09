@@ -141,6 +141,47 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         return myFixture.getEditor().getDocument().getText();
     }
 
+    /** stripMarginの文字列の中の改行: 同じ位置に | を補い、| の後ろのインデントも引き継ぐ */
+    public void testEnterInStripMarginString() {
+        String tail = "\n     |\"\"\".stripMargin\n</script>\n<template><p></p></template>\n";
+        // | の行の途中
+        String t1 = enter("<script lang=\"scala\">\nval code =\n  \"\"\"|<div>\n     |  <p>x</p><caret>" + tail);
+        assertTrue(t1, t1.contains("     |  <p>x</p>\n     |  \n     |\"\"\""));
+        assertEquals(t1.indexOf("     |  \n") + "     |  ".length(), myFixture.getCaretOffset());
+        // 開きの """| の行
+        String t2 = enter("<script lang=\"scala\">\nval code =\n  \"\"\"|<div><caret>" + tail);
+        assertTrue(t2, t2.contains("  \"\"\"|<div>\n     |\n     |\"\"\""));
+        // s""" で始まり、| は次の行から
+        String t3 = enter("<script lang=\"scala\">\nval code =\n  s\"\"\"// a<caret>\n     |val b = 1" + tail);
+        assertTrue(t3, t3.contains("  s\"\"\"// a\n     |\n     |val b = 1"));
+        // stripMarginでない文字列・文字列の外では補わない
+        String t4 = enter("<script lang=\"scala\">\nval code = \"\"\"a<caret>\nb\"\"\"\n</script>\n<template><p></p></template>\n");
+        assertTrue(t4, t4.contains("\"\"\"a\n\nb\"\"\"") || t4.contains("\"\"\"a\nb\"\"\"".replace("a\nb", "a\n\nb")));
+        assertFalse(t4, t4.contains("|"));
+        String t5 = enter("<script lang=\"scala\">\nval x = 1<caret>\nval code = \"\"\"|a\n  |b\"\"\".stripMargin\n</script>\n<template><p></p></template>\n");
+        assertTrue(t5, t5.contains("val x = 1\n\nval code") || t5.contains("val x = 1\n"));
+        assertFalse(t5, t5.contains("val x = 1\n  |") || t5.contains("val x = 1\n|"));
+    }
+
+    /** scriptの中の複数行の三重引用符の文字列を折りたためる */
+    public void testFoldMultilineString() {
+        String text = "<script lang=\"scala\">\nval one = \"\"\"a\"\"\"\nval code =\n  \"\"\"|<div>\n     |</div>\n     |\"\"\".stripMargin\n</script>\n<template><p></p></template>\n";
+        PsiFile f = myFixture.configureByText("A.st", text);
+        // .stに登録された折りたたみ(HTMLの方言のものと合わせたもの)で、文字列の折りたたみが作られる
+        com.intellij.lang.folding.FoldingBuilder builder = com.intellij.lang.folding.LanguageFolding.INSTANCE.forLanguage(f.getLanguage());
+        List<String> strings = java.util.Arrays.stream(com.intellij.lang.folding.LanguageFolding.buildFoldingDescriptors(builder, f, myFixture.getEditor().getDocument(), false))
+            .filter(d -> "\"\"\"...\"\"\"".equals(d.getPlaceholderText()))
+            .map(d -> text.substring(d.getRange().getStartOffset(), d.getRange().getEndOffset())).toList();
+        assertEquals(List.of("\"\"\"|<div>\n     |</div>\n     |\"\"\""), strings);
+        // HTMLのタグの折りたたみも残る
+        assertTrue(builder.toString(), builder instanceof com.intellij.lang.folding.CompositeFoldingBuilder);
+        String html = "<div>\n<p>a</p>\n</div>\n<script>\nval code = \"\"\"a\nb\"\"\"\n</script>\n";
+        PsiFile h = myFixture.configureByText("A.html", html);
+        assertFalse("not in .html", java.util.Arrays.stream(com.intellij.lang.folding.LanguageFolding.buildFoldingDescriptors(
+                com.intellij.lang.folding.LanguageFolding.INSTANCE.forLanguage(h.getLanguage()), h, myFixture.getEditor().getDocument(), false))
+            .anyMatch(d -> "\"\"\"...\"\"\"".equals(d.getPlaceholderText())));
+    }
+
     /** scriptの中の改行: 前の行のインデントを引き継ぐ(タグより1段深くしない) */
     public void testEnterInScriptKeepsIndent() {
         String text = enter("<script lang=\"scala\">\nval a = 10<caret>\n</script>\n<template><p></p></template>\n");

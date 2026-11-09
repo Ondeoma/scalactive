@@ -102,6 +102,10 @@ import Router.*
       その言語として色付け(<code>html</code> は.stとして色付けします)
     </li>
     <li>
+      stripMarginの文字列の中で改行すると、次の行に <code>|</code> を補います.<br>
+      (IntelliJでは、scriptの中の複数行の文字列を折りたためます)
+    </li>
+    <li>
       Scalaの補完・型エラー・ホバー・引数のヒント・定義へのジャンプ<br>
       (Scala 3のpresentation compilerを使い、.st上の位置で表示)
     </li>

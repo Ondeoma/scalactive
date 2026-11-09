@@ -5,6 +5,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { LanguageClient, State } = require("vscode-languageclient/node");
 const project = require("./project");
+const margin = require("./margin");
 
 /** 新規作成のひな形(templates/*.st. IntelliJプラグインも同じものを使います) */
 const TEMPLATES = [
@@ -153,6 +154,7 @@ async function runSbtCompile(context, root) {
 
 /** @param {vscode.ExtensionContext} context */
 async function activate(context) {
+  margin.register(context);
   context.subscriptions.push(
     vscode.commands.registerCommand("scalactive.newComponent", (uri, name, template) => newComponent(context, uri, name, template)),
     vscode.commands.registerCommand("scalactive.openGeneratedSource", (uri) => openGeneratedSource(uri)),
