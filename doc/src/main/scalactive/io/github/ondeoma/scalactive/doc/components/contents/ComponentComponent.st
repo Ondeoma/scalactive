@@ -2,126 +2,382 @@
 import Router.*
 import io.github.ondeoma.scalactive.doc.components.contents.component.*
 
-val sample1Code = // language=scala
-  s"""import io.github.ondeoma.scalactive.components.*
-     |import org.scalajs.dom.window.alert
+val helloCode = // language=html
+  """<script lang="scala">
+     |def greet(): Unit = window.alert("Hello!")
+     |</script>
      |
-     |object Sample1Component extends StatelessComponent {
+     |<template>
+     |  <div class="hello">
+     |    <p>これは Hello です.</p>
+     |    <button @click="greet()">Click</button>
+     |  </div>
+     |</template>
      |
-     |  def genHtml(implicit cm: ComponentManager): HTML = {
-     |    // language=html
-     |    s\"\"\"<div>
-     |       :  <p>これは Sample1Component です。</p>
-     |       :  <button $${evClick(alert("Sample1Component"))}>Click</button>
-     |       :</div>
-     |       :\"\"\".stripMargin(':')
-     |  }
-     |}   
+     |<style scoped>
+     |.hello p { color: seagreen; }
+     |</style>
      |""".stripMargin
 
-val sample2Code = // language=scala
-  s"""import io.github.ondeoma.scalactive.components.*
-     |import io.github.ondeoma.scalactive.reactive.*
-     |import Sample2Component.State
+val counterCode = // language=html
+  """<script lang="scala">
+     |case class State(count: RV[Int] = RV(0))
      |
-     |object Sample2Component extends StatefulComponent[State] {
+     |def initState() = State()
+     |</script>
      |
-     |  case class State(count: RV[Int] = RV(0))
-     |
-     |  def initState() = State()
-     |
-     |  def genHtml(s: State)
-     |             (implicit cm: ComponentManager): HTML = {
-     |    // language=html
-     |    s\"\"\"<div>
-     |       :  <p>
-     |       :    これは Sample2Component です。<br>
-     |       :    可変値 => $${%(TextComponent(s.count)(_.toString))}
-     |       :  </p>
-     |       :  <button $${evClick(s.count := s.count.v + 1)}>Click</button>
-     |       :</div>
-     |       :\"\"\".stripMargin(':')
-     |  }
-     |} 
+     |<template>
+     |  <div>
+     |    <p>count: {{ s.count }}</p>
+     |    <button @click="s.count := s.count.v + 1">+1</button>
+     |  </div>
+     |</template>
      |""".stripMargin
 
-val sample3Code = // language=scala
-  s"""import io.github.ondeoma.scalactive.components.*
-     |import org.scalajs.dom.HTMLElement
+val greetingCode = // language=html
+  """<script lang="scala">
+     |case class Props(userName: String, count: Reactive[Int] = RV(0))
+     |</script>
      |
-     |object Sample3Component extends BaseComponent {
-     |
-     |  def apply(valueFromParent: String)
-     |           (implicit parent: HTMLElement,
-     |            am: AddMethod): NodesComponentController = {
-     |    // mkNCC = NodesComponentControllerを作成する便利関数        
-     |    mkNCC(genHtml(valueFromParent))
-     |  }
-     |
-     |  def genHtml(valueFromParent: String)
-     |             (implicit cm: ComponentManager): HTML = {
-     |    // language=html
-     |    s\"\"\"<div>
-     |       :  これは Sample3Component です。<br>
-     |       :  親コンポーネントからは"$${valueFromParent}"を受け取りました。
-     |       :</div>
-     |       :\"\"\".stripMargin(':')
-     |  }
-     |}  
+     |<template>
+     |  <p>こんにちは、{{ props.userName }}さん. count = {{ props.count }}</p>
+     |</template>
      |""".stripMargin
 
-val sample4Code = // language=scala
-  s"""import io.github.ondeoma.scalactive.components.*
+val greetingParentCode = // language=html
+  """<script lang="scala">
+     |case class State(count: RV[Int] = RV(0))
      |
-     |object Sample4Component extends StatelessComponent {
-     |  
-     |  def genHtml(implicit cm: ComponentManager): HTML = {
-     |    // language=html
-     |    s\"\"\"<div>
-     |       :  <p>これは Sample4Component です。</p>
-     |       :  <hr>
-     |       :  $${%(Sample1Component())}
-     |       :  $${%(Sample2Component())}
-     |       :  $${%(Sample3Component("BySample4Component"))}
-     |       :</div>
-     |       :\"\"\".stripMargin(':')
-     |  }
-     |  
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <Greeting user-name="Scala" />
+     |    <Greeting user-name="Scalactive" :count="s.count" />
+     |    <button @click="s.count := s.count.v + 1">+1</button>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val closableCode = // language=html
+  """<script lang="scala">
+     |case class Props(message: String, onClose: Unit => Unit = _ => ())
+     |</script>
+     |
+     |<template>
+     |  <p>{{ props.message }} <button @click="props.onClose(())">×</button></p>
+     |</template>
+     |""".stripMargin
+
+val closableParentCode = // language=html
+  """<script lang="scala">
+     |case class State(open: RV[Boolean] = RV(true))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <Closable v-if="s.open" message="×で閉じます." @close="s.open := false" />
+     |    <button v-else @click="s.open := true">再表示</button>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val nameFieldCode = // language=html
+  """<script lang="scala">
+     |case class Props(label: String, model: RV[String], note: RV[String] = RV(""))
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <label>{{ props.label }}: <input type="text" v-model="props.model"></label>
+     |    <label>メモ: <input type="text" v-model="props.note"></label>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val nameFieldParentCode = // language=html
+  """<script lang="scala">
+     |case class State(name: RV[String] = RV("Scala"), memo: RV[String] = RV(""))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <NameField label="名前" v-model="s.name" v-model:note="s.memo" />
+     |    <p>名前: {{ s.name }} / メモ: {{ s.memo }}</p>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val panelCode = // language=html
+  """<script lang="scala">
+     |case class Props(title: String,
+     |                 slot: Slot = Slot.empty,
+     |                 footer: Slot = Slot.empty)
+     |</script>
+     |
+     |<template>
+     |  <div class="panel">
+     |    <b>{{ props.title }}</b>
+     |    <slot><p>(内容がありません)</p></slot>
+     |    <small><slot name="footer">(footerなし)</slot></small>
+     |  </div>
+     |</template>
+     |
+     |<style scoped>
+     |.panel { border: 1px solid #ccc; border-radius: 6px; padding: 8px; margin: 4px 0; }
+     |</style>
+     |""".stripMargin
+
+val panelParentCode = // language=html
+  """<script lang="scala">
+     |case class State(count: RV[Int] = RV(0))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <Panel title="お知らせ">
+     |      <p>親の状態も使えます. count = {{ s.count }}</p>
+     |      <button @click="s.count := s.count.v + 1">+1</button>
+     |      <template #footer>名前付きスロット(#footer)の内容です.</template>
+     |    </Panel>
+     |    <Panel title="slotなし" />
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val itemListCode = // language=html
+  """<script lang="scala">
+     |case class Props(items: List[String],
+     |                 item: ScopedSlot[(String, Int)] = ScopedSlot.empty)
+     |</script>
+     |
+     |<template>
+     |  <ul>
+     |    <li v-for="(x, i) in props.items"><slot name="item" :value="(x, i)">{{ x }}</slot></li>
+     |  </ul>
+     |</template>
+     |""".stripMargin
+
+val itemListParentCode = // language=html
+  """<script lang="scala">
+     |val langs = List("Scala", "Scala.js", "Scalactive")
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <ItemList :items="langs" />
+     |    <ItemList :items="langs">
+     |      <template #item="(name, i)"><b>{{ i + 1 }}.</b> {{ name }}</template>
+     |    </ItemList>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val chipCode = // language=html
+  """<script lang="scala">
+     |case class Props(label: String)
+     |</script>
+     |
+     |<template>
+     |  <span class="chip">{{ props.label }}</span>
+     |</template>
+     |
+     |<style scoped>
+     |.chip { display: inline-block; padding: 0 8px; border-radius: 4px; background: #ddd; color: #222; }
+     |</style>
+     |""".stripMargin
+
+val chipParentCode = // language=html
+  """<script lang="scala">
+     |case class State(on: RV[Boolean] = RV(false))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <Chip label="そのまま" />
+     |    <Chip label="引き継ぎ" :style='Map("background" -> s.on.mapC(o => if (o) "gold" else "#ddd"))' data-demo="chip" />
+     |    <button @click="s.on := !s.on.v">色を切り替え</button>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val clockCode = // language=html
+  """<script lang="scala">
+     |case class State(now: RV[String] = RV(""), var timer: Int = 0)
+     |
+     |def initState() = State()
+     |
+     |def tick(s: State): Unit = s.now := new scala.scalajs.js.Date().toLocaleTimeString()
+     |
+     |// DOMに挿入された後に呼ばれる
+     |def mounted(s: State): Unit = {
+     |  tick(s)
+     |  s.timer = window.setInterval(() => tick(s), 1000)
+     |}
+     |
+     |// 片付けられた(DOMから取り除かれた)後に呼ばれる
+     |def unmounted(s: State): Unit = window.clearInterval(s.timer)
+     |</script>
+     |
+     |<template>
+     |  <p>現在時刻: {{ s.now }}</p>
+     |</template>
+     |""".stripMargin
+
+val focusInputCode = // language=html
+  """<script lang="scala">
+     |case class State(text: RV[String] = RV("Scalactive"),
+     |                 input: ElementRef[HTMLInputElement] = ElementRef())
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <input type="text" ref="s.input" v-model="s.text">
+     |    <button @click="s.input.foreach(_.focus())">入力欄へ</button>
+     |    <button @click="s.input.foreach(_.select())">全選択</button>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val modalCode = // language=html
+  """<script lang="scala">
+     |case class State(open: RV[Boolean] = RV(false))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <button @click="s.open := true">モーダルを開く</button>
+     |    <Teleport v-if="s.open" to="body">
+     |      <div class="modal" @click.self="s.open := false">
+     |        <div class="modal-body">
+     |          <p>bodyの直下に描画されています.</p>
+     |          <button @click="s.open := false">閉じる</button>
+     |        </div>
+     |      </div>
+     |    </Teleport>
+     |  </div>
+     |</template>
+     |
+     |<style scoped>
+     |.modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+     |.modal-body { background: #fff; color: #222; padding: 16px; border-radius: 6px; }
+     |</style>
+     |""".stripMargin
+
+val boundaryCode = // language=html
+  """<script lang="scala">
+     |case class State(crash: RV[Boolean] = RV(false))
+     |
+     |def initState() = State()
+     |
+     |// 描画中に例外を起こす
+     |def boom(): String = throw new RuntimeException("描画中にエラーが起きました.")
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <ErrorBoundary @error="println(event)">
+     |      <p>中身: <span v-if="s.crash">{{ boom() }}</span><span v-else>正常です.</span></p>
+     |      <button @click="s.crash := true">エラーを起こす</button>
+     |      <template #fallback="err">
+     |        <p>{{ err.message }} <button @click="s.crash := false; err.retry()">戻す</button></p>
+     |      </template>
+     |    </ErrorBoundary>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val loaderCode = // language=html
+  """<script lang="scala">
+     |import scala.concurrent.{Future, Promise}
+     |
+     |case class State(fail: RV[Boolean] = RV(false), on: RV[Boolean] = RV(true))
+     |
+     |def initState() = State()
+     |
+     |// 0.8秒後に完了する非同期の処理
+     |def fetchMessage(fail: Boolean): Future[String] = {
+     |  val p = Promise[String]()
+     |  window.setTimeout(() => {
+     |    if (fail) p.failure(new RuntimeException("読み込みに失敗しました."))
+     |    else p.success("読み込みました.")
+     |  }, 800)
+     |  p.future
+     |}
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <label><input type="checkbox" v-model="s.fail"> 失敗させる</label>
+     |    <button @click="s.on := false; s.on := true">再読み込み</button>
+     |    <Await v-if="s.on" :load="() => fetchMessage(s.fail.v)">
+     |      <template #pending><p>読み込み中...</p></template>
+     |      <template #default="msg"><p>{{ msg }}</p></template>
+     |      <template #error="err"><p>{{ err.message }} <button @click="err.retry()">再試行</button></p></template>
+     |    </Await>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val lazyLoadCode = // language=html
+  """<script lang="scala">
+     |import scala.scalajs.js
+     |
+     |// 描画されるときに初めてHelloのコードを読み込む
+     |object LazyHello {
+     |  def apply(): GenComponentF =
+     |    asyncComponent(() => js.dynamicImport[GenComponentF](Hello()).toFuture, _ => "<p>読み込み中...</p>")
+     |}
+     |
+     |case class State(show: RV[Boolean] = RV(false))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <button @click="s.show := true">読み込む</button>
+     |    <LazyHello v-if="s.show" />
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val errorHandlerCode = // language=scala
+  """// アプリの起動時(main)に設定する
+     |ScalactiveConfig.errorHandler = e => {
+     |  org.scalajs.dom.console.error(e.getMessage)
+     |  // エラーの報告サービスへ送るなど
      |}
      |""".stripMargin
 
-val codeLifecycle = // language=scala
-  s"""object ClockComponent extends StatelessComponent {
+val lazyRouteCode = // language=html
+  """<!-- /admin を開いたときに初めてAdmin.stのコードを読み込む -->
+     |<script lang="scala">
+     |import scala.scalajs.js
+     |import io.github.ondeoma.scalactive.components.routes.RouterComponent
      |
-     |  def genHtml(implicit cm: ComponentManager): HTML = {
-     |    val now = RV(new js.Date().toLocaleTimeString())
-     |    var timer = 0
-     |    // DOMに挿入された後に実行される
-     |    onMounted {
-     |      timer = window.setInterval(() => now := new js.Date().toLocaleTimeString(), 1000)
-     |    }
-     |    // 片付けられた(DOMから取り除かれた)後に実行される
-     |    onUnmounted {
-     |      window.clearInterval(timer)
-     |    }
-     |    s\"\"\"<p>$${%(TextComponent(now)(identity))}</p>\"\"\"
-     |  }
+     |val routes: PathPatternRoutes = List(
+     |  ("/", _ => Home()),
+     |  ("/admin", _ => asyncComponent(() => js.dynamicImport[GenComponentF](Admin()).toFuture, _ => "<p>読み込み中...</p>")),
+     |)
+     |</script>
      |
-     |}
-     |""".stripMargin
-
-val codeRef = // language=scala
-  s"""object SearchComponent extends StatelessComponent {
-     |
-     |  def genHtml(implicit cm: ComponentManager): HTML = {
-     |    val input = ElementRef[HTMLInputElement]()
-     |    // DOMに挿入された後にフォーカスする
-     |    onMounted(input.foreach(_.focus()))
-     |    s\"\"\"<input type="search" $${ref(input)}>
-     |       :<button $${evClick(input.foreach(_.select()))}>全選択</button>\"\"\".stripMargin(':')
-     |  }
-     |
-     |}
+     |<template>
+     |  <RouterComponent :routes="routes" />
+     |</template>
      |""".stripMargin
 </script>
 
@@ -129,239 +385,376 @@ val codeRef = // language=scala
   <h1>コンポーネント</h1>
 
   <p>
-    コンポーネントはHTML＋処理＋状態のような概念です.
+    コンポーネントはHTML＋処理＋状態のような概念です.<br>
+    1つの <code>.st</code> ファイルに、1つのコンポーネントを書きます.
   </p>
 
   <ul class="toc">
-    <li><a @click='setHash("StatelessComponent")'>StatelessComponent</a></li>
-    <li><a @click='setHash("StatefulComponent")'>StatefulComponent</a></li>
-    <li><a @click='setHash("BaseComponent")'>BaseComponent</a></li>
-    <li><a @click='setHash("Use")'>コンポーネントの呼出し</a></li>
-    <li><a @click='setHash("Lifecycle")'>ライフサイクルフック</a></li>
-    <li><a @click='setHash("Ref")'>テンプレート参照</a></li>
-    <li><a @click='setHash("Attrs")'>属性の引き継ぎ</a></li>
-    <li><a @click='setHash("ErrorBoundary")'>エラーの境界</a></li>
-    <li><a @click='setHash("Async")'>非同期データ・遅延読み込み</a></li>
+    <li><a @click='setHash("format")'>ファイルの構成</a></li>
+    <li><a @click='setHash("state")'>状態を持つコンポーネント</a></li>
+    <li><a @click='setHash("props")'>props</a></li>
+    <li><a @click='setHash("emit")'>子からのイベント</a></li>
+    <li><a @click='setHash("model")'>コンポーネントのv-model</a></li>
+    <li><a @click='setHash("slot")'>slot</a></li>
+    <li><a @click='setHash("attrs")'>属性の引き継ぎ</a></li>
+    <li><a @click='setHash("lifecycle")'>ライフサイクルフック</a></li>
+    <li><a @click='setHash("ref")'>テンプレート参照</a></li>
+    <li><a @click='setHash("teleport")'>Teleport</a></li>
+    <li><a @click='setHash("errorBoundary")'>エラーの境界</a></li>
+    <li><a @click='setHash("await")'>非同期データ</a></li>
+    <li><a @click='setHash("lazy")'>遅延読み込み</a></li>
   </ul>
 
-
-  <h2 id="StatelessComponent">StatelessComponent</h2>
-
-  <p>
-    最も単純な作成方法は、<br>
-    StatelessComponentを実装したオブジェクトを作成することです.<br>
-    状態(可変値)を持たないコンポーネントに適しています.<br>
-    以下のようにgetHtmlを実装します.
-  </p>
-
-  <pre><code class="language-scala">{{ sample1Code }}</code></pre>
-
-  <div class="rendered">
-    <Sample1Component />
-  </div>
-
-  <h2 id="StatefulComponent">StatefulComponent</h2>
+  <h2 id="format">ファイルの構成</h2>
 
   <p>
-    StatefulComponentは状態を持つコンポーネントの作成に便利です.<br>
-
-    <ul>
-      <li>・状態の型</li>
-      <li>・状態の初期化(initState)</li>
-      <li>・getHtml</li>
-    </ul>
-
-    を実装します。
-  </p>
-
-  <pre><code class="language-scala">{{ sample2Code }}</code></pre>
-
-  <div class="rendered">
-    <Sample2Component />
-  </div>
-
-  <h2 id="BaseComponent">BaseComponent</h2>
-
-  <p>
-    その他のコンポーネントはBaseComponentで作成します.<br>
-    自由度が高く、親コンポーネントから値を受け取ること等ができるようになります.<br>
-    原則、BaseComponentでは以下のシグネチャを持ったapplyとgetHtmlを実装します.
-  </p>
-
-  <pre><code class="language-scala">def apply(任意引数)(implicit parent: HTMLElement, am: AddMethod): NodesComponentController
-def genHtml(任意引数)(implicit cm: ComponentManager): HTML // HTML = String
-</code></pre>
-
-  <p>以下実装例です.</p>
-
-  <pre><code class="language-scala">{{ sample3Code }}</code></pre>
-
-  <p>親から"ParentValue"を受けとった場合は以下のように表示されます.</p>
-
-  <div class="rendered">
-    <Sample3Component value-from-parent="ParentValue" />
-  </div>
-
-  <h2 id="Use">コンポーネントの呼出し</h2>
-
-  <p>
-    作成したコンポーネントは`%`関数で呼び出すことができます.<br>
-    ※ComponentManagerが裏で色々やっています.
-  </p>
-
-  <pre><code class="language-scala">{{ sample4Code }}</code></pre>
-
-  <div class="rendered">
-    <Sample4Component />
-  </div>
-
-  <h2 id="Lifecycle">ライフサイクルフック</h2>
-
-  <p>
-    genHtmlの中で <code>onMounted</code> / <code>onUnmounted</code> を呼ぶと、<br>
-    コンポーネントのライフサイクルに合わせて処理を実行できます.<br>
-    Vue.jsのmounted / unmountedに当たります.
+    <code>.st</code> ファイルは3つのブロックから成ります.
   </p>
 
   <ul>
+    <li><code>&lt;script lang="scala"&gt;</code> : 処理や状態の定義をScalaで書きます(省略可).</li>
+    <li><code>&lt;template&gt;</code> : HTMLを書きます(必須).</li>
     <li>
-      <code>onMounted</code> : コンポーネントがDOMに挿入された後(現在の処理の直後)に実行されます.<br>
-      子コンポーネントのものから順に実行されます.<br>
-      要素の参照(フォーカスなど)や、外部ライブラリの組み込みに使います.
-    </li>
-    <li>
-      <code>onUnmounted</code> : コンポーネントが片付けられた(DOMから取り除かれた)後に実行されます.<br>
-      描き直し・ifCの切り替え・forCの行の削除などでも実行されます.<br>
-      タイマーや外部のイベントの解除に使います.
-    </li>
-    <li>
-      描き直し(リアクティブ値の変化によるifCなどの再描画)では、<br>
-      古い内容のonUnmountedの後に、新しい内容のonMountedが実行されます.
+      <code>&lt;style&gt;</code> : CSSを書きます(省略可).<br>
+      <code>scoped</code> を付けると、このコンポーネントの要素にのみ適用されます.
     </li>
   </ul>
 
-  <pre><code class="language-scala">{{ codeLifecycle }}</code></pre>
+  <pre><code class="language-html">{{ helloCode }}</code></pre>
+
+  <div class="rendered">
+    <Hello />
+  </div>
 
   <p>
-    単一ファイルコンポーネント(.st)では、<br>
-    <code>&lt;script&gt;</code> に <code>def mounted</code> / <code>def unmounted</code> を定義します.
+    ディレクトリ構成がパッケージに、ファイル名がobject名になります.<br>
+    作成したコンポーネントは、<br>
+    他の.stのテンプレートから <code>&lt;Hello /&gt;</code> のようにタグで呼び出せます.<br>
+    別のパッケージのコンポーネントは、<br>
+    <code>&lt;script&gt;</code> でimportしてください.<br>
+    テンプレートの構文は <a @click='go("/sfc")'>単一ファイルコンポーネント</a> を参照してください.
   </p>
 
-  <h2 id="Ref">テンプレート参照</h2>
+  <h2 id="state">状態を持つコンポーネント</h2>
 
   <p>
-    <code>ElementRef</code> を <code>ref(...)</code> で要素に結び付けると、その要素を直接参照できます.<br>
+    <code>&lt;script&gt;</code> に <code>def initState()</code> を定義すると、<br>
+    状態を持つコンポーネントになります.<br>
+    テンプレートからは状態を <code>s</code> で参照できます.<br>
+    状態はコンポーネントを表示するたびに作られます.<br>
+    状態が不要な場合は、initStateを定義しません.
+  </p>
+
+  <pre><code class="language-html">{{ counterCode }}</code></pre>
+
+  <div class="rendered">
+    <Counter />
+  </div>
+
+  <h2 id="props">props</h2>
+
+  <p>
+    <code>&lt;script&gt;</code> に <code>case class Props(...)</code> を定義すると、<br>
+    親から値を受け取れます.<br>
+    テンプレートからは <code>props</code> で参照できます.
+  </p>
+
+  <pre><code class="language-html">{{ greetingCode }}</code></pre>
+
+  <p>親からは、タグの属性で値を渡します.</p>
+
+  <pre><code class="language-html">{{ greetingParentCode }}</code></pre>
+
+  <div class="rendered">
+    <GreetingParent />
+  </div>
+
+  <ul>
+    <li>
+      <code>name="text"</code> は文字列、値なしの <code>name</code> は <code>true</code>、<br>
+      <code>:name="expr"</code> はScalaの式になります.
+    </li>
+    <li>ケバブケースの属性名は、キャメルケースに変換されます(<code>user-name</code> → <code>userName</code>).</li>
+    <li>デフォルト値のあるpropsは省略できます.</li>
+    <li>
+      propsは生成時に1度だけ渡されます.<br>
+      値の変化を子に伝えたい場合は、Reactiveを渡してください.
+    </li>
+    <li>
+      <code>def initState()</code> と併用できます.<br>
+      初期状態をpropsから作る場合は、<code>def initState(props: Props)</code> と定義します.
+    </li>
+  </ul>
+
+  <h2 id="emit">子からのイベント</h2>
+
+  <p>
+    子コンポーネントのタグに書いた <code>@name="stmt"</code> は、<br>
+    propsの <code>onName</code> に関数として渡されます.<br>
+    子は <code>onName: A =&gt; Unit</code> をPropsに定義し、<br>
+    <code>props.onName(a)</code> で親へ通知します.<br>
+    渡す値がない場合は <code>Unit =&gt; Unit</code> にします.<br>
+    親の文の中では、<code>event</code> で子から渡された値を参照できます.
+  </p>
+
+  <pre><code class="language-html">{{ closableCode }}</code></pre>
+
+  <pre><code class="language-html">{{ closableParentCode }}</code></pre>
+
+  <div class="rendered">
+    <ClosableParent />
+  </div>
+
+  <h2 id="model">コンポーネントのv-model</h2>
+
+  <p>
+    子コンポーネントのタグに <code>v-model</code> を書くと、<br>
+    RVをそのままpropsとして渡します.<br>
+    親と子が同じRVを共有するので、<br>
+    どちらで変更しても両方に反映されます.
+  </p>
+
+  <pre><code class="language-html">{{ nameFieldCode }}</code></pre>
+
+  <pre><code class="language-html">{{ nameFieldParentCode }}</code></pre>
+
+  <div class="rendered">
+    <NameFieldParent />
+  </div>
+
+  <ul>
+    <li>
+      <code>v-model="rv"</code> はpropsの <code>model</code>、<br>
+      <code>v-model:note="rv"</code> はpropsの <code>note</code> になります.<br>
+      複数指定できます.
+    </li>
+    <li>
+      子のpropsの型はRV(<code>RV[String]</code> など)にします.<br>
+      修飾子(<code>.trim</code> など)は、子の中のinputに指定してください.
+    </li>
+  </ul>
+
+  <h2 id="slot">slot</h2>
+
+  <p>
+    子コンポーネントのタグの中に書いた要素は、<br>
+    Propsの <code>slot: Slot</code> として渡され、<br>
+    子の <code>&lt;slot&gt;</code> の位置に展開されます.<br>
+    <code>&lt;template #name&gt;</code> で囲んだ要素は名前付きスロットとして、<br>
+    Propsの <code>name: Slot</code> に渡され、<br>
+    子の <code>&lt;slot name="name"&gt;</code> の位置に展開されます.
+  </p>
+
+  <pre><code class="language-html">{{ panelCode }}</code></pre>
+
+  <pre><code class="language-html">{{ panelParentCode }}</code></pre>
+
+  <div class="rendered">
+    <PanelParent />
+  </div>
+
+  <ul>
+    <li>
+      slotの内容は親のスコープで評価されるため、親の状態を参照できます.<br>
+      scoped CSSも親のものが適用されます.
+    </li>
+    <li><code>&lt;slot&gt;</code> の中身は、そのスロットが渡されなかった場合の既定の内容です.</li>
+  </ul>
+
+  <h3 id="scoped-slot">スコープ付きスロット</h3>
+
+  <p>
+    子から値を受け取って、内容を作るスロットです.<br>
+    リストのような汎用部品で、行の表示を親に任せる場合に使います.<br>
+    子はPropsに <code>name: ScopedSlot[A]</code> を定義し、<br>
+    <code>&lt;slot name="name" :value="expr"&gt;</code> で値を渡します.<br>
+    親は <code>&lt;template #name="x"&gt;</code> で値を受け取ります.
+  </p>
+
+  <pre><code class="language-html">{{ itemListCode }}</code></pre>
+
+  <pre><code class="language-html">{{ itemListParentCode }}</code></pre>
+
+  <div class="rendered">
+    <ItemListParent />
+  </div>
+
+  <p>
+    複数の値はタプルで渡し、<br>
+    <code>#item="(name, i)"</code> のように分解して受け取れます.
+  </p>
+
+  <h2 id="attrs">属性の引き継ぎ</h2>
+
+  <p>
+    子コンポーネントのタグに書いた <code>class</code>・<code>style</code>・<code>id</code>・<code>role</code>・<code>data-*</code>・<code>aria-*</code> は、<br>
+    propsにならず、子のルート要素(最初の要素)に付け加えられます.<br>
+    (Vueのフォールスルー属性)<br>
+    classとstyleは、子のものと合わされます.<br>
+    <code>:</code> を付けてReactiveを渡すと、値の変化に追従します.
+  </p>
+
+  <pre><code class="language-html">{{ chipCode }}</code></pre>
+
+  <pre><code class="language-html">{{ chipParentCode }}</code></pre>
+
+  <div class="rendered">
+    <ChipParent />
+  </div>
+
+  <h2 id="lifecycle">ライフサイクルフック</h2>
+
+  <p>
+    <code>&lt;script&gt;</code> に <code>def mounted</code> / <code>def unmounted</code> を定義すると、<br>
+    コンポーネントのライフサイクルに合わせて処理を実行できます.<br>
+    Vue.jsのmounted / unmountedに当たります.<br>
+    引数はなし、または <code>Props</code>・Stateを受け取れます.
+  </p>
+
+  <pre><code class="language-html">{{ clockCode }}</code></pre>
+
+  <div class="rendered">
+    <Clock />
+  </div>
+
+  <ul>
+    <li>
+      <code>mounted</code> : コンポーネントがDOMに挿入された後(現在の処理の直後)に呼ばれます.<br>
+      子コンポーネントのものから順に呼ばれます.<br>
+      要素の参照(フォーカスなど)や、外部ライブラリの組み込みに使います.
+    </li>
+    <li>
+      <code>unmounted</code> : コンポーネントが片付けられた(DOMから取り除かれた)後に呼ばれます.<br>
+      描き直し・v-ifの切り替え・v-forの行の削除などでも呼ばれます.<br>
+      タイマーや外部のイベントの解除に使います.
+    </li>
+    <li>
+      描き直しでは、<br>
+      古い内容のunmountedの後に、新しい内容のmountedが呼ばれます.
+    </li>
+  </ul>
+
+  <h2 id="ref">テンプレート参照</h2>
+
+  <p>
+    要素に <code>ref="expr"</code> を書くと、その要素を直接参照できます.<br>
     (Vueのテンプレート参照、ReactのuseRef)<br>
+    インスタンスごとの参照になるよう、<br>
+    Stateに <code>ElementRef()</code> を持たせてください.<br>
     要素が作られたときに設定され、<br>
     コンポーネントが片付けられると空(<code>get</code> がNone)に戻ります.<br>
     DOMに挿入された後の処理(フォーカスなど)は、<br>
-    <code>onMounted</code> の中で行ってください.
+    <code>mounted</code> の中で行ってください.
   </p>
 
-  <pre><code class="language-scala">{{ codeRef }}</code></pre>
+  <pre><code class="language-html">{{ focusInputCode }}</code></pre>
+
+  <div class="rendered">
+    <FocusInput />
+  </div>
+
+  <h2 id="teleport">Teleport</h2>
 
   <p>
-    単一ファイルコンポーネント(.st)では、<br>
-    Stateに <code>ElementRef()</code> を持たせ、<code>ref="s.input"</code> と書きます.
+    <code>&lt;Teleport to="body"&gt;</code> の中身は、<br>
+    別の要素(toのCSSセレクター)の末尾に描画されます.<br>
+    モーダルなど、画面全体に重ねる表示に使います.<br>
+    <code>disabled</code> を付けると、元の位置に描画します.<br>
+    scoped CSSやイベントは、そのまま使えます.
   </p>
 
-  <h2 id="Attrs">属性の引き継ぎ</h2>
+  <pre><code class="language-html">{{ modalCode }}</code></pre>
+
+  <div class="rendered">
+    <Modal />
+  </div>
+
+  <h2 id="errorBoundary">エラーの境界</h2>
 
   <p>
-    <code>c(コンポーネント, 属性...)</code> のように、<br>
-    子コンポーネントのルート要素(最初の要素)に属性を付け加えられます.<br>
-    (Vueのフォールスルー属性)<br>
-    属性は <code>StRuntime</code> の <code>rootCls</code> / <code>rootStyle</code> / <code>rootAttr</code> で作ります.<br>
-    classとstyleは子のものと合わされ、子が描き直されたときも付け直されます.<br>
-    値にはReactiveも使えます.
-  </p>
-
-  <pre><code class="language-scala">import io.github.ondeoma.scalactive.st.StRuntime.{rootAttr, rootCls, rootStyle}
-
-c(ButtonComponent(...), rootCls("primary" -&gt; isActive), rootStyle(Map("width" -&gt; "100%")), rootAttr("aria-label", "送信"))</code></pre>
-
-  <p>
-    単一ファイルコンポーネント(.st)では、<br>
-    子コンポーネントのタグに書いた <code>class</code>・<code>style</code>・<code>id</code>・<code>role</code>・<code>data-*</code>・<code>aria-*</code> が、<br>
-    自動的に引き継がれます.
-  </p>
-
-  <h2 id="ErrorBoundary">エラーの境界</h2>
-
-  <p>
-    <code>errorBoundaryC</code> で囲んだ中身で起きたエラーを受け止め、<br>
-    代わりの表示(fallback)に切り替えます.<br>
+    <code>&lt;ErrorBoundary&gt;</code> で囲んだ中身で起きたエラーを受け止め、<br>
+    <code>&lt;template #fallback="err"&gt;</code> の表示に切り替えます.<br>
     (ReactのError Boundary、VueのerrorCaptured)<br>
     エラーが起きても画面全体が壊れず、その部分だけを差し替えられます.
   </p>
 
-  <pre><code class="language-scala">errorBoundaryC(err =&gt; implicit cm =&gt;
-  s&quot;&lt;p&gt;読み込めませんでした: ${err.message} &lt;button ${evClick(err.retry())}&gt;再試行&lt;/button&gt;&lt;/p&gt;&quot;
-) { implicit cm =&gt;
-  s&quot;&lt;div&gt;${%(RiskyComponent())}&lt;/div&gt;&quot;
-}</code></pre>
+  <pre><code class="language-html">{{ boundaryCode }}</code></pre>
+
+  <div class="rendered">
+    <Boundary />
+  </div>
 
   <ul>
     <li>
       受け止めるのは、中身を描く途中の例外(子コンポーネントを含む)、<br>
       後から起きる子孫の描き直しの中の例外、<br>
-      子孫の <code>onMounted</code> とイベントハンドラーの中の例外です.
+      子孫の <code>mounted</code> とイベントハンドラーの中の例外です.
     </li>
     <li>
-      <code>err.retry()</code> で中身を描き直します.<br>
-      <code>onError</code> を指定すると、エラーを受け止めたときに呼ばれます(既定ではコンソールに出力).
+      <code>err.message</code> でメッセージを参照できます.<br>
+      <code>err.retry()</code> で中身を描き直します.
     </li>
+    <li><code>@error="..."</code> で、受け止めたエラーを <code>event</code> として受け取れます.</li>
     <li>
       境界の外で起きた例外は、<br>
       <code>ScalactiveConfig.errorHandler</code>(既定ではコンソールに出力)に渡され、<br>
       ほかの描き直しは続けられます.<br>
       エラーの報告サービスへ送る場合などは、<br>
-      アプリの起動時に <code>ScalactiveConfig.errorHandler = e =&gt; ...</code> と設定します.<br>
+      アプリの起動時に設定します.<br>
       (Vueのapp.config.errorHandler)
-    </li>
-    <li>
-      単一ファイルコンポーネント(.st)では、<br>
-      <code>&lt;ErrorBoundary&gt;...&lt;template #fallback="err"&gt;...&lt;/template&gt;&lt;/ErrorBoundary&gt;</code> と書きます.
     </li>
   </ul>
 
-  <h2 id="Async">非同期データ・遅延読み込み</h2>
+  <pre><code class="language-scala">{{ errorHandlerCode }}</code></pre>
+
+  <h2 id="await">非同期データ</h2>
 
   <p>
-    <code>awaitC</code> は、非同期の処理(Future)の状態に応じて表示を切り替えます(VueのSuspense).<br>
-    完了するまでpending、<br>
-    完了したら結果を受け取った表示、<br>
-    失敗したらerrorの表示になります.
+    <code>&lt;Await&gt;</code> は、非同期の処理(Future)の状態に応じて表示を切り替えます.<br>
+    (VueのSuspense)<br>
+    完了するまで <code>#pending</code>、<br>
+    完了したら結果を受け取った <code>#default</code>、<br>
+    失敗したら <code>#error</code> の表示になります.
   </p>
 
-  <pre><code class="language-scala">awaitC(api.fetchUser(id),
-  pending = _ =&gt; "&lt;p&gt;読み込み中...&lt;/p&gt;",
-  error = err =&gt; implicit cm =&gt; s&quot;&lt;p&gt;${err.message} &lt;button ${evClick(err.retry())}&gt;再試行&lt;/button&gt;&lt;/p&gt;&quot;
-)(user =&gt; implicit cm =&gt; s&quot;&lt;p&gt;${user.name}&lt;/p&gt;&quot;)</code></pre>
+  <pre><code class="language-html">{{ loaderCode }}</code></pre>
+
+  <div class="rendered">
+    <Loader />
+  </div>
 
   <ul>
     <li>
-      Futureは描画されたときに評価されます.<br>
-      <code>err.retry()</code> でもう1度評価します.
+      <code>:load</code> には、Futureを返す関数を渡します.<br>
+      描画されたときに呼ばれます.<br>
+      <code>err.retry()</code> でもう1度呼びます.
     </li>
     <li>完了する前にコンポーネントが片付けられた場合は、完了しても描き直しません.</li>
-    <li>
-      単一ファイルコンポーネント(.st)では、<br>
-      <code>&lt;Await :load="() =&gt; fetchUser(id)"&gt;</code> と、<br>
-      <code>&lt;template #pending&gt;</code> / <code>&lt;template #default="user"&gt;</code> / <code>&lt;template #error="err"&gt;</code> で書きます.
-    </li>
   </ul>
 
+  <h2 id="lazy">遅延読み込み</h2>
+
   <p>
-    <code>asyncComponent</code> は、読み込みが終わってから描画するコンポーネントを作ります(遅延読み込み).<br>
+    <code>asyncComponent</code> は、読み込みが終わってから描画するコンポーネントを作ります.<br>
     Scala.jsの <code>js.dynamicImport</code> と組み合わせると、<br>
-    コンポーネントのコードを別のファイルに分割し、必要になったときに読み込めます.<br>
-    (sbtで <code>scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule))</code> の設定が必要です.)
+    コンポーネントのコードを別のファイルに分割し、<br>
+    必要になったときに読み込めます.<br>
+    (sbtで <code>scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule))</code> の設定が必要です.)<br>
+    <code>&lt;script&gt;</code> の中で <code>apply()</code> を持つobjectにすると、<br>
+    タグで呼び出せます.
   </p>
 
-  <pre><code class="language-scala">// ルートに使う例: /admin を開いたときに初めてAdminComponentのコードを読み込む
-val routes: PathPatternRoutes = List(
-  ("/", _ =&gt; HomeComponent()),
-  ("/admin", _ =&gt; asyncComponent(() =&gt; js.dynamicImport(AdminComponent()).toFuture, _ =&gt; "&lt;p&gt;読み込み中...&lt;/p&gt;")),
-)</code></pre>
+  <pre><code class="language-html">{{ lazyLoadCode }}</code></pre>
+
+  <div class="rendered">
+    <LazyLoad />
+  </div>
+
+  <p>ルートにもそのまま使えます.</p>
+
+  <pre><code class="language-html">{{ lazyRouteCode }}</code></pre>
+
+  <p>
+    Scalaで直接書く方法は、<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a> を参照してください.
+  </p>
 </template>
