@@ -2,11 +2,6 @@
 import Router.*
 import io.github.ondeoma.scalactive.doc.components.contents.component.*
 
-// 状態は持たない.
-// コンパイラーは<script>の中の文字列(sample2Code)の def initState も見つけてしまうため、
-// 先に状態のない(Unit)initStateを定義しておく.
-def initState(): Unit = ()
-
 val sample1Code = // language=scala
   s"""import io.github.ondeoma.scalactive.components.*
      |import org.scalajs.dom.window.alert

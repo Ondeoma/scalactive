@@ -36,6 +36,52 @@ object StCompiler {
   private val HookDecl = """\bdef\s+(mounted|unmounted)\b\s*(?:\(\s*([^)]*?)\s*\))?""".r
   private val PropParam = """(?s)^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:private|protected|override|final|val|var)\s+)*([A-Za-z_]\w*)\s*:(.+)$""".r
 
+  /**
+   * 文字列リテラル・文字リテラル・コメントの中身を空白にした文字列(長さと改行の位置は同じ).
+   * scriptから initState・Props・ライフサイクルフックの定義を探すときに、コードサンプルの文字列などの中を拾わないために使います.
+   */
+  private[compiler] def codeOnly(s: String): String = {
+    val sb = new StringBuilder(s)
+    def blank(from: Int, until: Int): Unit = for (k <- from until math.min(until, s.length)) if (s.charAt(k) != '\n') sb.setCharAt(k, ' ')
+    var i = 0
+    while (i < s.length) {
+      if (s.startsWith("//", i)) {
+        val e = s.indexOf('\n', i)
+        val end = if (e < 0) s.length else e
+        blank(i, end)
+        i = end
+      } else if (s.startsWith("/*", i)) {
+        var depth = 0
+        var j = i
+        var done = false
+        while (j < s.length && !done) {
+          if (s.startsWith("/*", j)) { depth += 1; j += 2 }
+          else if (s.startsWith("*/", j)) { depth -= 1; j += 2; if (depth == 0) done = true }
+          else j += 1
+        }
+        blank(i, j)
+        i = j
+      } else if (s.startsWith("\"\"\"", i)) {
+        val e = s.indexOf("\"\"\"", i + 3)
+        var end = if (e < 0) s.length else e + 3
+        while (end < s.length && s.charAt(end) == '"') end += 1
+        blank(i + 3, end - 3)
+        i = end
+      } else if (s.charAt(i) == '"') {
+        var j = i + 1
+        while (j < s.length && s.charAt(j) != '"' && s.charAt(j) != '\n') j += (if (s.charAt(j) == '\\') 2 else 1)
+        blank(i + 1, j)
+        i = math.min(j + 1, s.length)
+      } else if (s.charAt(i) == '\'' && i + 2 < s.length && (s.charAt(i + 2) == '\'' || s.charAt(i + 1) == '\\')) {
+        val e = s.indexOf('\'', i + 2)
+        val end = if (e < 0) s.length else e + 1
+        blank(i + 1, end - 1)
+        i = end
+      } else i += 1
+    }
+    sb.toString
+  }
+
   def compile(in: StInput): Either[StError, StOutput] = {
     val src = new SourceText(in.source)
     try {
@@ -60,8 +106,9 @@ object StCompiler {
       val src = new SourceText(source)
       SfcParser.parse(src).script.toList.flatMap { b =>
         val body = b.content(src)
-        PropsDecl.findFirstMatchIn(body).toList.flatMap { m =>
-          findClose(body, m.end - 1).toList.flatMap { close =>
+        val code = codeOnly(body)
+        PropsDecl.findFirstMatchIn(code).toList.flatMap { m =>
+          findClose(code, m.end - 1).toList.flatMap { close =>
             var cursor = m.end
             splitTopLevel(body.substring(m.end, close), ',').flatMap { piece =>
               val pieceStart = cursor
@@ -129,23 +176,26 @@ object StCompiler {
     }
     val packageName = scriptPackage.orElse(in.packageName).filter(_.nonEmpty)
 
+    // 定義を探すときは、文字列・コメントの中を除く(コードサンプルの文字列の中の def initState などを拾わない)
+    val scriptCode = codeOnly(scriptBody)
+
     // object内で定義された型は object名.型 で参照する
     def qualify(t: String): String = {
       val definedInside = s"""\\b(?:class|trait|object|enum|type)\\s+${java.util.regex.Pattern.quote(t)}\\b""".r
-        .findFirstIn(scriptBody).isDefined
+        .findFirstIn(scriptCode).isDefined
       if (t.matches(Identifier) && definedInside) s"${in.objectName}.$t" else t
     }
 
-    val initState = InitState.findFirstMatchIn(scriptBody)
+    val initState = InitState.findFirstMatchIn(scriptCode)
     val stateType: Option[String] = initState.map { m =>
       qualify(Option(m.group(2)).map(_.trim).filter(_.nonEmpty).getOrElse("State"))
     }
     val initStateTakesProps = initState.exists(m => Option(m.group(1)).exists(_.trim.nonEmpty))
 
     // case class Props(...) を定義すると、親から値を受け取るコンポーネントになる
-    val props: Option[List[(String, String)]] = PropsDecl.findFirstMatchIn(scriptBody).map { m =>
+    val props: Option[List[(String, String)]] = PropsDecl.findFirstMatchIn(scriptCode).map { m =>
       val scriptOffset = sfc.script.map(_.offset).getOrElse(0)
-      val close = findClose(scriptBody, m.end - 1)
+      val close = findClose(scriptCode, m.end - 1)
         .getOrElse(src.fail(scriptOffset, "unclosed parameter list of 'case class Props'"))
       splitTopLevel(scriptBody.substring(m.end, close), ',').filter(_.trim.nonEmpty).map {
         case PropParam(name, rest) => (name, s"$name: ${rest.trim}")
@@ -163,7 +213,7 @@ object StCompiler {
     val propsName0 = template.attr("props").flatMap(_.value).getOrElse("props")
 
     // def mounted / def unmounted: ライフサイクルフック. 引数はなし、またはProps・Stateを受け取れる
-    val hookCalls: List[String] = HookDecl.findAllMatchIn(scriptBody).toList.groupBy(_.group(1)).toList.sortBy(_._1).map {
+    val hookCalls: List[String] = HookDecl.findAllMatchIn(scriptCode).toList.groupBy(_.group(1)).toList.sortBy(_._1).map {
       case (name, ms) =>
         val m = ms.head
         val scriptOffset = sfc.script.map(_.offset).getOrElse(0)

@@ -24,6 +24,20 @@ class StCompilerSuite extends munit.FunSuite {
     assert(o.code.contains("\"<p class=\\\"x\\\">hi</p>\""))
   }
 
+  test("文字列・コメントの中の def initState・case class Props・def mounted は定義とみなさない") {
+    val src =
+      "<script lang=\"scala\">\n" +
+        "val code = s\"\"\"case class Props(a: Int)\n  |def initState() = State()\n  |def mounted(): Unit = ()\"\"\".stripMargin\n" +
+        "val one = \"def initState() = State()\"\n" +
+        "// def mounted(): Unit = ()\n" +
+        "/* case class Props(b: Int) */\n" +
+        "</script>\n<template><pre>{{ code }}</pre></template>\n"
+    val out = compile(src)
+    assert(out.code.contains("extends StatelessComponent"), out.code)
+    assert(!out.code.contains("onMounted"), out.code)
+    assertEquals(StCompiler.propsInfo(src), Nil)
+  }
+
   test("stateful component qualifies state type defined in script") {
     val o = compile(
       """<script lang="scala">
