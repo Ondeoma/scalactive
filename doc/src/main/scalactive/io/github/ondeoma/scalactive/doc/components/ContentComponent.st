@@ -19,6 +19,7 @@ val routes: PathPatternRoutes = List(
   ("/deploy", _ => DeployComponent()),
   ("/contribute", _ => ContributeComponent()),
   ("/releaseNotes", _ => ReleaseNotesComponent()),
+  ("/scalaApi", _ => ScalaApiComponent()),
 )
 </script>
 

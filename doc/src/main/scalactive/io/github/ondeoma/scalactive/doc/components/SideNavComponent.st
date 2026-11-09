@@ -21,6 +21,7 @@ import Router.*
       <li @click='go("/deploy")'>本番ビルド</li>
       <li @click='go("/contribute")'>コントリビュート</li>
       <li @click='go("/releaseNotes")'>リリースノート</li>
+      <li @click='go("/scalaApi")'>Scala API(従来の書き方)</li>
     </ul>
   </nav>
 </template>
