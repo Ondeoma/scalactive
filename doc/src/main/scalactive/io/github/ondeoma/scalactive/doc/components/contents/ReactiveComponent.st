@@ -1,6 +1,6 @@
 <script lang="scala">
 import Router.*
-import io.github.ondeoma.scalactive.doc.components.contents.reactive.{CrvDemo, RmListDemo, RvCounter, RvListDemo, WatchDemo}
+import io.github.ondeoma.scalactive.doc.components.contents.reactive.{CrvDemo, NextTickDemo, RmListDemo, RvCounter, RvListDemo, WatchDemo}
 
 val codeRvSt = // language=html
   """<script lang="scala">
@@ -79,35 +79,27 @@ val codeCrvSt = // language=html
      |    × <input type="number" v-model="s.qty" style="width: 4em">個
      |  </p>
      |  <p>合計: {{ CRV(s.price, s.qty, (p, q) => p * q) }}円</p>
+     |  <p>税込: {{ computed(s.price.v * s.qty.v * 110 / 100) }}円</p>
      |  <p v-if="s.qty.mapC(_ >= 10)">まとめ買いです!</p>
      |</template>
      |""".stripMargin
 
 val codeWatchSt = // language=html
   """<script lang="scala">
-     |import io.github.ondeoma.scalactive.models.WatchInfo
-     |
      |// コンポーネントの外のリアクティブな値(全てのインスタンスで共有されます)
      |val shared = RV(0)
      |
      |case class State(count: RV[Int] = RV(0),
      |                 log: RV[String] = RV("-"),
-     |                 sharedLog: RV[String] = RV("-"),
-     |                 var sharedWatch: Option[WatchInfo] = None)
+     |                 sharedLog: RV[String] = RV("-"))
      |
-     |def initState() = {
-     |  val s = State()
-     |  // 自分のStateの値の監視(Stateと一緒に片付くので、解除は不要です)
-     |  s.count.addWatcher { case (oldV, newV) => s.log := s"count: $oldV -> $newV" }
-     |  s
-     |}
+     |def initState() = State()
      |
-     |// 外の値の監視は、mountedで始めて、unmountedで解除します
+     |// mountedの中のwatchは、コンポーネントが片付けられると自動で解除されます
      |def mounted(s: State): Unit = {
-     |  s.sharedWatch = Some(shared.addWatcher { case (oldV, newV) => s.sharedLog := s"shared: $oldV -> $newV" })
+     |  watch(s.count)((oldV, newV) => s.log := s"count: $oldV -> $newV")
+     |  watch(shared, immediate = true)((_, newV) => s.sharedLog := s"shared: $newV")
      |}
-     |
-     |def unmounted(s: State): Unit = s.sharedWatch.foreach(_.abort())
      |</script>
      |
      |<template>
@@ -115,6 +107,37 @@ val codeWatchSt = // language=html
      |  <button @click="shared := shared.v + 1">shared +1</button>
      |  <p>{{ s.log }}</p>
      |  <p>{{ s.sharedLog }}</p>
+     |</template>
+     |""".stripMargin
+
+val codeNextTickSt = // language=html
+  """<script lang="scala">
+     |import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+     |
+     |case class State(items: RVList[String] = RVList(List("りんご")),
+     |                 list: ElementRef[HTMLElement] = ElementRef())
+     |
+     |def initState() = State()
+     |
+     |def add(s: State): Unit = {
+     |  s.items.add("")
+     |  // 描き直しが終わってから、追加した行の入力欄にフォーカスします
+     |  nextTick().foreach { _ =>
+     |    s.list.foreach { ul =>
+     |      val inputs = ul.querySelectorAll("input")
+     |      inputs(inputs.length - 1).asInstanceOf[HTMLInputElement].focus()
+     |    }
+     |  }
+     |}
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <ul ref="s.list">
+     |      <li v-for="item in s.items"><input type="text" :value="item"></li>
+     |    </ul>
+     |    <button @click="add(s)">行を追加</button>
+     |  </div>
      |</template>
      |""".stripMargin
 
@@ -285,8 +308,7 @@ val codeCRV = // language=scala
      |val rv1 = RV(10)
      |val crv1: CRV[Int] = CRV(rv1, _ + 10)
      |
-     |// 複数のRVからCRVを作成
-     |// ※v0.1.11時点で最大6つのRVから作成可能です
+     |// 複数のRVからCRVを作成(最大6つまで. それより多い場合はcomputedを使います)
      |val rv2 = RV("A")
      |val crv2: CRV[String] = CRV(rv1, rv2, (v1, v2) => s"$$v1:$$v2")
      |
@@ -295,17 +317,39 @@ val codeCRV = // language=scala
      |""".stripMargin
 
 val codeWatch = // language=scala
-  s"""import io.github.ondeoma.scalactive.reactive.*
+  s"""import io.github.ondeoma.scalactive.components.ComponentManager.*
      |
      |val rv1 = RV(10)
+     |val rv2 = RV("A")
      |
-     |// 監視処理の追加
-     |val watchInfo = rv1.addWatcher {
-     |  case (oldV, newV) => println(s"rv1: $$oldV -> $$newV")
+     |// 値が変わったときに実行します(前の値と等しい値の代入では実行しません)
+     |val w = watch(rv1)((oldV, newV) => println(s"rv1: $$oldV -> $$newV"))
+     |
+     |// immediate = true で、登録したときにも1回実行します
+     |watch(rv1, immediate = true)((_, newV) => println(s"rv1: $$newV"))
+     |
+     |// 複数の値を見る場合は、computedと組み合わせます
+     |watch(computed((rv1.v, rv2.v))) { case (_, (v1, v2)) => println(s"$$v1, $$v2") }
+     |
+     |// 監視の終了(コンポーネントの中・mountedの中で登録したものは、自動で解除されます)
+     |w.stop()
+     |""".stripMargin
+
+val codeComputed = // language=scala
+  s"""import io.github.ondeoma.scalactive.components.ComponentManager.*
+     |
+     |val price = RV(100)
+     |val qty = RV(2)
+     |val taxIncluded = RV(true)
+     |
+     |// 計算の中で読んだ値(.v)を、自動で監視します
+     |val total: CRV[Int] = computed {
+     |  val sum = price.v * qty.v
+     |  if (taxIncluded.v) sum * 110 / 100 else sum
      |}
      |
-     |// 監視の終了
-     |watchInfo.abort()
+     |// untrackedの中で読んだ値は監視しません(qtyが変わっても計算し直さない)
+     |val label: CRV[String] = computed(s"$${price.v}円 × $${untracked(qty.v)}個")
      |""".stripMargin
 
 val codeTiming = // language=scala
@@ -318,15 +362,15 @@ val codeTiming = // language=scala
      |""".stripMargin
 
 val codeAfterReload = // language=scala
-  s"""import scala.scalajs.js
+  s"""import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
      |
      |rv := false // v-ifなどの描き直しが予約される
      |// ここではまだ描き直されていない
      |
-     |// 現在の処理の後(マイクロタスク)に実行すれば、描き直し後のDOMを参照できます
-     |js.Dynamic.global.queueMicrotask(() => {
+     |// nextTickは、描き直しとmountedが終わったときに完了します
+     |nextTick().foreach { _ =>
      |  // 描き直し後のDOMを参照する処理
-     |})
+     |}
      |""".stripMargin
 </script>
 
@@ -349,6 +393,7 @@ val codeAfterReload = // language=scala
     <li><a @click='setHash("ReactiveModel")'>ReactiveModel</a></li>
     <li><a @click='setHash("RMList")'>RMList</a></li>
     <li><a @click='setHash("CRV")'>CRV</a></li>
+    <li><a @click='setHash("computed")'>computed</a></li>
     <li><a @click='setHash("Watch")'>リアクティブ値の監視</a></li>
     <li><a @click='setHash("Timing")'>画面に反映されるタイミング</a></li>
   </ul>
@@ -499,21 +544,41 @@ val codeAfterReload = // language=scala
     <CrvDemo />
   </div>
 
+  <h2 id="computed">computed</h2>
+
+  <p>
+    <code>computed &#123; ... &#125;</code> は、計算の中で読んだリアクティブな値(<code>.v</code>)を、自動で監視するCRVを作ります.<br>
+    Vue.jsのcomputedに当たります.<br>
+    CRV(...)のように元の値を並べる必要がなく、数の上限もありません.<br>
+    計算し直すたびに読んだ値を集め直すので、<br>
+    条件によって読む値が変わる場合も、その時点で読んだ値だけを監視します.
+  </p>
+
+  <pre><code class="language-scala">{{ codeComputed }}</code></pre>
+
+  <ul>
+    <li>計算し直した値が前の値と等しい場合は、CRVと同じく通知されません.</li>
+    <li>テンプレートの中・コンポーネントの中で作ったものは、コンポーネントが片付けられる時に監視も解除されます.</li>
+    <li>計算の中では、リアクティブな値を書き換えないでください.</li>
+    <li>RVList・RMList・ReactiveModelは、それ自体が監視されます(行・項目の変化でも計算し直します).</li>
+  </ul>
+
   <h2 id="Watch">リアクティブ値の監視</h2>
 
   <p>
-    リアクティブな値が変化した際に任意の処理を実行させることができます.<br>
-    Vue.jsにおけるwatchの概念に近いものです.
+    <code>watch</code> で、リアクティブな値が変化した際に任意の処理を実行させることができます.<br>
+    Vue.jsのwatchに当たります.
   </p>
 
   <pre><code class="language-scala">{{ codeWatch }}</code></pre>
 
   <p>
-    Stateの値を監視する場合は、<code>initState</code> の中で監視を追加できます.<br>
-    Stateと一緒に片付けられるので、解除は不要です.<br>
-    コンポーネントの外のリアクティブな値(グローバルな状態やRouter.hrefなど)を監視する場合は、<br>
-    <code>def mounted</code> で監視を始めて、<code>def unmounted</code> で解除してください.<br>
-    解除しないと、描画のたびに監視が増えていきます.
+    .stでは、<code>def mounted</code> の中で <code>watch</code> を登録してください.<br>
+    コンポーネントが片付けられる時(描き直しを含みます)に自動で解除されるので、<br>
+    コンポーネントの外のリアクティブな値(グローバルな状態やRouter.hrefなど)も、解除を書かずに監視できます.<br>
+    それ以外の場所(<code>initState</code> やオブジェクトの直下など)で登録した場合は自動では解除されないので、<br>
+    必要に応じて <code>stop()</code> を呼んでください.<br>
+    より低いレベルの <code>addWatcher</code> / <code>WatchInfo.abort()</code> も使えます.
   </p>
 
   <pre><code class="language-st">{{ codeWatchSt }}</code></pre>
@@ -534,6 +599,19 @@ val codeAfterReload = // language=scala
   </p>
 
   <pre><code class="language-scala">{{ codeAfterReload }}</code></pre>
+
+  <p>
+    <code>nextTick()</code> は、予約された描き直しと、その後のmountedがすべて終わった時に完了するFutureを返します.<br>
+    Vue.jsのnextTickに当たります.<br>
+    描き直した後の要素の大きさを測る・フォーカスを当てる、といった処理に使います.<br>
+    下の例では、行を追加した後、新しい行の入力欄にフォーカスします.
+  </p>
+
+  <pre><code class="language-st">{{ codeNextTickSt }}</code></pre>
+
+  <div class="rendered">
+    <NextTickDemo />
+  </div>
 
   <p>
     描き直しを待つ時間は <code>ScalactiveConfig.reloadTimerLazyDuration</code> で変更できます.<br>

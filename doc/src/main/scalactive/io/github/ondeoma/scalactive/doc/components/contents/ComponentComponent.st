@@ -259,6 +259,60 @@ val focusInputCode = // language=html
      |</template>
      |""".stripMargin
 
+val externalWidgetCode = // language=html
+  """<script lang="scala">
+     |case class State(box: ElementRef[HTMLElement] = ElementRef())
+     |
+     |def initState() = State()
+     |
+     |// 外部のライブラリが、自分で作った要素の中への描画を任せてくる想定です
+     |def mounted(s: State): Unit = {
+     |  s.box.foreach { box =>
+     |    val node = document.createElement("div") // ライブラリが作った要素
+     |    box.appendChild(node)
+     |    // このコンポーネントが片付けられると、mountしたCounterも片付けられます
+     |    mount(node) { Counter() }
+     |  }
+     |}
+     |</script>
+     |
+     |<template>
+     |  <div ref="s.box" class="external"></div>
+     |</template>
+     |
+     |<style scoped>
+     |.external {
+     |  border: 1px dashed #999;
+     |  padding: 4px 8px;
+     |}
+     |</style>
+     |""".stripMargin
+
+val mountDemoCode = // language=html
+  """<script lang="scala">
+     |case class State(show: RV[Boolean] = RV(true))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <div>
+     |    <button @click="s.show := !s.show.v">表示を切り替える</button>
+     |    <ExternalWidget v-if="s.show" />
+     |  </div>
+     |</template>
+     |""".stripMargin
+
+val mountScalaCode = // language=scala
+  """import io.github.ondeoma.scalactive.components.ComponentManager.*
+     |
+     |// 要素elの末尾に描画します
+     |val handle = mount(el) { Counter() }
+     |
+     |// 片付けます(onUnmountedも実行されます)
+     |handle.foreach(_.unmount())
+     |""".stripMargin
+
 val modalCode = // language=html
   """<script lang="scala">
      |case class State(open: RV[Boolean] = RV(false))
@@ -411,6 +465,7 @@ val lazyRouteCode = // language=html
     <li><a @click='setHash("lifecycle")'>ライフサイクルフック</a></li>
     <li><a @click='setHash("ref")'>テンプレート参照</a></li>
     <li><a @click='setHash("teleport")'>Teleport</a></li>
+    <li><a @click='setHash("mount")'>外部の要素への描画</a></li>
     <li><a @click='setHash("errorBoundary")'>エラーの境界</a></li>
     <li><a @click='setHash("await")'>非同期データ</a></li>
     <li><a @click='setHash("lazy")'>遅延読み込み</a></li>
@@ -684,6 +739,14 @@ val lazyRouteCode = // language=html
       描き直しでは、<br>
       古い内容のunmountedの後に、新しい内容のmountedが呼ばれます.
     </li>
+    <li>
+      mountedの中で登録した <code>watch</code>・<code>computed</code>・<code>mount</code> は、<br>
+      コンポーネントが片付けられる時に自動で解除されます.
+    </li>
+    <li>
+      値を変更した後、描き直しが終わってから処理したい場合は <code>nextTick()</code> を使います<br>
+      (<a @click='go("/reactive#Timing")'>画面に反映されるタイミング</a>).
+    </li>
   </ul>
 
   <h2 id="ref">テンプレート参照</h2>
@@ -719,6 +782,33 @@ val lazyRouteCode = // language=html
 
   <div class="rendered">
     <Modal />
+  </div>
+
+  <h2 id="mount">外部の要素への描画</h2>
+
+  <p>
+    <code>mount(el) &#123; コンポーネント &#125;</code> で、任意の要素の中にコンポーネントを描画できます.<br>
+    エディタや図のライブラリなど、外部のライブラリが管理する要素の中に描画する場合に使います.<br>
+    戻り値は <code>Either[String, MountHandle]</code> で、<code>unmount()</code> で片付けます.
+  </p>
+
+  <pre><code class="language-scala">{{ mountScalaCode }}</code></pre>
+
+  <p>
+    コンポーネントの中(<code>def mounted</code> を含みます)で <code>mount</code> した場合は、<br>
+    そのコンポーネントが片付けられる時に、一緒に片付けられます.<br>
+    下の例では、外部のライブラリが作った要素の想定で、mountedの中で作った要素にCounterを描画しています.<br>
+    表示を切り替えると、描画したCounterも片付けられます.
+  </p>
+
+  <div class="code-file">ExternalWidget.st</div>
+  <pre><code class="language-st">{{ externalWidgetCode }}</code></pre>
+
+  <div class="code-file">MountDemo.st</div>
+  <pre><code class="language-st">{{ mountDemoCode }}</code></pre>
+
+  <div class="rendered">
+    <MountDemo />
   </div>
 
   <h2 id="errorBoundary">エラーの境界</h2>

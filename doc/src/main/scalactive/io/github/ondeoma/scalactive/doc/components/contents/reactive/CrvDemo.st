@@ -11,5 +11,6 @@ def initState() = State()
     × <input type="number" v-model="s.qty" style="width: 4em">個
   </p>
   <p>合計: {{ CRV(s.price, s.qty, (p, q) => p * q) }}円</p>
+  <p>税込: {{ computed(s.price.v * s.qty.v * 110 / 100) }}円</p>
   <p v-if="s.qty.mapC(_ >= 10)">まとめ買いです!</p>
 </template>
