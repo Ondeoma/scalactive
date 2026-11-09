@@ -166,7 +166,11 @@ public final class ScalactiveBracketHandler {
                     editor.getCaretModel().moveToOffset(offset + 1);
                     return Result.STOP;
                 }
-                if (c != '"') return Result.CONTINUE;
+                if (c != '"') {
+                    // 空白だけの行で閉じ括弧を入力したら、対応する開き括弧の行のインデントにそろえる
+                    if (where == Where.RAW && dedentToOpener(doc, editor, offset, c)) return Result.STOP;
+                    return Result.CONTINUE;
+                }
             }
             // 文字列を閉じる " と、単語の直前の括弧は、1文字だけ入力する(ほかのハンドラにも補わせない)
             boolean pair = !(c == '"' && insideString(doc, offset)) && canPair(text, offset, where);
@@ -174,6 +178,37 @@ public final class ScalactiveBracketHandler {
             editor.getCaretModel().moveToOffset(offset + 1);
             return Result.STOP;
         }
+    }
+
+    /** 空白だけの行で閉じ括弧cを入力したとき、行のインデントを対応する開き括弧の行にそろえて入力する */
+    private static boolean dedentToOpener(Document doc, Editor editor, int offset, char c) {
+        int line = doc.getLineNumber(offset);
+        int lineStart = doc.getLineStartOffset(line);
+        CharSequence text = doc.getCharsSequence();
+        for (int i = lineStart; i < offset; i++) {
+            if (text.charAt(i) != ' ' && text.charAt(i) != '\t') return false;
+        }
+        char open = OPEN.charAt(CLOSE.indexOf(c));
+        int depth = 0;
+        for (int i = lineStart - 1; i >= 0; i--) {
+            char ch = text.charAt(i);
+            if (ch == '>' && i > 0 && text.subSequence(Math.max(0, i - 40), i + 1).toString().matches("(?s).*<(script|style)[^<]*>")) return false;
+            if (ch == c) depth++;
+            else if (ch == open) {
+                if (depth == 0) {
+                    int openLine = doc.getLineNumber(i);
+                    int s = doc.getLineStartOffset(openLine);
+                    int n = 0;
+                    while (s + n < text.length() && (text.charAt(s + n) == ' ' || text.charAt(s + n) == '\t')) n++;
+                    String indent = " ".repeat(n);
+                    doc.replaceString(lineStart, offset, indent + c);
+                    editor.getCaretModel().moveToOffset(lineStart + indent.length() + 1);
+                    return true;
+                }
+                depth--;
+            }
+        }
+        return false;
     }
 
     public static final class Backspace extends BackspaceHandlerDelegate {

@@ -205,6 +205,30 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         assertEquals(ScalactiveBracketHandler.Where.NONE, ScalactiveBracketHandler.templateContext(t, t.indexOf("val a")));
     }
 
+    /** 括弧の間でのEnterで、1段深い行を作り、閉じ括弧を次の行に置く */
+    public void testEnterBetweenBraces() {
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\nif (true) <caret>\n</script>\n");
+        myFixture.type("{");
+        myFixture.type("\n");
+        myFixture.type("val c = 1\nval d = 2");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("if (true) {\n  val c = 1\n  val d = 2\n}\n"));
+        // 入れ子
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\ndef f(): Unit = {\n  xs.foreach { x =><caret>}\n}\n</script>\n");
+        myFixture.type("\n");
+        myFixture.type("g(x)");
+        text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("  xs.foreach { x =>\n    g(x)\n  }\n}"));
+    }
+
+    /** 空白だけの行で } を入力すると、対応する { の行のインデントにそろえる */
+    public void testClosingBraceDedents() {
+        myFixture.configureByText("A.st", "<script lang=\"scala\">\nif (true) {\n  val c = 1\n  <caret>\n</script>\n");
+        myFixture.type("}");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("  val c = 1\n}\n</script>"));
+    }
+
     public void testCssCompletionInStyle() {
         myFixture.configureByText("A.st", "<template><p class=\"x\"></p></template>\n<style scoped>\n.x { backgr<caret> }\n</style>\n");
         myFixture.completeBasic();

@@ -49,6 +49,8 @@
     <lineIndentProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLineIndentProvider"/>
     <!-- script・styleの中の括弧・引用符の自動補完 -->
     <typedHandler implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Typed" order="first"/>
+    <!-- 対になった括弧の間でのEnter -->
+    <enterHandlerDelegate implementation="io.github.ondeoma.scalactive.intellij.ScalactiveEnterHandler" order="first"/>
     <backspaceHandlerDelegate implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Backspace"/>
     <editorHighlighterProvider filetype="Scalactive"
               implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>

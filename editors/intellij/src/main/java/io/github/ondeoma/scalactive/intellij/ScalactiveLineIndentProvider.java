@@ -67,7 +67,8 @@ public final class ScalactiveLineIndentProvider implements LineIndentProvider {
         int unmatched = lastUnmatchedOpener(p);
         if (unmatched >= 0) {
             boolean atEnd = p.substring(unmatched + 1).trim().isEmpty();
-            if (atEnd) return closesNext ? base : base + STEP;
+            // { のブロック({ x => など)は1段深く、( [ は括弧の直後にそろえる
+            if (atEnd || p.charAt(unmatched) == '{') return closesNext ? base : base + STEP;
             return unmatched + 1;
         }
         // この行で、前の行から続く括弧が閉じた → その括弧を開いた行のインデントに戻す
@@ -91,7 +92,7 @@ public final class ScalactiveLineIndentProvider implements LineIndentProvider {
     }
 
     /** 行の中で閉じていない最後の ( [ { の位置(なければ -1). 文字列・// コメントの中は数えない */
-    private static int lastUnmatchedOpener(String line) {
+    static int lastUnmatchedOpener(String line) {
         java.util.ArrayDeque<Integer> stack = new java.util.ArrayDeque<>();
         scan(line, (i, c) -> {
             if ("([{".indexOf(c) >= 0) stack.push(i);

@@ -427,7 +427,7 @@ object SingleFileComponent extends StatelessComponent {
        |  <li>
        |    ドキュメントのフォーマット(整形). テンプレートは要素の入れ子に合わせて2スペースずつインデントし直します.
        |    <code>&lt;style&gt;</code> のCSSは、1行で書いたルールは1行のまま空白を整え、複数行のルールは宣言を1行ずつインデントします.
-       |    <code>&lt;script&gt;</code> の中はインデントを変えず、前後の空行と行末の空白だけを整えます.
+       |    <code>&lt;script&gt;</code> の中はインデントを変えず、前後の空行と行末の空白、行の途中の余分な空白(連続した空白、括弧の内側と , の前の空白)を整えます.
        |  </li>
        |</ul>
        |

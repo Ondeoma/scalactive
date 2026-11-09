@@ -9,7 +9,8 @@ package io.github.ondeoma.scalactive.compiler
  *    <pre>・<textarea>の中身、複数行のコメント、{{ }} の中は変えない
  *  - <style>(CSS): CssFormatterで整形する(1行のルールは1行のまま、複数行のルールは宣言を1行ずつ).
  *    lang付き(scssなど)や、読めないCSSは<script>と同じ扱い
- *  - <script>: インデントは変えず、前後の空行と行末の空白を整える
+ *  - <script>: インデントは変えず、前後の空行と行末の空白を整え、行の途中の余分な空白をScalaSpacingで取り除く
+ *    (文字列・コメントの中は変えない. 読めないときは空白を取り除かない)
  *  - ファイル全体: 行末の空白を取り除き、最後を改行1つにする
  * 構文エラーなどで読めない場合は、そのまま返します.
  */
@@ -35,6 +36,7 @@ object StFormatter {
       sb ++= {
         if (b.name == "template") formatTemplate(content)
         else if (b.name == "style" && b.attr("lang").flatMap(_.value).forall(_ == "css")) CssFormatter.format(content).getOrElse(formatBlock(content))
+        else if (b.name == "script") formatBlock(ScalaSpacing.format(content).getOrElse(content))
         else formatBlock(content)
       }
       last = b.contentEnd
