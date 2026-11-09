@@ -117,16 +117,32 @@ import Router.*
       propの参照の検索と名前の変更<br>
       (属性・名前付きスロット・<code>@close</code> などの書き方に合わせて書き換え)
     </li>
-    <li>推論した型のインレイヒント</li>
+    <li>
+      推論した型のインレイヒント<br>
+      (<code>v-for</code> の変数と、スコープ付きスロットの変数にも出ます)
+    </li>
     <li>
       整形: テンプレートのインデント、<code>&lt;style&gt;</code> のCSS、<br>
-      <code>&lt;script&gt;</code> のscalafmt(<code>.scalafmt.conf</code> があればその設定)
+      <code>&lt;script&gt;</code> のscalafmt(<code>.scalafmt.conf</code> があればその設定).<br>
+      テンプレートの <code>&#123;&#123; &#125;&#125;</code> や属性値のScalaも、scalafmtで整えます.
+    </li>
+    <li>
+      CSSのクラス: <code>class="..."</code> で、同じファイルの <code>&lt;style&gt;</code> のクラスを補完します.<br>
+      クラス名からセレクタへジャンプでき、<br>
+      使われていない <code>&lt;style scoped&gt;</code> のクラスは薄く表示します.
+    </li>
+    <li>
+      コンポーネントの抽出: テンプレートで選んだ範囲を、新しい.stに切り出します.<br>
+      範囲の外の値はpropsになり、元の場所は新しいコンポーネントのタグになります.
+    </li>
+    <li>
+      新規作成のひな形、生成コードを開く操作、<br>
+      sbtでのコンパイルの案内(<code>target/scalactive-lsp.json</code> がないとき)
     </li>
     <li>
       IntelliJ: テンプレートをHTMLとして扱い、<br>
       IntelliJのHTML・CSSの補完・Emmet・構造ビューが使えます.<br>
-      ファイルのアイコン、新規作成のひな形、ファイル名の変更に合わせたタグの書き換え、<br>
-      生成コードを開く操作、sbtでのコンパイルの案内、<br>
+      ファイルのアイコン、ファイル名の変更に合わせたタグの書き換え、<br>
       script・styleの改行時のインデントと括弧の自動補完もあります.
     </li>
   </ul>
@@ -214,6 +230,10 @@ import Router.*
     <li><code>RVList</code> / <code>RMList</code> で、要素の監視が正しく解除されなかった</li>
     <li><code>EventManager</code> のハンドラーが、コンポーネントの片付けで解除されなかった</li>
     <li><code>forC</code> の片付けで、後ろにある無関係なノードまで取り除くことがあった</li>
+    <li>
+      .stのscriptで、文字列やコメントの中の <code>def initState</code>・<code>case class Props</code>・<code>&lt;/script&gt;</code> を、<br>
+      定義やscriptの終わりとして読んでいた
+    </li>
   </ul>
 
   <h3>開発</h3>
@@ -221,6 +241,10 @@ import Router.*
     <li>
       性能計測の仕組み(<code>bench/</code>)を追加しました.<br>
       (<a @click='go("/contribute")'>コントリビュート</a>)
+    </li>
+    <li>
+      このドキュメントのコンポーネントを、原則.stで書くようにしました.<br>
+      (コードサンプルとして表示するScalaのコンポーネントは、Scalaのままです)
     </li>
     <li>
       テストを追加しました:<br>
