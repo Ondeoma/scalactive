@@ -38,6 +38,12 @@ class StCompilerSuite extends munit.FunSuite {
     assertEquals(StCompiler.propsInfo(src), Nil)
   }
 
+  test("scriptの文字列の中の </script> ではscriptは終わらない") {
+    val src = "<script lang=\"scala\">\nval code = \"\"\"<script lang=\"scala\">\n  |</script>\"\"\".stripMargin\nval tag = \"</script>\"\n</script>\n<template><pre>{{ code }}{{ tag }}</pre></template>\n"
+    val out = compile(src)
+    assert(out.code.contains("val tag = \"</script>\""), out.code)
+  }
+
   test("stateful component qualifies state type defined in script") {
     val o = compile(
       """<script lang="scala">

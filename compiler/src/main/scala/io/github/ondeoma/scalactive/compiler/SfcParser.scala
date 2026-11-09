@@ -37,7 +37,14 @@ object SfcParser {
         val t = TagReader.readOpenTag(src, i)
         if (t.selfClosing) src.fail(i, s"<${t.name}/> must have content")
         val (contentEnd, next) = t.name match {
-          case "script" | "style" =>
+          case "script" =>
+            // 文字列・コメントの中の </script> (コードサンプルなど)では終わらない. 見つからなければ(閉じていない文字列など)単純に探す
+            val masked = StCompiler.codeOnly(s.substring(t.end))
+            val inCode = masked.indexOf("</script")
+            val close = if (inCode >= 0) t.end + inCode else s.indexOf("</script", t.end)
+            if (close < 0) src.fail(i, s"unclosed <${t.name}>")
+            (close, s.indexOf('>', close) + 1)
+          case "style" =>
             val close = s.indexOf("</" + t.name, t.end)
             if (close < 0) src.fail(i, s"unclosed <${t.name}>")
             (close, s.indexOf('>', close) + 1)
