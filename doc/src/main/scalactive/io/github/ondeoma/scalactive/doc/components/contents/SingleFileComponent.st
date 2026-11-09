@@ -119,18 +119,6 @@ val codeLifecycle = // language=html
      |</template>
      |""".stripMargin
 
-val codeSetup = // language=scala
-  s"""// project/plugins.sbt
-     |addSbtPlugin("io.github.ondeoma" % "sbt-scalactive" % "<version>")
-     |
-     |// build.sbt
-     |lazy val app = project
-     |  .enablePlugins(ScalaJSPlugin, ScalactivePlugin)
-     |  .settings(
-     |    libraryDependencies += "io.github.ondeoma" %%% "scalactive" % "<version>"
-     |  )
-     |""".stripMargin
-
 val codeModel = // language=html
   s"""<input type="text" v-model.trim="s.name">         <!-- RV[String] -->
      |<input type="number" v-model="s.age">            <!-- RV[Int] / RV[Double] -->
@@ -140,9 +128,11 @@ val codeModel = // language=html
      |<select v-model="s.color">...</select>           <!-- RV[String] -->
      |""".stripMargin
 
-val codeUse =// language=scala
-  s"""// 生成されたobject app.Counter は通常のコンポーネントとして使えます.
-     |s\"\"\"<div>$${c(Counter())}</div>\"\"\"
+val codeUse = // language=html
+  s"""<!-- 他の.stからの利用(同じパッケージ、またはimportしたもの) -->
+     |<template>
+     |  <div><Counter /></div>
+     |</template>
      |""".stripMargin
 </script>
 
@@ -150,14 +140,15 @@ val codeUse =// language=scala
   <h1>単一ファイルコンポーネント(.st)</h1>
 
   <p>
+    Scalactiveのコンポーネントは、<code>.st</code> ファイルで書きます.<br>
     Vueの単一ファイルコンポーネントのように、<br>
-    テンプレート・Scalaコード・CSSを1つの <code>.st</code> ファイルにまとめて記述できます.<br>
-    sbtプラグイン(sbt-scalactive)が、<br>
-    ビルド時に通常のコンポーネント(Scalaソース)へ変換します.
+    テンプレート・Scalaコード・CSSを1つのファイルにまとめて記述します.<br>
+    このページは、その書き方のリファレンスです.<br>
+    sbtプラグインの設定や、ファイルの置き場所は、<br>
+    <a @click='go("/start")'>クイックスタート</a>を参照ください.
   </p>
 
   <ul class="toc">
-    <li><a @click='setHash("setup")'>セットアップ</a></li>
     <li><a @click='setHash("format")'>ファイル形式</a></li>
     <li><a @click='setHash("directives")'>テンプレート構文</a></li>
     <li><a @click='setHash("model")'>v-model</a></li>
@@ -168,16 +159,6 @@ val codeUse =// language=scala
     <li><a @click='setHash("editors")'>エディタ対応</a></li>
     <li><a @click='setHash("limitations")'>制限事項</a></li>
   </ul>
-
-  <h2 id="setup">セットアップ</h2>
-
-  <pre><code class="language-scala">{{ codeSetup }}</code></pre>
-
-  <p>
-    <code>src/main/scalactive</code> と <code>src/main/scala</code> 配下の <code>*.st</code> が変換対象です.<br>
-    ディレクトリ構成がパッケージに、ファイル名がobject名になります.<br>
-    (<code>&lt;script&gt;</code>の先頭に <code>package</code> 宣言を書いた場合は、そちらが優先されます.)
-  </p>
 
   <h2 id="format">ファイル形式</h2>
 
@@ -198,7 +179,14 @@ val codeUse =// language=scala
     </li>
   </ul>
 
-  <pre><code class="language-scala">{{ codeUse }}</code></pre>
+  <p>
+    <code>src/main/scalactive</code> と <code>src/main/scala</code> 配下の <code>*.st</code> が変換対象です.<br>
+    ディレクトリ構成がパッケージに、ファイル名がobject名になります.<br>
+    (<code>&lt;script&gt;</code>の先頭に <code>package</code> 宣言を書いた場合は、そちらが優先されます.)<br>
+    生成されたobjectは、他の.stからタグとして使えます.
+  </p>
+
+  <pre><code class="language-html">{{ codeUse }}</code></pre>
 
   <h2 id="directives">テンプレート構文</h2>
 
@@ -209,14 +197,14 @@ val codeUse =// language=scala
       Reactiveの場合は値の変化に追従します(HTMLエスケープされます).
     </td></tr>
     <tr><td><code>v-if="expr"</code><br><code>v-else-if="expr"</code><br><code>v-else</code></td><td>
-      条件付きレンダリング(ifC).<br>
+      条件付きレンダリング.<br>
       exprはReactive[Boolean]またはBoolean.<br>
       各条件は1度だけ評価されます.
     </td></tr>
     <tr><td><code>v-for="item in expr"</code><br><code>v-for="(item, i) in expr"</code></td><td>
       リストレンダリング.<br>
-      添字の変数を書かなければforEachC(行の削除や並べ替えで行を作り直さないので速い)、<br>
-      書けばforC.<br>
+      添字の変数を書かない方が、<br>
+      行の削除や並べ替えで行を作り直さないので速いです.<br>
       RVListの場合itemはRV、RMListの場合はReactiveModelになります.
     </td></tr>
     <tr><td><code>v-for="..." :key="expr"</code></td><td>
@@ -232,7 +220,7 @@ val codeUse =// language=scala
       要素自体は出力せず、<br>
       中身の複数要素をまとめて条件分岐・繰り返しします.
     </td></tr>
-    <tr><td><code>v-show="expr"</code></td><td>表示切替(showIf).</td></tr>
+    <tr><td><code>v-show="expr"</code></td><td>表示切替(display: noneの付け外し).</td></tr>
     <tr><td><code>ref="expr"</code></td><td>
       テンプレート参照.<br>
       exprは <code>ElementRef[HTMLInputElement]</code> などで、<br>
@@ -241,7 +229,7 @@ val codeUse =// language=scala
       Stateに <code>ElementRef()</code> を持たせてください(後述のライフサイクルフックの例を参照).
     </td></tr>
     <tr><td><code>v-html="expr"</code></td><td>
-      要素の中身を、式の値のHTMLで置き換えます(HtmlComponent).<br>
+      要素の中身を、式の値のHTMLで置き換えます.<br>
       Reactiveの場合は値が変わるたびに展開し直します.<br>
       要素の中身は空にしてください.<br>
       <b>値はエスケープされません.</b><br>
@@ -286,7 +274,7 @@ val codeUse =// language=scala
       <code>.passive</code>(スクロールなどを妨げない. <code>.prevent</code> とは併用できません).
     </td></tr>
     <tr><td><code>&lt;Other /&gt;</code></td><td>
-      大文字で始まるタグは子コンポーネント(<code>c(Other())</code>)として展開されます.<br>
+      大文字で始まるタグは子コンポーネントとして展開されます.<br>
       属性はprops、子要素はslotとして渡されます.<br>
       <code>v-model</code> も使えます.
     </td></tr>
@@ -402,10 +390,6 @@ val codeUse =// language=scala
       <code>def initState()</code> と併用できます.<br>
       初期状態をpropsから作る場合は <code>def initState(props: Props)</code> と定義します.
     </li>
-    <li>
-      Scalaで書く場合は、<br>
-      <code>StatelessPropsComponent[P]</code> / <code>StatefulPropsComponent[P, S]</code> を継承します.
-    </li>
   </ul>
 
   <h3 id="component-model">コンポーネントのv-model</h3>
@@ -477,10 +461,6 @@ val codeUse =// language=scala
       複数の値はタプルで渡し、<br>
       <code>#name="(item, i)"</code> のように分解して受け取れます.
     </li>
-    <li>
-      Scalaで書く場合は、親は <code>ScopedSlot { x =&gt; cm =&gt; ... }</code> を渡し、<br>
-      子は <code>props.name(value)()</code> で展開します.
-    </li>
   </ul>
 
   <h2 id="lifecycle">ライフサイクルフック</h2>
@@ -499,16 +479,12 @@ val codeUse =// language=scala
       子コンポーネントのものから順に呼ばれます.
     </li>
     <li><code>unmounted</code> は描き直し・v-ifの切り替え・v-forの行の削除などでも呼ばれます.</li>
-    <li>
-      Scalaで書く場合は、genHtmlの中で <code>onMounted {...}</code> / <code>onUnmounted {...}</code> を呼びます<br>
-      (コンポーネントのページを参照).
-    </li>
   </ul>
 
   <h2 id="demo">デモ</h2>
 
   <p>
-    以下は <code>doc/src/main/scalactive/.../st/StSample.st</code>(と <code>StBadge.st</code> / <code>StCard.st</code>)から、<br>
+    以下は <code>doc/src/main/scalactive/.../st/StSample.st</code>(と <code>StBadge.st</code> / <code>StCard.st</code> など)から、<br>
     生成されたコンポーネントです.
   </p>
 
@@ -596,4 +572,9 @@ val codeUse =// language=scala
       ドキュメントの表示、自動importには対応していません.
     </li>
   </ul>
+
+  <p>
+    .stを使わずにScalaで書く方法は、<br>
+    <a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照ください.
+  </p>
 </template>
