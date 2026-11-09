@@ -250,6 +250,15 @@ object TemplateCompletion {
                 attr("@" + e, d, r, sort = "3")
               }
           }
+        case AttrValue(_, "class", start) =>
+          // 同じファイルの<style>で定義したクラス(空白区切りの、いま書いている名前を置き換える)
+          val valueBefore = text.substring(start, offset)
+          val tokenStart = start + valueBefore.lastIndexWhere(_.isWhitespace) + 1
+          val written = valueBefore.split("\\s+").filter(_.nonEmpty).toSet - text.substring(tokenStart, offset)
+          val r = range(tokenStart)
+          CssClasses.definitions(text).map(_.name).distinct.filterNot(written.contains).sorted.map { n =>
+            item(n, CompletionItemKind.Constant, "CSS class (<style>)", r, sort = "0")
+          }
         case AttrValue("slot", "name", start) =>
           // <slot name="..."> は自分のPropsのスロット
           val r = range(start)

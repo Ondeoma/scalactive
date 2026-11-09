@@ -83,6 +83,12 @@ object TemplateNavigation {
                   target <- componentFile(tag, file)
                   p <- propName(word)
                 } yield propsLocation(target, Some(p))
+              case TemplateCompletion.AttrValue(_, "class", _) =>
+                // class="..." のクラス名 → 同じファイルの<style>のセレクタ
+                val index = new LineIndex(text)
+                CssClasses.definitions(text).find(_.name == word).map { d =>
+                  new Location(file.toUri.toString, index.range(d.offset, d.offset + d.name.length))
+                }
               case _ => None
             }
           }

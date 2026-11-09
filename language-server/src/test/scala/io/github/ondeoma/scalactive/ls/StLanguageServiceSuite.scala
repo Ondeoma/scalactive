@@ -499,6 +499,55 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("整形: テンプレートのScalaの部分({{ }}・属性値・v-forの右側・イベントの文)もscalafmtで整形する") {
+    val messy = counter
+      .replace("{{ s.count }}</p>", "{{s.count.mapC( _+1 )}}</p>")
+      .replace("@click=\"s.count := twice(s.count.v)\"", "@click=\"s.count :=twice( s.count.v );println( 1 )\"")
+      .replace(":title=\"s.name\"", ":title=\"s.name.mapC(  _.trim )\"")
+      .replace("<span v-show", "<i v-for=\"c in s.name.mapC( _.toList )\">{{ c }}</i><span v-show")
+    withText(counterUri, messy) {
+      val out = service.formatting(counterUri).head.getNewText
+      assert(out.contains("{{ s.count.mapC(_ + 1) }}</p>"), out)
+      assert(out.contains("@click=\"s.count := twice(s.count.v); println(1)\""), out)
+      assert(out.contains(":title=\"s.name.mapC(_.trim)\""), out)
+      assert(out.contains("v-for=\"c in s.name.mapC(_.toList)\""), out)
+    }
+    // 書きかけの式はそのまま(ほかの式は整形する)
+    val partial = counter.replace("{{ s.count }}</p>", "{{ s.count.mapC( }}</p>").replace(":title=\"s.name\"", ":title=\"s.name.mapC(  _.trim )\"")
+    withText(counterUri, partial) {
+      val out = service.formatting(counterUri).head.getNewText
+      assert(out.contains("{{ s.count.mapC( }}"), out)
+      assert(out.contains(":title=\"s.name.mapC(_.trim)\""), out)
+    }
+  }
+
+  test("インレイヒント: v-forの変数の型") {
+    val text = counter.replace("<span v-show", "<i v-for=\"(c, i) in s.name.mapC(_.toList)\">{{ c }}{{ i }}</i><span v-show")
+    withText(counterUri, text) {
+      val all = service.inlayHints(counterUri, new LineIndex(text).range(0, text.length))
+      def labelAt(marker: String, delta: Int) = all.filter(_.getPosition == pos(text, marker, delta)).map(_.getLabel.getLeft)
+      assertEquals(labelAt("(c, i)", 2), List(": Char"), all.map(h => (h.getPosition, h.getLabel.getLeft)))
+      assertEquals(labelAt("(c, i)", 5), List(": Int"))
+    }
+  }
+
+  test("CSSのクラス: class属性での補完・セレクタへのジャンプ・使われていないクラスの指摘") {
+    val style = "\n<style scoped>\n/* .commented { } */\n.card { background: url(a.png); }\n.card-head, .heading:hover { color: red; }\n@media (max-width: 600px) {\n  .narrow { color: blue; }\n}\n.unused { content: \".fake\"; }\n</style>\n"
+    val text = counter.replace("<span v-show", "<div class=\"card |\"></div><b :class='\"narrow\" -> true'>x</b><span v-show") + style
+    val labels0 = labels(counterUri, text)
+    assertEquals(labels0, List("card-head", "heading", "narrow", "unused"), "書いたクラスは除く")
+    val src = text.replace("|", "")
+    withText(counterUri, src) {
+      val loc = service.definition(counterUri, pos(src, "class=\"card ", "class=\"c".length))
+      assertEquals(loc.map(_.getRange.getStart), List(pos(src, ".card {", 1)))
+      val hints = service.diagnostics(counterUri).filter(_.getSeverity == org.eclipse.lsp4j.DiagnosticSeverity.Hint)
+      // card は class属性、narrow は :class の文字列で使っている. コメント・宣言の中・文字列は数えない
+      assertEquals(hints.map(_.getMessage).sorted, List("CSS class 'card-head' is not used in the template", "CSS class 'heading' is not used in the template", "CSS class 'unused' is not used in the template"))
+      assert(hints.forall(_.getTags.contains(org.eclipse.lsp4j.DiagnosticTag.Unnecessary)))
+      assertEquals(hints.find(_.getMessage.contains("'unused'")).get.getRange.getStart, pos(src, ".unused"))
+    }
+  }
+
   test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
     import TemplateCompletion._
     def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))

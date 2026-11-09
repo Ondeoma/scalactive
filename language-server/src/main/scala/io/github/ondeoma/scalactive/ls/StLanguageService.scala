@@ -185,7 +185,23 @@ final class StLanguageService(log: String => Unit) {
     // 子コンポーネントのpropsの検査. 型検査が同じ位置で同じpropについて報告していれば、そちらを残す
     base ++ propsDiagnostics(uri).filterNot { case (d, names) =>
       base.exists(b => b.getRange.getStart == d.getRange.getStart && names.exists(n => b.getMessage.contains(n)))
-    }.map(_._1)
+    }.map(_._1) ++ cssDiagnostics(uri)
+  }
+
+  /** <style scoped> で定義したのに使われていないクラス(エディタでは薄く表示されます) */
+  private def cssDiagnostics(uri: String): List[Diagnostic] = {
+    try {
+      val text = textOf(uri, pathOf(uri))
+      val index = new LineIndex(text)
+      CssClasses.unused(text).map { d =>
+        val diagnostic = new Diagnostic(index.range(d.offset - 1, d.offset + d.name.length),
+          s"CSS class '${d.name}' is not used in the template", DiagnosticSeverity.Hint, Source)
+        diagnostic.setTags(java.util.Collections.singletonList(DiagnosticTag.Unnecessary))
+        diagnostic
+      }
+    } catch {
+      case NonFatal(_) => Nil
+    }
   }
 
   private def propsDiagnostics(uri: String): List[(Diagnostic, List[String])] = {
@@ -211,7 +227,7 @@ final class StLanguageService(log: String => Unit) {
       case Right(d) =>
         val (from, to) = (d.index.offset(range.getStart), d.index.offset(range.getEnd))
         val hints = await(d.pc.inlayHints(HintParams(d.genUri, d.out.code, 0, d.out.code.length))).asScala.toList
-        hints.flatMap { h =>
+        val fromPc = hints.flatMap { h =>
           d.out.sourceMap.cursorToSt(d.genIndex.offset(h.getPosition)).filter(o => o >= from && o <= to).map { st =>
             val label =
               if (h.getLabel.isLeft) h.getLabel.getLeft
@@ -222,9 +238,65 @@ final class StLanguageService(log: String => Unit) {
             hint.setPaddingRight(h.getPaddingRight)
             hint
           }
-        }.groupBy(h => (h.getPosition.getLine, h.getPosition.getCharacter)).values.map(_.head).toList
+        }
+        (fromPc ++ templateVariableHints(d, from, to))
+          .groupBy(h => (h.getPosition.getLine, h.getPosition.getCharacter)).values.map(_.head).toList
           .sortBy(h => (h.getPosition.getLine, h.getPosition.getCharacter))
       case Left(_) => Nil
+    }
+  }
+
+  /**
+   * テンプレートで導入する変数(v-for の変数、スコープ付きスロットの #name="(a, b)" の変数)の型のヒント.
+   * 生成コードではラムダの引数になり、presentation compilerがヒントを出さないため、変数の位置のホバーから型を求めます.
+   */
+  private def templateVariableHints(d: Doc, from: Int, to: Int): List[InlayHint] = {
+    import io.github.ondeoma.scalactive.compiler.{Element, HtmlNode, HtmlParser, SfcParser, SourceText}
+    val Ident = "[A-Za-z_][A-Za-z0-9_]*".r
+    val src = new SourceText(d.text)
+    val vars: List[(String, Int)] = try {
+      SfcParser.parse(src).template.toList.flatMap { t =>
+        def walk(ns: List[HtmlNode]): List[(String, Int)] = ns.flatMap {
+          case e: Element =>
+            val own = e.attrs.flatMap { a =>
+              a.value.toList.flatMap { v =>
+                val pattern =
+                  if (a.name == "v-for") Some(v.indexOf(" in ")).filter(_ >= 0).map(v.substring(0, _))
+                  else if (a.name.startsWith("#") || a.name.startsWith("v-slot")) Some(v)
+                  else None
+                pattern.toList.flatMap { p =>
+                  Ident.findAllMatchIn(p).toList.collect {
+                    // 型を書いた変数(x: Int)と _ は除く
+                    case m if m.matched != "_" && !p.substring(m.end).trim.startsWith(":") => (m.matched, a.valueOffset + m.start)
+                  }
+                }
+              }
+            }
+            own ++ walk(e.children)
+          case _ => Nil
+        }
+        walk(HtmlParser.parse(src, t.contentStart, t.contentEnd))
+      }
+    } catch {
+      case NonFatal(_) => Nil
+    }
+    vars.filter { case (name, at) => at + name.length >= from && at <= to }.flatMap { case (name, at) =>
+      d.out.sourceMap.toGen(at).flatMap { gen =>
+        val h = try await(d.pc.hover(PositionParams(d.genUri, d.out.code, gen + 1))) catch {
+          case NonFatal(_) => java.util.Optional.empty[scala.meta.pc.HoverSignature]()
+        }
+        val signature = if (h.isPresent) Option(h.get.signature().orElse(null)) else None
+        signature.flatMap { sig =>
+          val i = sig.indexOf(": ")
+          if (i < 0) None
+          else {
+            val hint = new InlayHint(d.index.position(at + name.length),
+              LspEither.forLeft[String, java.util.List[InlayHintLabelPart]](": " + sig.substring(i + 2).trim))
+            hint.setKind(InlayHintKind.Type)
+            Some(hint)
+          }
+        }
+      }
     }
   }
 
@@ -489,9 +561,11 @@ final class StLanguageService(log: String => Unit) {
       val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
       val text = textOf(uri, path)
       // <script>はscalafmtで整形し、できなければ(構文エラーなど)空白の整理だけを行う
-      val formatted = scriptFormatter.format(text, path) match {
+      // テンプレートのScalaの部分({{ }}・属性値)もscalafmtで整形する
+      val withTemplate = scriptFormatter.formatTemplate(text, path)
+      val formatted = scriptFormatter.format(withTemplate, path) match {
         case Some(t) => io.github.ondeoma.scalactive.compiler.StFormatter.format(t, scriptSpacing = false)
-        case None => io.github.ondeoma.scalactive.compiler.StFormatter.format(text)
+        case None => io.github.ondeoma.scalactive.compiler.StFormatter.format(withTemplate)
       }
       if (formatted == text) Nil
       else {

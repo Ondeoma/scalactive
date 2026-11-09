@@ -33,7 +33,12 @@ VS CodeとIntelliJ IDEAに提供します.
   (`@close` や `v-model:x` などの書き方は `PropRefs.renamed` で合わせます)、足りない必須のpropはタグ名の直後に書き足します.
 - インレイヒント(`textDocument/inlayHint`)は、presentation compilerの推論した型のヒントを生成コード全体について求め、
   ユーザーが書いたコードの位置に対応するものだけを返します. ラベルの中の生成コードへのリンクと、型を書き足す編集は除きます.
-  Scala 3.3のpresentation compilerはラムダの引数にヒントを出さないため、`v-for` の変数には出ません.
+  Scala 3.3のpresentation compilerはラムダの引数にヒントを出さないため、`v-for` の変数とスコープ付きスロットの変数は、
+  その位置のホバーから型を求めて出します.
+- テンプレートのScalaの部分(`{{ }}`、`:attr`・`v-if`・`v-model`・`ref` などの属性値、`v-for` の `in` の右側、`@event` の文)も、
+  まとめて1回scalafmtに掛けて整形します(`ScriptFormatter.formatTemplate`. 1行に収まるものだけ. 文字参照を含む値と複数行の値は対象外).
+- CSSのクラス(`CssClasses`): `class="..."` で同じファイルの `<style>` のクラスを補完し、クラス名からセレクタへジャンプできます.
+  `<style scoped>` のクラスで、テンプレートとscriptのどこにも名前が出てこないものは、使われていないことを薄く表示します(Hint).
 - 定義ジャンプは、同じ `.st` 内に加えて、プロジェクトのソースディレクトリにある `.scala` / `.st` を名前で探します.
   子コンポーネントのタグ名・属性名からは、同じディレクトリの `.st` のProps(のパラメータ)へジャンプします(`TemplateNavigation`).
 - 整形(ドキュメントのフォーマット)は `compiler/` の `StFormatter` が行います.
