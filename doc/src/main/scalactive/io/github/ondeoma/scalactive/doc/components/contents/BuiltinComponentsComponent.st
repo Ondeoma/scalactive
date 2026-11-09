@@ -222,7 +222,7 @@ val codeInputSamples = // language=html
 
   <h3>利用例</h3>
 
-  <pre><code class="language-html">{{ codeNavLinks }}</code></pre>
+  <pre><code class="language-st">{{ codeNavLinks }}</code></pre>
 
   <div class="rendered">
     <NavLinks />
@@ -269,7 +269,7 @@ val codeInputSamples = // language=html
 
   <h3>利用例</h3>
 
-  <pre><code class="language-html">{{ codeModalSample }}</code></pre>
+  <pre><code class="language-st">{{ codeModalSample }}</code></pre>
 
   <div class="rendered">
     <ModalSample />
@@ -318,7 +318,7 @@ val codeInputSamples = // language=html
 
   <h3>利用例</h3>
 
-  <pre><code class="language-html">{{ codeSafeBox }}</code></pre>
+  <pre><code class="language-st">{{ codeSafeBox }}</code></pre>
 
   <div class="rendered">
     <SafeBox />
@@ -366,7 +366,7 @@ val codeInputSamples = // language=html
 
   <h3>利用例</h3>
 
-  <pre><code class="language-html">{{ codeQuoteLoader }}</code></pre>
+  <pre><code class="language-st">{{ codeQuoteLoader }}</code></pre>
 
   <div class="rendered">
     <QuoteLoader />
@@ -382,7 +382,7 @@ val codeInputSamples = // language=html
     (詳しくは <a @click='go("/sfc")'>単一ファイルコンポーネント</a> のv-modelを参照ください.)
   </p>
 
-  <pre><code class="language-html">{{ codeInputSamples }}</code></pre>
+  <pre><code class="language-st">{{ codeInputSamples }}</code></pre>
 
   <div class="rendered">
     <InputSamples />

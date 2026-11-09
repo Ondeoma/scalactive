@@ -9,11 +9,93 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scala.min.js"></script>
+
+  <script>
+    // .st(単一ファイルコンポーネント)用の文法. <code class="language-st"> に使います.
+    // <script>の中と、{{ }}・ディレクティブ(:attr, @event, #slot, v-*)の値をScalaとして、<style>の中をCSSとして色付けします.
+    hljs.registerLanguage("st", function (hljs) {
+      const regex = hljs.regex
+      const TAG_NAME = /[A-Za-z][A-Za-z0-9._:-]*/
+      const SCALA_ATTR = function (quote) {
+        return {
+          begin: [/(?:[:@#]|v-)[\w.:\-\[\]]*/, /\s*=\s*/, quote],
+          beginScope: {1: "attr", 3: "string"},
+          end: quote,
+          endScope: "string",
+          subLanguage: "scala"
+        }
+      }
+      const TAG_INTERNALS = {
+        endsWithParent: true,
+        illegal: /</,
+        relevance: 0,
+        contains: [
+          SCALA_ATTR(/"/),
+          SCALA_ATTR(/'/),
+          {scope: "attr", begin: /[^\s"'>\/=]+/, relevance: 0},
+          {
+            begin: /=\s*/,
+            relevance: 0,
+            contains: [{
+              scope: "string",
+              endsParent: true,
+              variants: [{begin: /"/, end: /"/}, {begin: /'/, end: /'/}, {begin: /[^\s"'=<>`]+/}]
+            }]
+          }
+        ]
+      }
+      return {
+        name: "Scalactive",
+        aliases: ["scalactive"],
+        case_insensitive: false,
+        contains: [
+          hljs.COMMENT(/<!--/, /-->/, {relevance: 10}),
+          {scope: "symbol", begin: /&[a-z]+;|&#[0-9]+;|&#x[a-f0-9]+;/},
+          {
+            scope: "tag",
+            begin: /<script(?=\s|>)/,
+            end: />/,
+            keywords: {name: "script"},
+            contains: [TAG_INTERNALS],
+            starts: {end: /<\/script>/, returnEnd: true, subLanguage: "scala"}
+          },
+          {
+            scope: "tag",
+            begin: /<style(?=\s|>)/,
+            end: />/,
+            keywords: {name: "style"},
+            contains: [TAG_INTERNALS],
+            starts: {end: /<\/style>/, returnEnd: true, subLanguage: "css"}
+          },
+          {
+            scope: "tag",
+            begin: regex.concat(/</, regex.lookahead(regex.concat(TAG_NAME, regex.either(/\/>/, />/, /\s/)))),
+            end: /\/?>/,
+            contains: [{scope: "name", begin: TAG_NAME, relevance: 0, starts: TAG_INTERNALS}]
+          },
+          {
+            scope: "tag",
+            begin: regex.concat(/<\//, regex.lookahead(regex.concat(TAG_NAME, />/))),
+            contains: [
+              {scope: "name", begin: TAG_NAME, relevance: 0},
+              {begin: />/, relevance: 0, endsParent: true}
+            ]
+          },
+          {
+            begin: /\{\{/,
+            end: /\}\}/,
+            beginScope: "template-variable",
+            endScope: "template-variable",
+            subLanguage: "scala"
+          }
+        ]
+      }
+    })
+  </script>
 
   <script>
     let href = ""

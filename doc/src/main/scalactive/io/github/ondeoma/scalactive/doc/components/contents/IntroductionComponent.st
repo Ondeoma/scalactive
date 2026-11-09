@@ -56,7 +56,7 @@ val code =
     以下実装例です.
   </p>
 
-  <pre><code class="language-html">{{ code }}</code></pre>
+  <pre><code class="language-st">{{ code }}</code></pre>
 
   <p>
     これを呼び出すと以下のように表示されます.

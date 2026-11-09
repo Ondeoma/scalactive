@@ -93,7 +93,7 @@ val codeDevtools = // language=scala
     例として、次の.stのコンポーネントをテストします.
   </p>
 
-  <pre><code class="language-html">{{ codeCounter }}</code></pre>
+  <pre><code class="language-st">{{ codeCounter }}</code></pre>
 
   <div class="rendered">
     <Counter />

@@ -79,7 +79,7 @@ val codeShow = // language=html
     Reactiveの場合は、値の変化に追従して描き直します.
   </p>
 
-  <pre><code class="language-html">{{ codeIf }}</code></pre>
+  <pre><code class="language-st">{{ codeIf }}</code></pre>
 
   <div class="rendered">
     <IfElse />
@@ -104,7 +104,7 @@ val codeShow = // language=html
     <code>&lt;template&gt;</code> 自体は出力されず、中身だけが描画されます.
   </p>
 
-  <pre><code class="language-html">{{ codeTemplateIf }}</code></pre>
+  <pre><code class="language-st">{{ codeTemplateIf }}</code></pre>
 
   <div class="rendered">
     <TemplateIf />
@@ -125,7 +125,7 @@ val codeShow = // language=html
     v-showの代わりに <code>:style</code> でdisplayを指定してください.
   </p>
 
-  <pre><code class="language-html">{{ codeShow }}</code></pre>
+  <pre><code class="language-st">{{ codeShow }}</code></pre>
 
   <div class="rendered">
     <ShowToggle />

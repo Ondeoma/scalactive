@@ -109,7 +109,7 @@ val codeTemplateFor = // language=html
     リストがReactiveの場合は、変化に追従して描き直します.
   </p>
 
-  <pre><code class="language-html">{{ codeFor }}</code></pre>
+  <pre><code class="language-st">{{ codeFor }}</code></pre>
 
   <div class="rendered">
     <ForBasic />
@@ -127,7 +127,7 @@ val codeTemplateFor = // language=html
     0から始まる添字(Int)も受け取れます.
   </p>
 
-  <pre><code class="language-html">{{ codeIndex }}</code></pre>
+  <pre><code class="language-st">{{ codeIndex }}</code></pre>
 
   <div class="rendered">
     <ForIndex />
@@ -195,7 +195,7 @@ val codeTemplateFor = // language=html
     行が使い回されるので、入力した値も行と一緒に動きます.
   </p>
 
-  <pre><code class="language-html">{{ codeKey }}</code></pre>
+  <pre><code class="language-st">{{ codeKey }}</code></pre>
 
   <div class="rendered">
     <ForKey />
@@ -209,7 +209,7 @@ val codeTemplateFor = // language=html
     <code>:key</code> も指定できます.
   </p>
 
-  <pre><code class="language-html">{{ codeTemplateFor }}</code></pre>
+  <pre><code class="language-st">{{ codeTemplateFor }}</code></pre>
 
   <div class="rendered">
     <TemplateFor />

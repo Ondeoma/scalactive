@@ -165,7 +165,7 @@ val codeModifiers = // language=html
     Reactiveでない値の場合は、描画した時の値になります.
   </p>
 
-  <pre><code class="language-html">{{ codeAttr }}</code></pre>
+  <pre><code class="language-st">{{ codeAttr }}</code></pre>
 
   <div class="rendered">
     <AttrBasic />
@@ -187,7 +187,7 @@ val codeModifiers = // language=html
     <code>Some(x)</code> はxを値にします.
   </p>
 
-  <pre><code class="language-html">{{ codeBoolean }}</code></pre>
+  <pre><code class="language-st">{{ codeBoolean }}</code></pre>
 
   <div class="rendered">
     <AttrBoolean />
@@ -212,7 +212,7 @@ val codeModifiers = // language=html
     Reactiveの場合は、変化に追従してクラスを付け外しします.
   </p>
 
-  <pre><code class="language-html">{{ codeClass }}</code></pre>
+  <pre><code class="language-st">{{ codeClass }}</code></pre>
 
   <div class="rendered">
     <ClassBinding />
@@ -230,7 +230,7 @@ val codeModifiers = // language=html
     値がNone・false・空文字のプロパティは外します.
   </p>
 
-  <pre><code class="language-html">{{ codeStyle }}</code></pre>
+  <pre><code class="language-st">{{ codeStyle }}</code></pre>
 
   <div class="rendered">
     <StyleBinding />
@@ -253,7 +253,7 @@ val codeModifiers = // language=html
     <li>・ラジオボタン・select: <code>RV[String]</code></li>
   </ul>
 
-  <pre><code class="language-html">{{ codeModel }}</code></pre>
+  <pre><code class="language-st">{{ codeModel }}</code></pre>
 
   <div class="rendered">
     <ModelInputs />
@@ -280,7 +280,7 @@ val codeModifiers = // language=html
     <code>RV[Int]</code> / <code>RV[Double]</code> を指定すれば数値になります.
   </p>
 
-  <pre><code class="language-html">{{ codeModifiers }}</code></pre>
+  <pre><code class="language-st">{{ codeModifiers }}</code></pre>
 
   <div class="rendered">
     <ModelModifiers />

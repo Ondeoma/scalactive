@@ -162,7 +162,7 @@ val codeUse = // language=html
 
   <h2 id="format">ファイル形式</h2>
 
-  <pre><code class="language-html">{{ codeSt }}</code></pre>
+  <pre><code class="language-st">{{ codeSt }}</code></pre>
 
   <ul>
     <li><code>&lt;script lang="scala"&gt;</code> : 生成されるobjectの本体になります(省略可).</li>
@@ -186,7 +186,7 @@ val codeUse = // language=html
     生成されたobjectは、他の.stからタグとして使えます.
   </p>
 
-  <pre><code class="language-html">{{ codeUse }}</code></pre>
+  <pre><code class="language-st">{{ codeUse }}</code></pre>
 
   <h2 id="directives">テンプレート構文</h2>
 
@@ -320,7 +320,7 @@ val codeUse = // language=html
 
   <h2 id="model">v-model</h2>
 
-  <pre><code class="language-html">{{ codeModel }}</code></pre>
+  <pre><code class="language-st">{{ codeModel }}</code></pre>
 
   <ul>
     <li>
@@ -350,7 +350,7 @@ val codeUse = // language=html
     (<code>&lt;template props="p"&gt;</code> のように名前を変更できます.)
   </p>
 
-  <pre><code class="language-html">{{ codeProps }}</code></pre>
+  <pre><code class="language-st">{{ codeProps }}</code></pre>
 
   <ul>
     <li>
@@ -400,7 +400,7 @@ val codeUse = // language=html
     どちらで変更しても両方に反映されます(双方向バインディング).
   </p>
 
-  <pre><code class="language-html">{{ codeComponentModel }}</code></pre>
+  <pre><code class="language-st">{{ codeComponentModel }}</code></pre>
 
   <ul>
     <li>
@@ -423,7 +423,7 @@ val codeUse = // language=html
     子の <code>&lt;slot name="name"&gt;</code> の位置に展開されます.
   </p>
 
-  <pre><code class="language-html">{{ codeSlot }}</code></pre>
+  <pre><code class="language-st">{{ codeSlot }}</code></pre>
 
   <ul>
     <li>
@@ -446,7 +446,7 @@ val codeUse = // language=html
     行の表示を親に任せる場合に使います.
   </p>
 
-  <pre><code class="language-html">{{ codeScopedSlot }}</code></pre>
+  <pre><code class="language-st">{{ codeScopedSlot }}</code></pre>
 
   <ul>
     <li>
@@ -471,7 +471,7 @@ val codeUse = // language=html
     引数はなし、または <code>Props</code>・Stateを受け取れます(順序は自由).
   </p>
 
-  <pre><code class="language-html">{{ codeLifecycle }}</code></pre>
+  <pre><code class="language-st">{{ codeLifecycle }}</code></pre>
 
   <ul>
     <li>

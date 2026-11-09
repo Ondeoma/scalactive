@@ -122,7 +122,7 @@ val codeMain = // language=scala
     <code>src/main/scalactive/app/Hello.st</code> を作ります.
   </p>
 
-  <pre><code class="language-html">{{ codeHello }}</code></pre>
+  <pre><code class="language-st">{{ codeHello }}</code></pre>
 
   <p>
     <code>&lt;script&gt;</code> にScalaコード、<code>&lt;template&gt;</code> にHTMLを書きます.<br>

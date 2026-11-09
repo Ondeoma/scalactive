@@ -46,9 +46,9 @@ val buttonCode = // language=html
 
   <pre><code class="language-scala">{{ storeCode }}</code></pre>
 
-  <pre><code class="language-html">{{ viewCode }}</code></pre>
+  <pre><code class="language-st">{{ viewCode }}</code></pre>
 
-  <pre><code class="language-html">{{ buttonCode }}</code></pre>
+  <pre><code class="language-st">{{ buttonCode }}</code></pre>
 
   <div class="rendered">
     <CountView />

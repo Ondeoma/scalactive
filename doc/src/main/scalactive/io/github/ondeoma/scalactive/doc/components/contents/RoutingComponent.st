@@ -157,7 +157,7 @@ val codeBasePath = // language=scala
     RouterComponentはimportが必要です.
   </p>
 
-  <pre><code class="language-html">{{ codeRoutingApp }}</code></pre>
+  <pre><code class="language-st">{{ codeRoutingApp }}</code></pre>
 
   <p>
     ルートから描画するコンポーネントは、<br>
@@ -165,7 +165,7 @@ val codeBasePath = // language=scala
     (propsのない.stは <code>Xxx()</code>)
   </p>
 
-  <pre><code class="language-html">{{ codePageTitle }}</code></pre>
+  <pre><code class="language-st">{{ codePageTitle }}</code></pre>
 
   <p>
     パスの判定には
@@ -211,7 +211,7 @@ val codeBasePath = // language=scala
     上の例の <code>"/guide/*"</code> に割り当てたレイアウトです.
   </p>
 
-  <pre><code class="language-html">{{ codeGuideLayout }}</code></pre>
+  <pre><code class="language-st">{{ codeGuideLayout }}</code></pre>
 
   <ul>
     <li>
@@ -276,7 +276,7 @@ val codeBasePath = // language=scala
     (ネストしたルートでは <code>&lt;RouterComponent.of :routes="routes" :base='fixUrl("/guide")' /&gt;</code>)
   </p>
 
-  <pre><code class="language-html">{{ codeGuardedApp }}</code></pre>
+  <pre><code class="language-st">{{ codeGuardedApp }}</code></pre>
 
   <ul>
     <li>

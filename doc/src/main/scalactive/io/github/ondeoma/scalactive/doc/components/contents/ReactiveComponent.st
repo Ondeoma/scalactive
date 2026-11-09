@@ -372,7 +372,7 @@ val codeAfterReload = // language=scala
     イベントハンドラーで <code>:=</code> で代入すると、画面に反映されます.
   </p>
 
-  <pre><code class="language-html">{{ codeRvSt }}</code></pre>
+  <pre><code class="language-st">{{ codeRvSt }}</code></pre>
 
   <div class="rendered">
     <RvCounter />
@@ -394,7 +394,7 @@ val codeAfterReload = // language=scala
     行の値が更新されると、その行の表示だけが書き換わります.
   </p>
 
-  <pre><code class="language-html">{{ codeRvListSt }}</code></pre>
+  <pre><code class="language-st">{{ codeRvListSt }}</code></pre>
 
   <div class="rendered">
     <RvListDemo />
@@ -442,7 +442,7 @@ val codeAfterReload = // language=scala
     ReactiveModelの型定義は、<code>&lt;script&gt;</code> に書くこともできます.
   </p>
 
-  <pre><code class="language-html">{{ codeRmListSt }}</code></pre>
+  <pre><code class="language-st">{{ codeRmListSt }}</code></pre>
 
   <div class="rendered">
     <RmListDemo />
@@ -465,7 +465,7 @@ val codeAfterReload = // language=scala
     コンポーネントが片付けられる時に、監視も一緒に解除されます.
   </p>
 
-  <pre><code class="language-html">{{ codeCrvSt }}</code></pre>
+  <pre><code class="language-st">{{ codeCrvSt }}</code></pre>
 
   <div class="rendered">
     <CrvDemo />
@@ -488,7 +488,7 @@ val codeAfterReload = // language=scala
     解除しないと、描画のたびに監視が増えていきます.
   </p>
 
-  <pre><code class="language-html">{{ codeWatchSt }}</code></pre>
+  <pre><code class="language-st">{{ codeWatchSt }}</code></pre>
 
   <div class="rendered">
     <WatchDemo />

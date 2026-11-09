@@ -135,7 +135,7 @@ val codeOptions = // language=html
     長い処理は <code>&lt;script&gt;</code> に関数を定義して呼び出すと読みやすいです.
   </p>
 
-  <pre><code class="language-html">{{ codeClick }}</code></pre>
+  <pre><code class="language-st">{{ codeClick }}</code></pre>
 
   <div class="rendered">
     <ClickEvent />
@@ -159,7 +159,7 @@ val codeOptions = // language=html
     <li><code>.self</code> : 子要素ではなく、その要素自体で起きた時だけ実行します.</li>
   </ul>
 
-  <pre><code class="language-html">{{ codeModifiers }}</code></pre>
+  <pre><code class="language-st">{{ codeModifiers }}</code></pre>
 
   <div class="rendered">
     <EventModifiers />
@@ -190,7 +190,7 @@ val codeOptions = // language=html
     <code>@keydown.enter</code> と <code>@keydown.enter.ctrl</code> の両方が実行されます.
   </p>
 
-  <pre><code class="language-html">{{ codeKeys }}</code></pre>
+  <pre><code class="language-st">{{ codeKeys }}</code></pre>
 
   <div class="rendered">
     <KeyModifiers />
@@ -211,7 +211,7 @@ val codeOptions = // language=html
     </li>
   </ul>
 
-  <pre><code class="language-html">{{ codeOptions }}</code></pre>
+  <pre><code class="language-st">{{ codeOptions }}</code></pre>
 
   <div class="rendered">
     <ListenerOptions />

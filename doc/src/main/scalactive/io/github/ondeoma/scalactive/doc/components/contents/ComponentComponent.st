@@ -420,7 +420,7 @@ val lazyRouteCode = // language=html
     </li>
   </ul>
 
-  <pre><code class="language-html">{{ helloCode }}</code></pre>
+  <pre><code class="language-st">{{ helloCode }}</code></pre>
 
   <div class="rendered">
     <Hello />
@@ -445,7 +445,7 @@ val lazyRouteCode = // language=html
     状態が不要な場合は、initStateを定義しません.
   </p>
 
-  <pre><code class="language-html">{{ counterCode }}</code></pre>
+  <pre><code class="language-st">{{ counterCode }}</code></pre>
 
   <div class="rendered">
     <Counter />
@@ -459,11 +459,11 @@ val lazyRouteCode = // language=html
     テンプレートからは <code>props</code> で参照できます.
   </p>
 
-  <pre><code class="language-html">{{ greetingCode }}</code></pre>
+  <pre><code class="language-st">{{ greetingCode }}</code></pre>
 
   <p>親からは、タグの属性で値を渡します.</p>
 
-  <pre><code class="language-html">{{ greetingParentCode }}</code></pre>
+  <pre><code class="language-st">{{ greetingParentCode }}</code></pre>
 
   <div class="rendered">
     <GreetingParent />
@@ -497,9 +497,9 @@ val lazyRouteCode = // language=html
     親の文の中では、<code>event</code> で子から渡された値を参照できます.
   </p>
 
-  <pre><code class="language-html">{{ closableCode }}</code></pre>
+  <pre><code class="language-st">{{ closableCode }}</code></pre>
 
-  <pre><code class="language-html">{{ closableParentCode }}</code></pre>
+  <pre><code class="language-st">{{ closableParentCode }}</code></pre>
 
   <div class="rendered">
     <ClosableParent />
@@ -514,9 +514,9 @@ val lazyRouteCode = // language=html
     どちらで変更しても両方に反映されます.
   </p>
 
-  <pre><code class="language-html">{{ nameFieldCode }}</code></pre>
+  <pre><code class="language-st">{{ nameFieldCode }}</code></pre>
 
-  <pre><code class="language-html">{{ nameFieldParentCode }}</code></pre>
+  <pre><code class="language-st">{{ nameFieldParentCode }}</code></pre>
 
   <div class="rendered">
     <NameFieldParent />
@@ -545,9 +545,9 @@ val lazyRouteCode = // language=html
     子の <code>&lt;slot name="name"&gt;</code> の位置に展開されます.
   </p>
 
-  <pre><code class="language-html">{{ panelCode }}</code></pre>
+  <pre><code class="language-st">{{ panelCode }}</code></pre>
 
-  <pre><code class="language-html">{{ panelParentCode }}</code></pre>
+  <pre><code class="language-st">{{ panelParentCode }}</code></pre>
 
   <div class="rendered">
     <PanelParent />
@@ -571,9 +571,9 @@ val lazyRouteCode = // language=html
     親は <code>&lt;template #name="x"&gt;</code> で値を受け取ります.
   </p>
 
-  <pre><code class="language-html">{{ itemListCode }}</code></pre>
+  <pre><code class="language-st">{{ itemListCode }}</code></pre>
 
-  <pre><code class="language-html">{{ itemListParentCode }}</code></pre>
+  <pre><code class="language-st">{{ itemListParentCode }}</code></pre>
 
   <div class="rendered">
     <ItemListParent />
@@ -594,9 +594,9 @@ val lazyRouteCode = // language=html
     <code>:</code> を付けてReactiveを渡すと、値の変化に追従します.
   </p>
 
-  <pre><code class="language-html">{{ chipCode }}</code></pre>
+  <pre><code class="language-st">{{ chipCode }}</code></pre>
 
-  <pre><code class="language-html">{{ chipParentCode }}</code></pre>
+  <pre><code class="language-st">{{ chipParentCode }}</code></pre>
 
   <div class="rendered">
     <ChipParent />
@@ -611,7 +611,7 @@ val lazyRouteCode = // language=html
     引数はなし、または <code>Props</code>・Stateを受け取れます.
   </p>
 
-  <pre><code class="language-html">{{ clockCode }}</code></pre>
+  <pre><code class="language-st">{{ clockCode }}</code></pre>
 
   <div class="rendered">
     <Clock />
@@ -647,7 +647,7 @@ val lazyRouteCode = // language=html
     <code>mounted</code> の中で行ってください.
   </p>
 
-  <pre><code class="language-html">{{ focusInputCode }}</code></pre>
+  <pre><code class="language-st">{{ focusInputCode }}</code></pre>
 
   <div class="rendered">
     <FocusInput />
@@ -663,7 +663,7 @@ val lazyRouteCode = // language=html
     scoped CSSやイベントは、そのまま使えます.
   </p>
 
-  <pre><code class="language-html">{{ modalCode }}</code></pre>
+  <pre><code class="language-st">{{ modalCode }}</code></pre>
 
   <div class="rendered">
     <Modal />
@@ -678,7 +678,7 @@ val lazyRouteCode = // language=html
     エラーが起きても画面全体が壊れず、その部分だけを差し替えられます.
   </p>
 
-  <pre><code class="language-html">{{ boundaryCode }}</code></pre>
+  <pre><code class="language-st">{{ boundaryCode }}</code></pre>
 
   <div class="rendered">
     <Boundary />
@@ -717,7 +717,7 @@ val lazyRouteCode = // language=html
     失敗したら <code>#error</code> の表示になります.
   </p>
 
-  <pre><code class="language-html">{{ loaderCode }}</code></pre>
+  <pre><code class="language-st">{{ loaderCode }}</code></pre>
 
   <div class="rendered">
     <Loader />
@@ -744,7 +744,7 @@ val lazyRouteCode = // language=html
     タグで呼び出せます.
   </p>
 
-  <pre><code class="language-html">{{ lazyLoadCode }}</code></pre>
+  <pre><code class="language-st">{{ lazyLoadCode }}</code></pre>
 
   <div class="rendered">
     <LazyLoad />
@@ -752,7 +752,7 @@ val lazyRouteCode = // language=html
 
   <p>ルートにもそのまま使えます.</p>
 
-  <pre><code class="language-html">{{ lazyRouteCode }}</code></pre>
+  <pre><code class="language-st">{{ lazyRouteCode }}</code></pre>
 
   <p>
     Scalaで直接書く方法は、<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a> を参照してください.
