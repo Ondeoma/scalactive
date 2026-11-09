@@ -26,6 +26,7 @@ object SideNavComponent extends StatelessComponent {
        |    <li ${evClick(go("/devtools"))}>テスト・デバッグ</li>
        |    <li ${evClick(go("/deploy"))}>本番ビルド</li>
        |    <li ${evClick(go("/contribute"))}>コントリビュート</li>
+       |    <li ${evClick(go("/releaseNotes"))}>リリースノート</li>
        |  </ul>
        |</nav>
        |""".stripMargin

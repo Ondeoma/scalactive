@@ -24,6 +24,7 @@ object ContentComponent extends StatelessComponent {
       ("/devtools", _ => DevtoolsComponent()),
       ("/deploy", _ => DeployComponent()),
       ("/contribute", _ => ContributeComponent()),
+      ("/releaseNotes", _ => ReleaseNotesComponent()),
     )
 
     // language=html
