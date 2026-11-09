@@ -93,6 +93,7 @@ val codeDevtools = // language=scala
     例として、次の.stのコンポーネントをテストします.
   </p>
 
+  <div class="code-file">Counter.st</div>
   <pre><code class="language-st">{{ codeCounter }}</code></pre>
 
   <div class="rendered">
@@ -105,6 +106,7 @@ val codeDevtools = // language=scala
     (propsのあるコンポーネントは <code>Badge(label = "x")(_, _)</code>)
   </p>
 
+  <div class="code-file">CounterSuite.scala</div>
   <pre><code class="language-scala">{{ codeTest }}</code></pre>
 
   <ul>

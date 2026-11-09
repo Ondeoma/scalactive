@@ -39,24 +39,13 @@ val codeRvListSt = // language=html
 
 val codeRmListSt = // language=html
   """<script lang="scala">
-     |import io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
-     |
      |case class Human(name: String,
      |                 age: Int)
      |
      |case class HumanRM(name: RV[String],
-     |                   age: RV[Int]) extends ReactiveModel[Human, HumanRM] {
+     |                   age: RV[Int]) extends ReactiveModelOf[Human, HumanRM]
      |
-     |  val reactives = collectReactives(this)
-     |  val reactiveModels = collectReactiveModels(this)
-     |  def reload(s: O) = genReload(this, s)
-     |  def toOrigin = genToOrigin(this)
-     |
-     |}
-     |
-     |object HumanRM {
-     |  given RMCompatible[Human, HumanRM] = genToReactiveModel[Human, HumanRM](_)
-     |}
+     |object HumanRM extends ReactiveModelOf.Companion[Human, HumanRM]
      |
      |case class State(humans: RMList[Human, HumanRM] = RMList(List(Human("Taro", 10), Human("Hanako", 20))))
      |
@@ -202,7 +191,6 @@ val codeReactiveList = // language=scala
 
 val codeReactiveModel = // language=scala
   s"""import io.github.ondeoma.scalactive.reactive.*
-     |import io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
      |
      |//  *** 型定義 *** //
      |
@@ -211,23 +199,13 @@ val codeReactiveModel = // language=scala
      |                 age: Int)
      |
      |// ReactiveModel
-     |// 実装の省力化のためマクロ関数を用意しています.
-     |// マクロを正しく動作させるために元クラスと同様のフィールド構成とし、
-     |// 後述のRMCompatible型クラスインスタンスを配置してください。
+     |// 元クラスと同じ名前のフィールドを、RV・RVList・ReactiveModel・RMListのどれかで持たせます.
+     |// 元クラスとの変換はマクロで自動的に作られます.
      |case class HumanRM(name: RV[String],
-     |                   age: RV[Int]) extends ReactiveModel[Human, HumanRM] {
+     |                   age: RV[Int]) extends ReactiveModelOf[Human, HumanRM]
      |
-     |  val reactives = collectReactives(this)
-     |  val reactiveModels = collectReactiveModels(this)
-     |  def reload(s: O) = genReload(this, s)
-     |  def toOrigin = genToOrigin(this)
-     |  
-     |}
-     |
-     |object HumanRM {
-     |  // マクロ関数に必要なRMCompatible型クラスインスタンス 
-     |  given RMCompatible[Human, HumanRM] = genToReactiveModel[Human, HumanRM](_)
-     |}
+     |// コンパニオンに継承させると、RMCompatible.toRMなどで変換できるようになります.
+     |object HumanRM extends ReactiveModelOf.Companion[Human, HumanRM]
      |
      |//  *** 使い方 *** //
      |
@@ -236,6 +214,7 @@ val codeReactiveModel = // language=scala
      |
      |// 元クラスからReactiveModelを生成
      |val hrm: HumanRM = RMCompatible.toRM(h)
+     |//                 HumanRM.from(h)
      |
      |// 値の更新
      |hrm := Human("Hanako", 20) // 全体
@@ -245,6 +224,25 @@ val codeReactiveModel = // language=scala
      |val newH: Human = hrm.v // 全体
      |val newName: String = hrm.name.v // 個別
    """.stripMargin
+
+val codeReactiveModelManual = // language=scala
+  s"""import io.github.ondeoma.scalactive.reactive.*
+     |import io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
+     |
+     |case class HumanRM(name: RV[String],
+     |                   age: RV[Int]) extends ReactiveModel[Human, HumanRM] {
+     |
+     |  val reactives = collectReactives(this)
+     |  val reactiveModels = collectReactiveModels(this)
+     |  def reload(s: O) = genReload(this, s)
+     |  def toOrigin = genToOrigin(this)
+     |
+     |}
+     |
+     |object HumanRM {
+     |  given RMCompatible[Human, HumanRM] = genToReactiveModel[Human, HumanRM](_)
+     |}
+     |""".stripMargin
 
 val codeRMList = // language=scala
   s"""import io.github.ondeoma.scalactive.reactive.*
@@ -358,9 +356,7 @@ val codeAfterReload = // language=scala
   <h2 id="RV">RV[A] extends Reactive[A]</h2>
 
   <p>
-    RV[A]は最もシンプルなリアクティブな型です.<br>
-    前の値と等しい値を代入した場合は、監視している側に通知されません.<br>
-    ※v0.1.xまでは通知されていました.
+    RV[A]は最もシンプルなリアクティブな型です.
   </p>
 
   <pre><code class="language-scala">{{ codeRV }}</code></pre>
@@ -406,9 +402,33 @@ val codeAfterReload = // language=scala
     ReactiveList[A]はRVList[A]とほぼ同じです.<br>
     内部構造としてはListBuffer[A]に近しいです.<br>
     要素の追加・更新・削除が可能です.<br>
-    RVListよりも少し単純な仕組みのため、<br>
-    状況次第でパフォーマンス面で有利なのかもしれません(未検証).<br>
+    RVListと違い、要素はRVではなく値のまま持ちます.<br>
     <a @click='go("/listRendering")'>リストレンダリング</a>に利用できます.
+  </p>
+
+  <p>
+    1,000行の表でRVListと比べると、次のようになりました(リポジトリの <code>bench</code> で計測).
+  </p>
+
+  <ul>
+    <li>
+      全行の置き換え・2行の入れ替え・削除・全行の削除は、RVListより15〜20%ほど速いです.<br>
+      行ごとのRVと、その値を監視する仕組みがないためです.
+    </li>
+    <li>
+      10行に1行の値の書き換えは、RVListより1.5倍ほど遅いです.<br>
+      値が変わった行を作り直すためです.<br>
+      RVListは、行の中の表示だけを書き換えます.
+    </li>
+    <li>
+      リスト自体の操作(代入・update)もReactiveListの方が速いですが、<br>
+      1,000件で1ms未満の差なので、描画の時間に比べればわずかです.
+    </li>
+  </ul>
+
+  <p>
+    どちらも差は大きくありません.<br>
+    行の中の値をよく書き換えるならRVList、行をまとめて入れ替えることが多いならReactiveList、を目安にしてください.
   </p>
 
   <pre><code class="language-scala">{{ codeReactiveList }}</code></pre>
@@ -418,11 +438,19 @@ val codeAfterReload = // language=scala
   <p>
     ReactiveModel[Org, Self]は、RV[Org]と似た型になりますが、<br>
     Org型はcase classを前提としており、その全フィールドをReactiveにしたような型です.<br>
-    ReactiveModel自体はtraitなので必要に応じて元クラス毎に実装する必要があります.<br>
+    元クラス毎に、ReactiveModelOfを継承したcase classと、<br>
+    ReactiveModelOf.Companionを継承したコンパニオンを定義します.<br>
     case classとの相互変換が可能なリアクティブ型がほしい時に利用ください.
   </p>
 
   <pre><code class="language-scala">{{ codeReactiveModel }}</code></pre>
+
+  <p>
+    変換の処理を自分で書きたい場合は、ReactiveModelを直接継承します.<br>
+    ReactiveModelMacroのマクロ関数を使うと、上と同じ動きになります.
+  </p>
+
+  <pre><code class="language-scala">{{ codeReactiveModelManual }}</code></pre>
 
   <h2 id="RMList">RMList[Org, Self &lt;: ReactiveModel[Org, Self]] extends Reactive[List[Org]]</h2>
 
@@ -512,9 +540,7 @@ val codeAfterReload = // language=scala
     0より大きい値を指定すると、<br>
     最後の変更からその時間だけ待ってから描き直します.<br>
     例えば、文字を入力するたびに大きなリストを絞り込んで描き直すと重くなる場合に、<br>
-    入力が落ち着くまで描き直しを遅らせることができます.<br>
-    ※v0.1.xまでは既定値が100msで、<br>
-    変更が画面に反映されるまで常に100ms以上かかっていました.
+    入力が落ち着くまで描き直しを遅らせることができます.
   </p>
 
   <pre><code class="language-scala">{{ codeTiming }}</code></pre>
@@ -534,7 +560,4 @@ val codeAfterReload = // language=scala
     <code>event.composedPath()</code> で伝播経路を参照してください.
   </p>
 
-  <p>
-    従来のScalaでの書き方は<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照してください.
-  </p>
 </template>

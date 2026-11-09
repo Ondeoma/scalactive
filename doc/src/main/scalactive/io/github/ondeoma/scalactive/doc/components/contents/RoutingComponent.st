@@ -157,6 +157,7 @@ val codeBasePath = // language=scala
     RouterComponentはimportが必要です.
   </p>
 
+  <div class="code-file">RoutingApp.st</div>
   <pre><code class="language-st">{{ codeRoutingApp }}</code></pre>
 
   <p>
@@ -165,6 +166,7 @@ val codeBasePath = // language=scala
     (propsのない.stは <code>Xxx()</code>)
   </p>
 
+  <div class="code-file">PageTitle.st</div>
   <pre><code class="language-st">{{ codePageTitle }}</code></pre>
 
   <p>
@@ -308,7 +310,7 @@ val codeBasePath = // language=scala
 
   <div class="rendered">
     <style>.link-demo .router-link-active { font-weight: bold; } .link-demo .router-link-exact-active { color: tomato; }</style>
-    <p class="link-demo"><RouterLink to="/">はじめに</RouterLink> / <RouterLink to="/routing">ルーティング(このページ)</RouterLink> / <RouterLink to="/sfc">単一ファイルコンポーネント</RouterLink></p>
+    <p class="link-demo"><RouterLink to="/">はじめに</RouterLink> / <RouterLink to="/routing">ルーティング(このページ)</RouterLink> / <RouterLink to="/component">コンポーネント</RouterLink></p>
   </div>
 
   <h2 id="BasePath">BasePath</h2>
@@ -323,9 +325,5 @@ val codeBasePath = // language=scala
 
   <p>
     Router.goで遷移する時と、RouterComponentのパス判定時にベースパスが考慮されます.
-  </p>
-
-  <p>
-    従来の書き方は、<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a> を参照ください.
   </p>
 </template>

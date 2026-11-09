@@ -7,7 +7,7 @@ val codeNavLinks = // language=html
     |  <nav class="nav-links">
     |    <RouterLink to="/">はじめに</RouterLink> /
     |    <RouterLink to="/builtinComponents">組込コンポーネント(このページ)</RouterLink> /
-    |    <RouterLink to="/sfc" active-class="on">単一ファイルコンポーネント</RouterLink>
+    |    <RouterLink to="/component" active-class="on">コンポーネント</RouterLink>
     |  </nav>
     |</template>
     |
@@ -379,7 +379,7 @@ val codeInputSamples = // language=html
     HTMLの <code>&lt;input&gt;</code>・<code>&lt;textarea&gt;</code>・<code>&lt;select&gt;</code> に、<br>
     <code>v-model</code> でRVをバインドします.<br>
     RVの型によって、同期の方法が決まります.<br>
-    (詳しくは <a @click='go("/sfc")'>単一ファイルコンポーネント</a> のv-modelを参照ください.)
+    (詳しくは <a @click='go("/attr")'>属性バインディング</a> のv-modelを参照ください.)
   </p>
 
   <pre><code class="language-st">{{ codeInputSamples }}</code></pre>
@@ -456,8 +456,4 @@ val codeInputSamples = // language=html
       </tr>
     </tbody>
   </table>
-
-  <p>
-    従来の書き方は、<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a> を参照ください.
-  </p>
 </template>

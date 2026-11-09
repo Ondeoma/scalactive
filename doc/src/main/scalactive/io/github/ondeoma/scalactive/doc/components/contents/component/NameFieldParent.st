@@ -6,7 +6,7 @@ def initState() = State()
 
 <template>
   <div>
-    <NameField label="名前" v-model="s.name" v-model:note="s.memo" />
+    <NameField label="名前" :name="s.name" :note="s.memo" />
     <p>名前: {{ s.name }} / メモ: {{ s.memo }}</p>
   </div>
 </template>

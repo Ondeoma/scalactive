@@ -287,11 +287,7 @@ val codeModifiers = // language=html
   </div>
 
   <p>
-    子コンポーネントのタグにもv-modelを書けます.<br>
-    詳しくは<a @click='go("/sfc")'>単一ファイルコンポーネント</a>のページを参照してください.
-  </p>
-
-  <p>
-    従来のScalaでの書き方は<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照してください.
+    子コンポーネントと値を双方向にやり取りする場合は、RVをそのままpropsとして渡します.<br>
+    詳しくは<a @click='go("/component")'>コンポーネント</a>のページを参照してください.
   </p>
 </template>

@@ -12,7 +12,7 @@ import io.github.ondeoma.scalactive.doc.components.contents.scalaapi.*
     ifC・forC・evClickなどの関数で、動きを付けます.
   </p>
   <p>
-    通常は<a @click='go("/sfc")'>単一ファイルコンポーネント(.st)</a>で書いてください.<br>
+    通常は<a @click='go("/component")'>stファイル(.st)</a>で書いてください.<br>
     .stで書いたコンポーネントも、生成されるのは同じScalaのコンポーネントなので、<br>
     この書き方のコンポーネントと組み合わせて使えます.
   </p>
@@ -28,7 +28,7 @@ import io.github.ondeoma.scalactive.doc.components.contents.scalaapi.*
     <li><a @click='setHash("event")'>イベントハンドリング</a></li>
     <li><a @click='setHash("builtin")'>組込コンポーネント</a></li>
     <li><a @click='setHash("routing")'>ルーティング</a></li>
-    <li><a @click='setHash("sfc")'>単一ファイルコンポーネントとScala API</a></li>
+    <li><a @click='setHash("sfc")'>stファイルとScala API</a></li>
   </ul>
 
   <IntroductionScalaApi />

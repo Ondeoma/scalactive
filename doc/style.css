@@ -62,6 +62,26 @@ code {
   font-family: "JetBrains Mono", monospace;
 }
 
+/* 複数のファイルを組み合わせるサンプルの、コードの上に付けるファイル名 */
+.code-file {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 4px 14px;
+  border-radius: 10px 10px 0 0;
+  background-color: #3a3f4b;
+  color: #d7dae0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85em;
+}
+
+.code-file + pre {
+  margin-top: 0;
+}
+
+.code-file + pre code {
+  border-top-left-radius: 0;
+}
+
 .sp-only-block {
   display: block;
 }

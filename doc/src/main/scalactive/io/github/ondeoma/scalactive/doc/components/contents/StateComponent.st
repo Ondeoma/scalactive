@@ -44,10 +44,13 @@ val buttonCode = // language=html
     コンポーネントが片付けられても残ります.
   </p>
 
+  <div class="code-file">CountStore.scala</div>
   <pre><code class="language-scala">{{ storeCode }}</code></pre>
 
+  <div class="code-file">CountView.st</div>
   <pre><code class="language-st">{{ viewCode }}</code></pre>
 
+  <div class="code-file">CountButton.st</div>
   <pre><code class="language-st">{{ buttonCode }}</code></pre>
 
   <div class="rendered">

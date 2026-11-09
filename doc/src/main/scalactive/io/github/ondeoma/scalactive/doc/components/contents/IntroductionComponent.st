@@ -5,9 +5,11 @@ import io.github.ondeoma.scalactive.doc.components.contents.introduction.IntroSa
 // language=html
 val code =
   """|<script lang="scala">
-     |// 状態はReactiveな値(RV)で持ちます.
+     |// 状態はReactiveな値(RV)で持たせます.
      |case class State(txt: RV[String] = RV(""))
      |
+     |// initStateでは状態を初期化する処理を定義します。
+     |// 生成した値はテンプレート内で標準で"s"で参照できます。
      |def initState() = State()
      |</script>
      |
@@ -45,6 +47,8 @@ val code =
   </p>
   <p>
     ※このドキュメントはScalactiveで実装されています.
+    <br>
+    ※ver0.2以降はAIを用いて開発しています.
   </p>
 
   <h2>どんな感じ？</h2>
@@ -65,9 +69,4 @@ val code =
   <div class="rendered">
     <IntroSample />
   </div>
-
-  <p>
-    従来のScalaの文字列でHTMLを書く方法は、<br>
-    <a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照ください.
-  </p>
 </template>

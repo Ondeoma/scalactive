@@ -3,7 +3,7 @@ import Router.*
 import io.github.ondeoma.scalactive.doc.components.contents.quickstart.Hello
 
 val codeSetup = // language=scala
-  s"""// project/plugins.sbt
+  """// project/plugins.sbt
      |addSbtPlugin("org.scala-js" % "sbt-scalajs" % "<version>")
      |addSbtPlugin("io.github.ondeoma" % "sbt-scalactive" % "<version>")
      |
@@ -94,9 +94,8 @@ val codeMain = // language=scala
   <h2 id="plugin">sbtプラグインの設定</h2>
 
   <p>
-    コンポーネントは <code>.st</code> ファイル(単一ファイルコンポーネント)で書きます.<br>
-    .stファイルは、sbtプラグイン(sbt-scalactive)が、<br>
-    ビルド時にScalaのソースへ変換します.<br>
+    コンポーネントは独自の <code>.st</code> ファイルで書きます.<br>
+    ※.stファイルは、sbtプラグイン(sbt-scalactive)がビルド時にScalaのソースへ変換します.<br>
     シードプロジェクトを使わない場合は、以下のように設定します.
   </p>
 
@@ -122,12 +121,12 @@ val codeMain = // language=scala
     <code>src/main/scalactive/app/Hello.st</code> を作ります.
   </p>
 
+  <div class="code-file">src/main/scalactive/app/Hello.st</div>
   <pre><code class="language-st">{{ codeHello }}</code></pre>
 
   <p>
     <code>&lt;script&gt;</code> にScalaコード、<code>&lt;template&gt;</code> にHTMLを書きます.<br>
-    <code>def initState()</code> で状態を作り、<br>
-    テンプレートからは <code>s</code> で参照します.<br>
+    <code>def initState()</code> で状態を作り、テンプレートからは <code>s</code> で参照します.<br>
     以下のように表示されます.
   </p>
 
@@ -136,7 +135,7 @@ val codeMain = // language=scala
   </div>
 
   <p>
-    書き方の詳細は<a @click='go("/sfc")'>単一ファイルコンポーネント</a>を参照ください.
+    書き方の詳細は<a @click='go("/component")'>コンポーネント</a>を参照ください.
   </p>
 
   <h2 id="init">コンポーネントの初期化</h2>
@@ -149,13 +148,14 @@ val codeMain = // language=scala
 
   <p>
     以下はmainメソッドで利用した例です.<br>
-    mainメソッドは通常のScalaファイル(<code>src/main/scala/app/App.scala</code>)に書きます.
+    mainメソッドは通常のScalaファイルに書きます.
   </p>
 
+  <div class="code-file">src/main/scala/app/App.scala</div>
   <pre><code class="language-scala">{{ codeMain }}</code></pre>
 
   <p>
-    上記の例では"Hello"を、<br>
+    上記の例では"Hello"コンポーネントを、<br>
     body要素内の"app"というIDを持つ要素に
     <a href="https://developer.mozilla.org/ja/docs/Web/API/Element/append" target="_blank">append</a>
     しています.
@@ -171,9 +171,4 @@ val codeMain = // language=scala
     <li>・<a href="https://github.com/Ondeoma/scalactive/blob/main/core/src/main/scala/io/github/ondeoma/scalactive/models/AddMethod.scala" target="_blank">AddMethod</a></li>
     <li>・<a href="https://github.com/Ondeoma/scalactive/blob/main/core/src/main/scala/io/github/ondeoma/scalactive/models/Selector.scala" target="_blank">Selector</a></li>
   </ul>
-
-  <p>
-    .stを使わずにScalaで書く方法は、<br>
-    <a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照ください.
-  </p>
 </template>

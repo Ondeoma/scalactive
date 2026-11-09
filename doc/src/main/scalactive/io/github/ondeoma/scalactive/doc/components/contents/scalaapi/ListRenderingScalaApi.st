@@ -50,7 +50,7 @@ val codeKey = // language=scala
   <p>
     添字を使わない場合は、forEachCを使うと高速です.<br>
     行の削除や並べ替えで位置が変わった行も、作り直さずに済むためです.<br>
-    単一ファイルコンポーネント(.st)の <code>v-for</code> では、<br>
+    stファイル(.st)の <code>v-for</code> では、<br>
     添字の変数を書かなければ自動的にforEachCになります.
   </p>
 
@@ -65,7 +65,7 @@ val codeKey = // language=scala
     キーを指定しなければ、値が変わった行はすべて作り直されます.<br>
     idをキーにすると、並べ替えなどで行を使い回せます.<br>
     キーが同じでも値が変わった行(RVListでは別のRVになった行)は作り直されます.<br>
-    単一ファイルコンポーネント(.st)では、<br>
+    stファイル(.st)では、<br>
     <code>&lt;li v-for="t in todos" :key="t.id"&gt;</code> と書きます.
   </p>
 

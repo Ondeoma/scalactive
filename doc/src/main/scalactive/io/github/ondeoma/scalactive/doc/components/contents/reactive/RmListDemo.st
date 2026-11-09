@@ -1,22 +1,11 @@
 <script lang="scala">
-import io.github.ondeoma.scalactive.reactive.ReactiveModelMacro.*
-
 case class Human(name: String,
                  age: Int)
 
 case class HumanRM(name: RV[String],
-                   age: RV[Int]) extends ReactiveModel[Human, HumanRM] {
+                   age: RV[Int]) extends ReactiveModelOf[Human, HumanRM]
 
-  val reactives = collectReactives(this)
-  val reactiveModels = collectReactiveModels(this)
-  def reload(s: O) = genReload(this, s)
-  def toOrigin = genToOrigin(this)
-
-}
-
-object HumanRM {
-  given RMCompatible[Human, HumanRM] = genToReactiveModel[Human, HumanRM](_)
-}
+object HumanRM extends ReactiveModelOf.Companion[Human, HumanRM]
 
 case class State(humans: RMList[Human, HumanRM] = RMList(List(Human("Taro", 10), Human("Hanako", 20))))
 

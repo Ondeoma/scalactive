@@ -214,8 +214,4 @@ val codeTemplateFor = // language=html
   <div class="rendered">
     <TemplateFor />
   </div>
-
-  <p>
-    従来のScalaでの書き方は<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照してください.
-  </p>
 </template>

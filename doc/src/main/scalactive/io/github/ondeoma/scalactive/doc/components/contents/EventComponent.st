@@ -143,7 +143,7 @@ val codeOptions = // language=html
 
   <p>
     子コンポーネントのタグに書いた <code>@イベント名</code> は、子への関数のpropsになります.<br>
-    詳しくは<a @click='go("/sfc")'>単一ファイルコンポーネント</a>のページを参照してください.
+    詳しくは<a @click='go("/component")'>コンポーネント</a>のページを参照してください.
   </p>
 
   <h2 id="modifiers">修飾子</h2>
@@ -216,8 +216,4 @@ val codeOptions = // language=html
   <div class="rendered">
     <ListenerOptions />
   </div>
-
-  <p>
-    従来のScalaでの書き方は<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a>を参照してください.
-  </p>
 </template>

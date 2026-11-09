@@ -6,7 +6,7 @@ val codeUse = // language=scala
 </script>
 
 <template>
-  <h2 id="sfc">単一ファイルコンポーネントとScala API</h2>
+  <h2 id="sfc">stファイルとScala API</h2>
 
   <p>
     .stから生成されたobjectは、通常のコンポーネントです.<br>

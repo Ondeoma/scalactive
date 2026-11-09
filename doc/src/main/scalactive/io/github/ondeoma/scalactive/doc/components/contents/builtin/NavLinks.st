@@ -2,7 +2,7 @@
   <nav class="nav-links">
     <RouterLink to="/">はじめに</RouterLink> /
     <RouterLink to="/builtinComponents">組込コンポーネント(このページ)</RouterLink> /
-    <RouterLink to="/sfc" active-class="on">単一ファイルコンポーネント</RouterLink>
+    <RouterLink to="/component" active-class="on">コンポーネント</RouterLink>
   </nav>
 </template>
 

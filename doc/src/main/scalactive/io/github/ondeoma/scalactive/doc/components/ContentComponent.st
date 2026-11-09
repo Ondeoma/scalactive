@@ -14,11 +14,10 @@ val routes: PathPatternRoutes = List(
   ("/event", _ => EventComponent()),
   ("/routing", _ => RoutingComponent()),
   ("/state", _ => StateComponent()),
-  ("/sfc", _ => SingleFileComponent()),
+  ("/editor", _ => EditorComponent()),
   ("/devtools", _ => DevtoolsComponent()),
   ("/deploy", _ => DeployComponent()),
   ("/contribute", _ => ContributeComponent()),
-  ("/releaseNotes", _ => ReleaseNotesComponent()),
   ("/scalaApi", _ => ScalaApiComponent()),
 )
 </script>
