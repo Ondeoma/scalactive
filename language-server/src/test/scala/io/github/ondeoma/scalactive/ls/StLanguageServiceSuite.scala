@@ -168,10 +168,10 @@ class StLanguageServiceSuite extends munit.FunSuite {
         |  def label(n: Int): String = s"#$n"
         |}
         |""".stripMargin)
-    val loc = SourceSymbolSearch.find(Seq(otherScala), "app/util/Format.label().").getOrElse(fail("not found"))
+    val loc = SourceSymbolSearch.find(Seq(otherScala), "app/util/Format.label().").map(_.location).getOrElse(fail("not found"))
     assertEquals(loc.getRange.getStart, new Position(3, 6))
     write(otherScala.resolve("app/util/Other.scala"), "package app.util\n\ncase class Point(x: Int, y: Int)\n")
-    val y = SourceSymbolSearch.find(Seq(otherScala), "app/util/Point#y.").getOrElse(fail("not found"))
+    val y = SourceSymbolSearch.find(Seq(otherScala), "app/util/Point#y.").map(_.location).getOrElse(fail("not found"))
     assertEquals(y.getRange.getStart, new Position(2, 25))
   }
 
@@ -606,6 +606,111 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assertEquals(ctx("<Card><template |"), AttrName("template", 16, List("Card")))
     assertEquals(ctx("<p>a</p><Ca|"), TagName(9, Nil))
     assertEquals(ctx("<br><input |"), AttrName("input", 11, Nil))
+  }
+
+  // ---- ライブラリの定義・ドキュメント・自動import ----
+
+  private val libText =
+    """<script lang="scala">
+      |  case class State(count: RV[Int] = RV(0))
+      |  def initState() = State()
+      |  def focus(e: HTMLElement): Unit = e.focus()
+      |  def again(s: State): Unit = s.count.trigger()
+      |</script>
+      |
+      |<template>
+      |  <p>{{ s.count }}</p>
+      |</template>
+      |""".stripMargin
+
+  private val libFile = write(srcRoot.resolve("app/Lib.st"), libText)
+  private val libUri = libFile.toUri.toString
+
+  test("ライブラリ(jar)の定義へジャンプする(ソースjarを展開したファイル)") {
+    val locs = service.definition(libUri, pos(libText, "HTMLElement): Unit", 1))
+    assertEquals(locs.size, 1, logs.toString)
+    val file = java.nio.file.Paths.get(new java.net.URI(locs.head.getUri))
+    assertEquals(file.getFileName.toString, "HTMLElement.scala")
+    val line = new String(Files.readAllBytes(file), StandardCharsets.UTF_8).split("\n")(locs.head.getRange.getStart.getLine)
+    assert(line.contains("HTMLElement"), line)
+  }
+
+  test("ホバーに定義のscaladocを表示する(プロジェクト・ライブラリ)") {
+    val h = service.hover(libUri, pos(libText, "trigger()", 1)).getOrElse(fail("no hover"))
+    val text = h.getContents.getRight.getValue
+    assert(text.contains("値を変えずにウォッチャーに通知します"), text)
+    val focus = service.hover(libUri, pos(libText, "focus()", 1)).getOrElse(fail("no hover"))
+    assert(focus.getContents.getRight.getValue.linesIterator.size > 3, focus.getContents.getRight.getValue)
+  }
+
+  test("自動import: importしていないクラスを補完し、importを<script>の先頭に足す") {
+    val text = libText.replace("def initState() = State()", "def initState() = State()\n  val buf = ListBuff")
+    withText(libUri, text) {
+      val items = service.completion(libUri, pos(text, "ListBuff", "ListBuff".length)).getItems.asScala
+      val item = items.find(i => i.getLabel.startsWith("ListBuffer") && Option(i.getAdditionalTextEdits).exists(!_.isEmpty))
+        .getOrElse(fail(s"ListBuffer with an import not in ${items.map(_.getLabel)}"))
+      val edits = item.getAdditionalTextEdits.asScala
+      assertEquals(edits.map(_.getNewText).toList, List("  import scala.collection.mutable.ListBuffer\n"))
+      assertEquals(edits.head.getRange.getStart, pos(text, "  case class State"))
+    }
+  }
+
+  test("自動import: 「Not found」のエラーにimportのクイックフィックス") {
+    val text = libText.replace("def initState() = State()", "def initState() = State()\n  val buf = ListBuffer(1)")
+    withText(libUri, text) {
+      val notFound = service.diagnostics(libUri).filter(_.getMessage.contains("Not found"))
+      assertEquals(notFound.size, 1, notFound)
+      val actions = service.codeActions(libUri, notFound.head.getRange, notFound)
+      val action = actions.find(_.getTitle == "Import 'scala.collection.mutable.ListBuffer'").getOrElse(fail(actions.map(_.getTitle).toString))
+      val edits = action.getEdit.getChanges.get(libUri).asScala
+      assertEquals(edits.map(_.getNewText).toList, List("  import scala.collection.mutable.ListBuffer\n"))
+    }
+  }
+
+  test("補完の候補の詳細にドキュメントを足す") {
+    val text = libText.replace("s.count.trigger()", "s.count.trigg")
+    withText(libUri, text) {
+      val items = service.completion(libUri, pos(text, "trigg", "trigg".length)).getItems.asScala
+      val item = items.find(_.getLabel.startsWith("trigger")).getOrElse(fail(items.map(_.getLabel).toString))
+      val resolved = service.resolveCompletionItem(item)
+      val doc = Option(resolved.getDocumentation).map(d => if (d.isLeft) d.getLeft else d.getRight.getValue).getOrElse("")
+      assert(doc.contains("値を変えずにウォッチャーに通知します"), doc)
+    }
+  }
+
+  test("<script>にimportを足す位置: 先頭のimportの後ろ、なければ中身の先頭") {
+    val withImports = "<script lang=\"scala\">\n  import a.B\n  // c\n  import d.E\n\n  val x = 1\n</script>\n"
+    assertEquals(StLanguageService.scriptImportPlace(withImports),
+      Some((withImports.indexOf("\n\n  val") + 1, "  ", Set("import a.B", "import d.E"))))
+    val none = "<script lang=\"scala\">\nval x = 1\n</script>\n"
+    assertEquals(StLanguageService.scriptImportPlace(none), Some((none.indexOf("val"), "", Set.empty[String])))
+  }
+
+  test("クラス名の検索: 前方一致とキャメルケース") {
+    assert(ClasspathIndex.matches("ListBuf", "ListBuffer"))
+    assert(ClasspathIndex.matches("listb", "ListBuffer"))
+    assert(ClasspathIndex.matches("LB", "ListBuffer"))
+    assert(ClasspathIndex.matches("HTE", "HTMLElement"))
+    assert(!ClasspathIndex.matches("Buf", "ListBuffer"))
+    assert(ClasspathIndex.isToplevel("Foo$.class"))
+    assert(ClasspathIndex.isToplevel("Foo$package.class"))
+    assert(!ClasspathIndex.isToplevel("Foo$Bar.class"))
+  }
+
+  test("scaladoc・javadocをMarkdownにする") {
+    val md = DocComments.toMarkdown(
+      """/**
+        | * 値を[[RV]]に入れます. {@code x} を使います.
+        | * {{{
+        | * val a = 1
+        | * }}}
+        | * @param v 新しい値
+        | * @return なし
+        | */""".stripMargin)
+    assert(md.contains("値を`RV`に入れます. `x` を使います."), md)
+    assert(md.contains("```scala\nval a = 1\n```"), md)
+    assert(md.contains("**Parameters**\n\n- `v`: 新しい値"), md)
+    assert(md.contains("**Returns**\n\n- なし"), md)
   }
 
   test("SemanticDBのシンボルを分解する") {

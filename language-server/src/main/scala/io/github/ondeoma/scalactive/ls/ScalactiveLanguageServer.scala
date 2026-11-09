@@ -76,7 +76,7 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
     val caps = new ServerCapabilities()
     caps.setTextDocumentSync(TextDocumentSyncKind.Full)
     // "." はScalaの部分、"<" "@" "#" "\"" はテンプレートの部分(タグ名・イベント・スロット名・<slot name>)の補完のきっかけ
-    caps.setCompletionProvider(new CompletionOptions(false, List(".", "<", "@", "#", "\"").asJava))
+    caps.setCompletionProvider(new CompletionOptions(true, List(".", "<", "@", "#", "\"").asJava))
     caps.setHoverProvider(true)
     caps.setDefinitionProvider(true)
     caps.setDocumentHighlightProvider(true)
@@ -125,6 +125,10 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
       async(LspEither.forRight[java.util.List[CompletionItem], CompletionList](new CompletionList())) {
         LspEither.forRight(service.completion(params.getTextDocument.getUri, params.getPosition))
       }
+    }
+
+    override def resolveCompletionItem(item: CompletionItem): CompletableFuture[CompletionItem] = {
+      async(item)(service.resolveCompletionItem(item))
     }
 
     override def hover(params: HoverParams): CompletableFuture[Hover] = {
@@ -185,7 +189,8 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
 
     override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[LspEither[Command, CodeAction]]] = {
       async[java.util.List[LspEither[Command, CodeAction]]](java.util.Collections.emptyList()) {
-        (service.codeActions(params.getTextDocument.getUri, params.getRange) ++
+        val diagnostics = Option(params.getContext).flatMap(c => Option(c.getDiagnostics)).map(_.asScala.toList).getOrElse(Nil)
+        (service.codeActions(params.getTextDocument.getUri, params.getRange, diagnostics) ++
           service.extractComponentAction(params.getTextDocument.getUri, params.getRange))
           .map(a => LspEither.forRight[Command, CodeAction](a)).asJava
       }

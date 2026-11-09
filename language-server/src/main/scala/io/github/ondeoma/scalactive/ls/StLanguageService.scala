@@ -22,6 +22,8 @@ final class StLanguageService(log: String => Unit) {
 
   private val scriptFormatter = new ScriptFormatter(log)
 
+  LibrarySources.log = log
+
   /** テンプレートでHTMLの標準のタグ・属性・属性値も補完するか(initializationOptionsの htmlCompletion) */
   @volatile var htmlCompletion: Boolean = true
 
@@ -106,8 +108,15 @@ final class StLanguageService(log: String => Unit) {
     ProjectConfig.load(configFile).right.flatMap { config =>
       try {
         log(s"starting Scala ${config.scalaVersion} presentation compiler for ${config.file}")
+        val index = new ClasspathIndex(config.classpath)
+        // 自動importの候補に使うクラスパスの索引は、最初の補完を待たせないよう先に作っておく
+        executor.submit(new Runnable {
+          override def run(): Unit = try index.packages catch {
+            case NonFatal(e) => log(s"failed to index the classpath: $e")
+          }
+        })
         val pc = PcLoader.load(config.scalaVersion)
-          .withSearch(new SourceSymbolSearch(config))
+          .withSearch(new SourceSymbolSearch(config, index))
           .withExecutorService(executor)
           .withScheduledExecutorService(scheduler)
           .newInstance("scalactive", config.classpath.asJava, config.compilerOptions.asJava)
@@ -375,7 +384,38 @@ final class StLanguageService(log: String => Unit) {
    * クイックフィックス(子コンポーネントのタグの未知のprop・スロットの候補、足りない必須のpropの書き足し).
    * rangeに重なる問題のものを返します.
    */
-  def codeActions(uri: String, range: Range): List[CodeAction] = {
+  def codeActions(uri: String, range: Range, diagnostics: List[Diagnostic] = Nil): List[CodeAction] = {
+    propsCodeActions(uri, range) ++ importCodeActions(uri, diagnostics)
+  }
+
+  /** 「Not found: X」のエラーに、Xをimportするクイックフィックス */
+  private def importCodeActions(uri: String, diagnostics: List[Diagnostic]): List[CodeAction] = {
+    diagnostics.flatMap { diagnostic =>
+      NotFound.findFirstMatchIn(Option(diagnostic.getMessage).getOrElse("")).toList.flatMap { m =>
+        val name = m.group(1)
+        try at(uri, diagnostic.getRange.getStart) { (d, params) =>
+          await(d.pc.autoImports(name, params, false)).asScala.toList.flatMap { result =>
+            val edits = editsToSt(d, result.edits().asScala.toList)
+            if (edits.isEmpty) None
+            else {
+              val action = new CodeAction(s"Import '${result.packageName()}.$name'")
+              action.setKind(CodeActionKind.QuickFix)
+              action.setDiagnostics(java.util.Collections.singletonList(diagnostic))
+              action.setEdit(new WorkspaceEdit(java.util.Collections.singletonMap(uri, edits.asJava)))
+              Some(action)
+            }
+          }
+        }.getOrElse(Nil)
+        catch {
+          case NonFatal(e) =>
+            log(s"auto import failed: $e")
+            Nil
+        }
+      }
+    }
+  }
+
+  private def propsCodeActions(uri: String, range: Range): List[CodeAction] = {
     try {
       val path = pathOf(uri)
       val text = textOf(uri, path)
@@ -463,10 +503,55 @@ final class StLanguageService(log: String => Unit) {
           }
         }
         Option(item.getAdditionalTextEdits).foreach { edits =>
-          item.setAdditionalTextEdits(edits.asScala.flatMap(e => toSt(d, e.getRange).map(r => new TextEdit(r, e.getNewText))).asJava)
+          item.setAdditionalTextEdits(editsToSt(d, edits.asScala.toList).asJava)
         }
       }
+      lastCompletionPc = Some(d.pc)
       list
+    }
+  }
+
+  /** 最後に補完した.stのpresentation compiler(補完の候補の詳細を求めるときに使う) */
+  @volatile private var lastCompletionPc: Option[PresentationCompiler] = None
+
+  /** 補完の候補に、説明(ドキュメント)と詳細を足します */
+  def resolveCompletionItem(item: CompletionItem): CompletionItem = {
+    val symbol = Option(item.getData).collect {
+      case o: com.google.gson.JsonObject if o.has("symbol") => o.get("symbol").getAsString
+    }
+    (for {
+      pc <- lastCompletionPc
+      sym <- symbol
+    } yield {
+      val edits = item.getAdditionalTextEdits
+      val textEdit = item.getTextEdit
+      val resolved = await(pc.completionItemResolve(item, sym))
+      // 位置は.stに変換済みなので、そのまま残す
+      resolved.setAdditionalTextEdits(edits)
+      resolved.setTextEdit(textEdit)
+      resolved
+    }).getOrElse(item)
+  }
+
+  // ---- import の追加 ----
+
+  /**
+   * 生成コード上の編集を.st上の編集にします. importの追加は生成コードの先頭(.stに対応しない位置)に入るため、
+   * .stの<script>の先頭のimportの後ろ(なければ<script>の中身の先頭)に、scriptのインデントで入れます(既にあるimportは足しません).
+   */
+  private def editsToSt(d: Doc, edits: List[TextEdit]): List[TextEdit] = {
+    val (imports, others) = edits.partition(_.getNewText.trim.startsWith("import "))
+    val mapped = others.flatMap(e => toSt(d, e.getRange).map(r => new TextEdit(r, e.getNewText)))
+    val lines = imports.flatMap(_.getNewText.split("\n").map(_.trim).filter(_.startsWith("import "))).distinct
+    mapped ++ importEdit(d.text, lines).map { case (offset, text) =>
+      new TextEdit(d.index.range(offset, offset), text)
+    }
+  }
+
+  private def importEdit(text: String, imports: List[String]): Option[(Int, String)] = {
+    StLanguageService.scriptImportPlace(text).flatMap { case (offset, indent, existing) =>
+      val added = imports.filterNot(existing.contains)
+      if (added.isEmpty) None else Some((offset, added.map(i => indent + i + "\n").mkString))
     }
   }
 
@@ -663,6 +748,46 @@ final class StLanguageService(log: String => Unit) {
 object StLanguageService {
 
   val Source = "scalactive"
+
+  /** 型検査の「見つからない」エラー(Scala 3: "Not found: X" / "Not found: type X") */
+  private val NotFound = """Not found: (?:type |value )?([A-Za-z_][\w$]*)""".r
+
+  private val ScriptStart = """<script\b[^>]*>""".r
+
+  /**
+   * .stの<script>にimportを足す位置(先頭のimportの並びの後ろ、なければ中身の先頭の行)と、scriptのインデント、既にあるimport.
+   * (先頭の空行・コメント・importの並びだけを見ます)
+   */
+  def scriptImportPlace(text: String): Option[(Int, String, Set[String])] = {
+    ScriptStart.findFirstMatchIn(text).map { m =>
+      val end = {
+        val e = text.indexOf("</script", m.end)
+        if (e < 0) text.length else e
+      }
+      var lineStart = m.end
+      // <script>の行の残り(改行まで)は飛ばす
+      val firstNl = text.indexOf('\n', m.end)
+      if (firstNl >= 0 && firstNl < end && text.substring(m.end, firstNl).trim.isEmpty) lineStart = firstNl + 1
+      var place = lineStart
+      var indent: Option[String] = None
+      val existing = Set.newBuilder[String]
+      var continue = true
+      var pos = lineStart
+      while (continue && pos < end) {
+        val nl = text.indexOf('\n', pos)
+        val lineEnd = if (nl < 0 || nl > end) end else nl
+        val line = text.substring(pos, lineEnd)
+        val t = line.trim
+        if (t.nonEmpty && indent.isEmpty) indent = Some(line.takeWhile(c => c == ' ' || c == '\t'))
+        if (t.startsWith("import ")) {
+          existing += t
+          place = math.min(lineEnd + 1, end)
+        } else if (!(t.isEmpty || t.startsWith("//"))) continue = false
+        pos = lineEnd + 1
+      }
+      (place, indent.getOrElse(""), existing.result())
+    }
+  }
 
   /** presentation compilerの応答を待つ上限(秒). 初回はクラスパスの読み込みに時間がかかります. */
   private val Timeout = 60L

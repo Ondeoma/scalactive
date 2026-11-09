@@ -57,7 +57,14 @@ VS CodeとIntelliJ IDEAに提供します.
   文字列・コメントの中は変えません).
   IntelliJでは「コードの整形」を言語サーバーだけに任せます(IntelliJのHTMLの整形は `{{ }}` などを崩すため使いません).
   言語サーバーが起動していないときは、`ScalactiveFormattingGuard` が何もせずに引き受け、通知を出します.
-  ライブラリ(jar)内の定義、ドキュメント、自動importには対応していません.
+- ファイル外のシンボルは `SourceSymbolSearch` が探します(presentation compilerの `SymbolSearch`).
+  - 定義ジャンプ: プロジェクトのソースディレクトリ、なければクラスパスのjarのソースから探します.
+    ソースは `LibrarySources` が、jarの隣の `-sources.jar`・ivyの `srcs/`、またはcoursierのキャッシュのパスから読んだ座標で取得したソースjarを、
+    `~/.cache/scalactive/sources/`(環境変数 `SCALACTIVE_SOURCES_CACHE` で変更可)に展開して使います.
+  - ドキュメント: 見つけた定義の直前の `/** */`(scaladoc・javadoc)をMarkdownにして(`DocComments`)、ホバーと補完の候補の詳細に出します.
+  - 自動import: クラスパスの索引(`ClasspathIndex`. jar・クラスディレクトリのトップレベルのクラス)から、名前が前方一致かキャメルケースで合うクラスを
+    補完の候補にします. importは生成コードの先頭に入るため、.stの `<script>` の先頭のimportの後ろ(なければ中身の先頭)に入れ直します.
+    「Not found: X」のエラーには、Xをimportするクイックフィックスを出します.
 
 ```sh
 sbt languageServer/test       # 言語サーバーのテスト(実際のpresentation compilerを使います)
