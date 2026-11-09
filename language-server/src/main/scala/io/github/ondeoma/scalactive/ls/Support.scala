@@ -53,3 +53,16 @@ final case class FileParams(uri: URI, text: String) extends VirtualFileParams {
 final case class PositionParams(uri: URI, text: String, offset: Int) extends OffsetParams {
   override def token(): CancelToken = NoCancel
 }
+
+/** 推論した型のインレイヒントだけを求める範囲 */
+final case class HintParams(uri: URI, text: String, offset: Int, endOffset: Int) extends scala.meta.pc.InlayHintsParams {
+  override def token(): CancelToken = NoCancel
+  override def inferredTypes(): Boolean = true
+  override def typeParameters(): Boolean = false
+  override def implicitParameters(): Boolean = false
+  override def implicitConversions(): Boolean = false
+  override def byNameParameters(): Boolean = false
+  override def namedParameters(): Boolean = false
+  override def hintsXRayMode(): Boolean = false
+  override def hintsInPatternMatch(): Boolean = false
+}

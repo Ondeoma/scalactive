@@ -29,6 +29,11 @@ VS CodeとIntelliJ IDEAに提供します.
 - テンプレートのHTMLの部分(タグ名・属性名・属性値・スロット名)の補完は `TemplateCompletion` が行います. HTMLの標準のタグ・属性・イベントの一覧は `HtmlData` にあります. テンプレートの定義ジャンプ・ホバーは `TemplateNavigation` が、子コンポーネントのpropsの検査は `PropsCheck` が、propの参照の検索・名前の変更は `PropRefs` が行います.
   書きかけでコンパイルできない `.st` でも動くよう、コンパイルせずにテキストを走査して文脈を求めます.
   子コンポーネントのpropsは、同じディレクトリの `.st` の `case class Props(...)` から読み取ります(`StCompiler.propsOf`).
+- クイックフィックス(`textDocument/codeAction`)は `PropsCheck` の問題に付けた修正です. 未知のprop・スロットは編集距離の近いpropの名前に
+  (`@close` や `v-model:x` などの書き方は `PropRefs.renamed` で合わせます)、足りない必須のpropはタグ名の直後に書き足します.
+- インレイヒント(`textDocument/inlayHint`)は、presentation compilerの推論した型のヒントを生成コード全体について求め、
+  ユーザーが書いたコードの位置に対応するものだけを返します. ラベルの中の生成コードへのリンクと、型を書き足す編集は除きます.
+  Scala 3.3のpresentation compilerはラムダの引数にヒントを出さないため、`v-for` の変数には出ません.
 - 定義ジャンプは、同じ `.st` 内に加えて、プロジェクトのソースディレクトリにある `.scala` / `.st` を名前で探します.
   子コンポーネントのタグ名・属性名からは、同じディレクトリの `.st` のProps(のパラメータ)へジャンプします(`TemplateNavigation`).
 - 整形(ドキュメントのフォーマット)は `compiler/` の `StFormatter` が行います.

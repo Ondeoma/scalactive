@@ -199,6 +199,60 @@ final class StLanguageService(log: String => Unit) {
     }
   }
 
+  /**
+   * 推論した型のインレイヒント(scriptの型を書いていない val / def、v-forの変数、ラムダの引数など).
+   * 生成コード全体について問い合わせ、ユーザーが書いたコードの位置に対応するものだけを、rangeの中に絞って返します.
+   * (生成コードを指す位置やテキストの編集は含めません)
+   */
+  def inlayHints(uri: String, range: Range): List[InlayHint] = {
+    prepare(uri) match {
+      case Right(d) =>
+        val (from, to) = (d.index.offset(range.getStart), d.index.offset(range.getEnd))
+        val hints = await(d.pc.inlayHints(HintParams(d.genUri, d.out.code, 0, d.out.code.length))).asScala.toList
+        hints.flatMap { h =>
+          d.out.sourceMap.cursorToSt(d.genIndex.offset(h.getPosition)).filter(o => o >= from && o <= to).map { st =>
+            val label =
+              if (h.getLabel.isLeft) h.getLabel.getLeft
+              else h.getLabel.getRight.asScala.map(_.getValue).mkString
+            val hint = new InlayHint(d.index.position(st), LspEither.forLeft[String, java.util.List[InlayHintLabelPart]](label))
+            hint.setKind(h.getKind)
+            hint.setPaddingLeft(h.getPaddingLeft)
+            hint.setPaddingRight(h.getPaddingRight)
+            hint
+          }
+        }.groupBy(h => (h.getPosition.getLine, h.getPosition.getCharacter)).values.map(_.head).toList
+          .sortBy(h => (h.getPosition.getLine, h.getPosition.getCharacter))
+      case Left(_) => Nil
+    }
+  }
+
+  /**
+   * クイックフィックス(子コンポーネントのタグの未知のprop・スロットの候補、足りない必須のpropの書き足し).
+   * rangeに重なる問題のものを返します.
+   */
+  def codeActions(uri: String, range: Range): List[CodeAction] = {
+    try {
+      val path = pathOf(uri)
+      val text = textOf(uri, path)
+      val index = new LineIndex(text)
+      val (from, to) = (index.offset(range.getStart), index.offset(range.getEnd))
+      PropsCheck.check(text, path).filter(p => p.start <= to && from <= p.end).flatMap { p =>
+        p.fixes.map { f =>
+          val action = new CodeAction(f.title)
+          action.setKind(CodeActionKind.QuickFix)
+          val diagnostic = new Diagnostic(index.range(p.start, p.end), p.message, DiagnosticSeverity.Warning, Source)
+          action.setDiagnostics(java.util.Collections.singletonList(diagnostic))
+          action.setEdit(new WorkspaceEdit(java.util.Collections.singletonMap(uri,
+            java.util.Collections.singletonList(new TextEdit(index.range(f.start, f.end), f.newText)))))
+          if (p.fixes.size == 1 || p.fixes.headOption.contains(f)) action.setIsPreferred(true)
+          action
+        }
+      }
+    } catch {
+      case NonFatal(_) => Nil
+    }
+  }
+
   private def compilerDiagnostics(uri: String): List[Diagnostic] = {
     def at0(msg: String, severity: DiagnosticSeverity) = {
       val d = new Diagnostic(new Range(new Position(0, 0), new Position(0, 0)), msg, severity, Source)

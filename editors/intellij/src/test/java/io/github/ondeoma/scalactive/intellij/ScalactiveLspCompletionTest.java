@@ -87,6 +87,21 @@ public class ScalactiveLspCompletionTest extends BasePlatformTestCase {
             com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
                     () -> { com.intellij.psi.codeStyle.CodeStyleManager.getInstance(getProject()).reformat(myFixture.getFile()); });
             waitUntil("css formatting", () -> original.equals(document.getText()));
+
+            // クイックフィックス(Alt+Enter): 子コンポーネントの未知のpropを近い名前に直す
+            int titleAt = original.indexOf("<StCard v-if=\"s.cardOpen\" title=") + "<StCard v-if=\"s.cardOpen\" ".length();
+            com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
+                    () -> document.replaceString(titleAt, titleAt + "title".length(), "titel"));
+            com.intellij.psi.PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+            myFixture.getEditor().getCaretModel().moveToOffset(titleAt + 2);
+            com.intellij.codeInsight.intention.IntentionAction[] fix = new com.intellij.codeInsight.intention.IntentionAction[1];
+            waitUntil("quick fix", () -> {
+                myFixture.doHighlighting();
+                fix[0] = myFixture.getAvailableIntentions().stream().filter(a -> a.getText().contains("Change to 'title'")).findFirst().orElse(null);
+                return fix[0] != null;
+            });
+            myFixture.launchAction(fix[0]);
+            assertEquals(original, document.getText());
         } finally {
             // 編集したドキュメントは保存せず、ファイルも元に戻す(リポジトリのサンプルを変えないため)
             com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().reloadFiles(sample);

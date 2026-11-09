@@ -12,8 +12,36 @@ import scala.util.control.NonFatal
  */
 object PropsCheck {
 
-  /** 検査の結果. start/endは.stの中の位置、namesは問題のprop・スロットの名前 */
-  final case class Problem(start: Int, end: Int, message: String, names: List[String])
+  /** 検査の結果. start/endは.stの中の位置、namesは問題のprop・スロットの名前、fixesはクイックフィックス */
+  final case class Problem(start: Int, end: Int, message: String, names: List[String], fixes: List[Fix] = Nil)
+
+  /** クイックフィックス: start〜endをnewTextに置き換える(start == end なら挿入) */
+  final case class Fix(title: String, start: Int, end: Int, newText: String)
+
+  /** 編集距離(大文字・小文字は区別しない) */
+  private[ls] def distance(a: String, b: String): Int = {
+    val x = a.toLowerCase
+    val y = b.toLowerCase
+    val d = Array.tabulate(x.length + 1, y.length + 1)((i, j) => if (i == 0) j else if (j == 0) i else 0)
+    for (i <- 1 to x.length; j <- 1 to y.length) {
+      val cost = if (x(i - 1) == y(j - 1)) 0 else 1
+      d(i)(j) = math.min(math.min(d(i - 1)(j) + 1, d(i)(j - 1) + 1), d(i - 1)(j - 1) + cost)
+    }
+    d(x.length)(y.length)
+  }
+
+  /** nameに近い候補(編集距離が名前の長さに応じて1〜3以内、近い順に3つまで) */
+  private def similar(name: String, candidates: List[String]): List[String] = {
+    val limit = if (name.length <= 4) 1 else if (name.length <= 8) 2 else 3
+    candidates.map(c => (c, distance(name, c))).filter(_._2 <= limit).sortBy(_._2).map(_._1).take(3)
+  }
+
+  /** 足りないpropを書き足すときの属性(イベントは @name、Stringは name、ほかは :name) */
+  private def attributeFor(p: TemplateCompletion.Prop): String = {
+    if (p.isEvent) "@" + TemplateCompletion.kebab(p.name.drop(2).head.toLower + p.name.drop(3)) + "=\"\""
+    else if (p.tpe == "String") p.name + "=\"\""
+    else ":" + p.name + "=\"\""
+  }
 
   /** propにならない属性(条件・繰り返し・ref)と、子コンポーネントのルート要素に付け加える属性 */
   private def ignored(name: String): Boolean = {
@@ -91,17 +119,32 @@ object PropsCheck {
     }
     val unknown = (attrs ++ slots).collect {
       case (p, offset, written) if !known.contains(p) =>
-        val what = if (written.startsWith("#") || written.startsWith("v-slot")) "slot" else "prop"
-        Problem(offset, offset + written.length, s"<${e.name}> has no $what '$p'", List(p))
+        val isSlot = written.startsWith("#") || written.startsWith("v-slot")
+        val what = if (isSlot) "slot" else "prop"
+        val candidates = props.filter(c => if (isSlot) c.isSlot || c.isScopedSlot else !(c.isSlot || c.isScopedSlot)).map(_.name)
+        val kind = if (isSlot) PropRefs.SlotAttr(written) else PropRefs.AttrName(written)
+        val fixes = similar(p, candidates).flatMap { c =>
+          PropRefs.renamed(kind, c).toOption.filter(_ != written).map(t => Fix(s"Change to '$t'", offset, offset + written.length, t))
+        }.distinct
+        Problem(offset, offset + written.length, s"<${e.name}> has no $what '$p'", List(p), fixes)
     }
     val defaultSlot =
       if (hasDefaultSlot && !known.contains("slot")) List(Problem(e.offset + 1, e.offset + 1 + e.name.length, s"<${e.name}> has no default slot (children are ignored)", List("slot")))
       else Nil
     val given = (attrs.map(_._1) ++ slots.map(_._1) ++ (if (hasDefaultSlot) List("slot") else Nil)).toSet
-    val missing = props.filter(p => p.hasDefault.contains(false) && !given.contains(p.name)).map(_.name)
+    val missingProps = props.filter(p => p.hasDefault.contains(false) && !given.contains(p.name))
+    val missing = missingProps.map(_.name)
     val missingProblem =
       if (missing.isEmpty) Nil
-      else List(Problem(e.offset + 1, e.offset + 1 + e.name.length, s"<${e.name}> is missing required prop${if (missing.size > 1) "s" else ""}: ${missing.mkString(", ")}", missing))
+      else {
+        // タグ名の直後に書き足す(スロットは書き足さない)
+        val insertable = missingProps.filterNot(p => p.isSlot || p.isScopedSlot)
+        val at = e.offset + 1 + e.name.length
+        val fix = if (insertable.isEmpty) Nil
+          else List(Fix(s"Add missing prop${if (insertable.size > 1) "s" else ""}: ${insertable.map(_.name).mkString(", ")}", at, at,
+            insertable.map(p => " " + attributeFor(p)).mkString))
+        List(Problem(e.offset + 1, e.offset + 1 + e.name.length, s"<${e.name}> is missing required prop${if (missing.size > 1) "s" else ""}: ${missing.mkString(", ")}", missing, fix))
+      }
     unknown ++ defaultSlot ++ missingProblem
   }
 

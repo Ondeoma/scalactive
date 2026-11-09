@@ -345,6 +345,52 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("インレイヒント: scriptの推論した型を、.stの位置で返す") {
+    val text = counter
+      .replace("  def twice(n: Int): Int = n * 2", "  def twice(n: Int): Int = n * 2\n  val hinted = List(1, 2)")
+    withText(counterUri, text) {
+      val index = new LineIndex(text)
+      val all = service.inlayHints(counterUri, index.range(0, text.length))
+      def labelAt(marker: String, delta: Int) = all.filter(_.getPosition == pos(text, marker, delta)).map(_.getLabel.getLeft)
+      assert(labelAt("hinted", "hinted".length).exists(_.contains("List[Int]")), all.map(h => (h.getPosition, h.getLabel.getLeft)))
+      assert(labelAt("initState()", "initState()".length).exists(_.contains("State")), all.map(h => (h.getPosition, h.getLabel.getLeft)))
+      // 型を書いたdefにはヒントを出さない
+      assert(labelAt("twice(n: Int)", "twice(n: Int)".length).isEmpty)
+      // 範囲で絞る
+      val line = pos(text, "val hinted").getLine
+      val inLine = service.inlayHints(counterUri, new org.eclipse.lsp4j.Range(new org.eclipse.lsp4j.Position(line, 0), new org.eclipse.lsp4j.Position(line + 1, 0)))
+      assert(inLine.nonEmpty && inLine.forall(_.getPosition.getLine == line), inLine)
+    }
+  }
+
+  test("クイックフィックス: 未知のprop・スロットを近い名前に直し、足りない必須のpropを書き足す") {
+    val text = counter.replace("<button @click", "<Card titel=\"t\" :cuont=\"s.count\" @clos=\"()\"><template #foter>h</template></Card><Card :count=\"s.count\" /><button @click")
+    withText(counterUri, text) {
+      def actionsAt(marker: String) = {
+        val p = pos(text, marker)
+        service.codeActions(counterUri, new org.eclipse.lsp4j.Range(p, p))
+      }
+      def edits(a: org.eclipse.lsp4j.CodeAction) = a.getEdit.getChanges.get(counterUri).asScala.map(_.getNewText).toList
+      val titel = actionsAt("titel")
+      assertEquals(titel.map(_.getTitle), List("Change to 'title'"))
+      assertEquals(edits(titel.head), List("title"))
+      assertEquals(titel.head.getKind, org.eclipse.lsp4j.CodeActionKind.QuickFix)
+      assertEquals(titel.head.getEdit.getChanges.get(counterUri).get(0).getRange.getStart, pos(text, "titel"))
+      assertEquals(actionsAt(":cuont").flatMap(edits), List(":count"))
+      assertEquals(actionsAt("@clos").flatMap(edits), List("@close"))
+      assertEquals(actionsAt("#foter").flatMap(edits), List("#footer"))
+      // 足りない必須のprop(2つ目のCard)はタグ名の直後に書き足す
+      val second = text.indexOf("<Card :count")
+      val missing = service.codeActions(counterUri, new org.eclipse.lsp4j.Range(pos(text, "<Card :count", 1), pos(text, "<Card :count", 3)))
+      assertEquals(missing.map(_.getTitle), List("Add missing prop: title"))
+      assertEquals(edits(missing.head), List(" title=\"\""))
+      assertEquals(missing.head.getEdit.getChanges.get(counterUri).get(0).getRange.getStart, pos(text, "<Card :count", 5))
+      assert(second > 0)
+      // 問題のないところでは何も出さない
+      assertEquals(actionsAt("<button @click"), Nil)
+    }
+  }
+
   test("propsの検査: ドキュメントサイトの.stには警告がない") {
     val root = Seq("doc/src/main/scalactive", "../doc/src/main/scalactive").map(java.nio.file.Paths.get(_)).find(Files.exists(_)).get
     val files = Files.walk(root).iterator().asScala.filter(_.toString.endsWith(".st")).toList

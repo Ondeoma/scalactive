@@ -82,6 +82,8 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
     caps.setDocumentHighlightProvider(true)
     caps.setDocumentFormattingProvider(true)
     caps.setReferencesProvider(true)
+    caps.setInlayHintProvider(true)
+    caps.setCodeActionProvider(new CodeActionOptions(java.util.Collections.singletonList(CodeActionKind.QuickFix)))
     caps.setRenameProvider(LspEither.forRight[java.lang.Boolean, RenameOptions](new RenameOptions(true)))
     caps.setSignatureHelpProvider(new SignatureHelpOptions(List("(", ",").asJava))
     CompletableFuture.completedFuture(new InitializeResult(caps, new ServerInfo("scalactive-language-server", BuildInfo.version)))
@@ -172,6 +174,19 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
               new org.eclipse.lsp4j.jsonrpc.messages.ResponseError(org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode.InvalidParams, msg, null))
         }
       }, requests)
+    }
+
+    override def inlayHint(params: InlayHintParams): CompletableFuture[java.util.List[InlayHint]] = {
+      async[java.util.List[InlayHint]](java.util.Collections.emptyList()) {
+        service.inlayHints(params.getTextDocument.getUri, params.getRange).asJava
+      }
+    }
+
+    override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[LspEither[Command, CodeAction]]] = {
+      async[java.util.List[LspEither[Command, CodeAction]]](java.util.Collections.emptyList()) {
+        service.codeActions(params.getTextDocument.getUri, params.getRange)
+          .map(a => LspEither.forRight[Command, CodeAction](a)).asJava
+      }
     }
 
     override def documentHighlight(params: DocumentHighlightParams): CompletableFuture[java.util.List[_ <: DocumentHighlight]] = {
