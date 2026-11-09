@@ -34,6 +34,15 @@ val counterCode = // language=html
      |</template>
      |""".stripMargin
 
+val stateNameCode = // language=html
+  """<template state="counter">
+     |  <div>
+     |    <p>count: {{ counter.count }}</p>
+     |    <button @click="counter.count := counter.count.v + 1">+1</button>
+     |  </div>
+     |</template>
+     |""".stripMargin
+
 val greetingCode = // language=html
   """<script lang="scala">
      |case class Props(userName: String, count: Reactive[Int] = RV(0))
@@ -451,12 +460,20 @@ val lazyRouteCode = // language=html
     <Counter />
   </div>
 
+  <p>
+    状態の名前は、<code>&lt;template&gt;</code> の <code>state</code> 属性で変更できます.<br>
+    状態の型に合わせた名前を付けると、テンプレートが読みやすくなります.
+  </p>
+
+  <pre><code class="language-st">{{ stateNameCode }}</code></pre>
+
   <h2 id="props">props</h2>
 
   <p>
     <code>&lt;script&gt;</code> に <code>case class Props(...)</code> を定義すると、<br>
     親から値を受け取れます.<br>
-    テンプレートからは <code>props</code> で参照できます.
+    テンプレートからは <code>props</code> で参照できます.<br>
+    (状態と同じく、<code>&lt;template props="p"&gt;</code> のように名前を変更できます.)
   </p>
 
   <pre><code class="language-st">{{ greetingCode }}</code></pre>

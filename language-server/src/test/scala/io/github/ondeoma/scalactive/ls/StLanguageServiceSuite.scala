@@ -585,6 +585,19 @@ class StLanguageServiceSuite extends munit.FunSuite {
     }
   }
 
+  test("コンポーネントの抽出: <template state=\"…\"> で名前を変えた状態もpropにする") {
+    val text = counter.replace("<template>", "<template state=\"model\">").replace("s.count", "model.count").replace("s.name", "model.name")
+    withText(counterUri, text) {
+      val index = new LineIndex(text)
+      val buttonStart = text.indexOf("<button")
+      val buttonEnd = text.indexOf("</button>") + "</button>".length
+      val r = service.extractComponent(counterUri, index.range(buttonStart, buttonEnd)).toOption.get
+      assertEquals(r.replacement, "<Extracted :model=\"model\" />")
+      assert(r.content.contains("case class Props(model: Counter.State)"), r.content)
+      assert(r.content.contains("<button @click=\"props.model.count := Counter.twice(props.model.count.v)\">+</button>"), r.content)
+    }
+  }
+
   test("TemplateCompletion.context: コメント・属性値・入れ子を正しく扱う") {
     import TemplateCompletion._
     def ctx(s: String) = context(s.replace("|", ""), 0, s.indexOf("|"))

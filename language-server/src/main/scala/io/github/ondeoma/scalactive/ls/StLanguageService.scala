@@ -334,6 +334,10 @@ final class StLanguageService(log: String => Unit) {
     val doc = prepare(uri).right.toOption
     val sfc = io.github.ondeoma.scalactive.compiler.SfcParser.parse(new io.github.ondeoma.scalactive.compiler.SourceText(text))
     val inScript = (o: Int) => sfc.script.exists(b => o >= b.contentStart && o < b.contentEnd)
+    // genHtmlの引数の名前(<template state="…" props="…"> で変えられる)
+    val genArgNames = Set(
+      sfc.template.flatMap(_.attr("state")).flatMap(_.value).getOrElse("s"),
+      sfc.template.flatMap(_.attr("props")).flatMap(_.value).getOrElse("props"))
     val (selStart, selEnd) = ComponentExtractor.selection(text, start, end).getOrElse((start, end))
     def resolve(id: ComponentExtractor.Ident): ComponentExtractor.Resolution = {
       doc.flatMap { d =>
@@ -356,8 +360,8 @@ final class StLanguageService(log: String => Unit) {
                 case Some(st) if inScript(st) => ComponentExtractor.ScriptMember
                 case Some(_) => ComponentExtractor.External(typeOf) // テンプレートの、範囲の外の変数
                 case None =>
-                  // 生成コードの引数(s・props)
-                  if (id.name == "s" || id.name == "props") ComponentExtractor.External(typeOf) else ComponentExtractor.Keep
+                  // 生成コードの引数(状態・props)
+                  if (genArgNames.contains(id.name)) ComponentExtractor.External(typeOf) else ComponentExtractor.Keep
               }
             case _ => ComponentExtractor.Keep
           }
