@@ -24,6 +24,35 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         return PsiTreeUtil.getChildrenOfTypeAsList(((XmlFile) f).getDocument(), XmlTag.class).stream().map(XmlTag::getName).toList();
     }
 
+    public void testCloseTagInScalaStringDoesNotEndScript() {
+        // コードサンプルの文字列の中の </script>・<style> では、外側の<script>は閉じない(残りがHTML・CSSとして解析されない)
+        String text = String.join("\n",
+            "<script lang=\"scala\">",
+            "val code = // language=html",
+            "  \"\"\"<script lang=\"scala\">",
+            "     |def initState() = State()",
+            "     |</script>",
+            "     |<style scoped>",
+            "     |.active { color: seagreen; }",
+            "     |</style>",
+            "     |\"\"\".stripMargin",
+            "val s = \"</script>\" // </script>",
+            "/* </script> */",
+            "</script>",
+            "<template><p>{{ code }}</p></template>",
+            "<style scoped>.x { color: red; }</style>",
+            "");
+        PsiFile f = myFixture.configureByText("A.st", text);
+        assertEquals(List.of("script", "template", "style"), rootTags(f));
+        XmlTag script = PsiTreeUtil.getChildrenOfTypeAsList(((XmlFile) f).getDocument(), XmlTag.class).get(0);
+        assertEquals(text.lastIndexOf("</script>") + "</script>".length(), script.getTextRange().getEndOffset());
+        // 文字列の中はCSSとして解析されず、誤ったエラーも出ない
+        PsiElement inString = f.findElementAt(text.indexOf(".active"));
+        assertFalse(PsiTreeUtil.collectParents(inString, PsiElement.class, true, e -> e instanceof PsiFile).stream()
+            .anyMatch(e -> e.getLanguage().getID().equals("CSS")));
+        assertEmpty(PsiTreeUtil.collectElementsOfType(f, com.intellij.psi.PsiErrorElement.class));
+    }
+
     public void testScriptIsNotJavaScript() {
         PsiFile f = myFixture.configureByText("A.st", "<script lang=\"scala\">\ncase class Props(title: String)\ndef f(s: State): Unit = s.count := 1\n</script>\n<template><p></p></template>\n");
         // Scalaのコードが、JavaScriptやHTMLのタグとして解析されていない
