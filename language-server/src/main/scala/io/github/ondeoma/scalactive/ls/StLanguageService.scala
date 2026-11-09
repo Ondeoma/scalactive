@@ -20,6 +20,9 @@ import scala.util.control.NonFatal
  */
 final class StLanguageService(log: String => Unit) {
 
+  /** テンプレートでHTMLの標準のタグ・属性・属性値も補完するか(initializationOptionsの htmlCompletion) */
+  @volatile var htmlCompletion: Boolean = true
+
   import StLanguageService._
 
   private val threadFactory: ThreadFactory = (r: Runnable) => {
@@ -227,7 +230,7 @@ final class StLanguageService(log: String => Unit) {
       val path = Paths.get(new URI(uri)).toAbsolutePath.normalize
       val text = textOf(uri, path)
       val index = new LineIndex(text)
-      TemplateCompletion.complete(text, index.offset(pos), path, index).map(items => new CompletionList(false, items.asJava))
+      TemplateCompletion.complete(text, index.offset(pos), path, index, htmlCompletion).map(items => new CompletionList(false, items.asJava))
     } catch {
       case NonFatal(e) =>
         log(s"template completion failed: $e")

@@ -41,6 +41,15 @@ public final class ScalactiveLspServerDescriptor extends ProjectWideLspServerDes
         return "scalactive";
     }
 
+    /**
+     * テンプレートのHTMLのタグ・属性・属性値の補完はIntelliJ自身が出すため、言語サーバーには出させない
+     * (子コンポーネント・prop・ディレクティブ・:attr・@eventの補完は言語サーバーが出す)
+     */
+    @Override
+    public Object createInitializationOptions() {
+        return java.util.Map.of("htmlCompletion", false);
+    }
+
     /** .stの「コードの整形」は言語サーバー(textDocument/formatting)に任せる */
     @Override
     public @NotNull LspFormattingSupport getLspFormattingSupport() {

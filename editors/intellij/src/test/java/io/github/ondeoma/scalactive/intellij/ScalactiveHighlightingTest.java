@@ -4,7 +4,6 @@ import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.editor.highlighter.HighlighterIterator;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
-import org.jetbrains.plugins.textmate.TextMateFileType;
 import org.jetbrains.plugins.textmate.TextMateService;
 import org.jetbrains.plugins.textmate.language.TextMateLanguageDescriptor;
 import org.jetbrains.plugins.textmate.language.syntax.lexer.TextMateElementType;
@@ -49,8 +48,7 @@ public class ScalactiveHighlightingTest extends BasePlatformTestCase {
         // プロジェクトビュー・タブと同じ経路(IconUtil)で.stのアイコンが選ばれる
         com.intellij.openapi.vfs.VirtualFile st = myFixture.configureByText("Icon.st", "<template></template>").getVirtualFile();
         javax.swing.Icon icon = com.intellij.util.IconUtil.getIcon(st, 0, getProject());
-        assertTrue("icon: " + icon, String.valueOf(icon).contains("st.svg") || icon == ScalactiveFileIconProvider.ICON);
-        assertNull(new ScalactiveFileIconProvider().getIcon(myFixture.configureByText("a.txt", "").getVirtualFile(), 0, getProject()));
+        assertTrue("icon: " + icon, String.valueOf(icon).contains("st.svg"));
     }
 
     public void testStExtensionIsAssociated() {
@@ -61,7 +59,8 @@ public class ScalactiveHighlightingTest extends BasePlatformTestCase {
 
     public void testHighlighting() {
         myFixture.configureByText("Sample.st", SAMPLE);
-        assertTrue(myFixture.getFile().getFileType() instanceof TextMateFileType);
+        // .stはScalactiveのファイルタイプ(HTMLの方言)として開かれ、色付けは同梱のTextMateの文法で行われる
+        assertSame(ScalactiveFileType.INSTANCE, myFixture.getFile().getFileType());
 
         assertScope("case", "meta.embedded.block.scala");
         assertScope("case", "keyword");

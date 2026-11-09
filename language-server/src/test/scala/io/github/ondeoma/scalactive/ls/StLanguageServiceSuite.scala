@@ -266,6 +266,19 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assertEquals(dir.sorted, List("auto", "ltr", "rtl"))
   }
 
+  test("テンプレートの補完: htmlCompletion = false(IntelliJ)ではHTMLの標準のタグ・属性・属性値を出さない") {
+    service.htmlCompletion = false
+    try {
+      val tags = labels(counterUri, counter.replace("<button @click", "<|<button @click"))
+      assert(!tags.contains("textarea") && tags.contains("Card"), tags)
+      val input = labels(counterUri, counter.replace("<button @click", "<input | /><button @click"))
+      assert(!input.contains("type") && !input.contains("id"), input)
+      assert(input.contains(":value") && input.contains("v-model") && input.contains("@keydown"), input)
+      val types = labels(counterUri, counter.replace("<button @click", "<input type=\"|\" /><button @click"))
+      assert(types.isEmpty, types)
+    } finally service.htmlCompletion = true
+  }
+
   test("テンプレートの補完: <slot name=\"\">に自分のPropsのスロット名") {
     val cardUri = srcRoot.resolve("app/Card.st").toUri.toString
     val text = new String(Files.readAllBytes(srcRoot.resolve("app/Card.st")), StandardCharsets.UTF_8)

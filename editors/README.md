@@ -9,7 +9,7 @@ VS CodeとIntelliJ IDEAに提供します.
 | ディレクトリ | 内容 |
 | --- | --- |
 | `vscode/` | VS Code拡張. この形式のまま、IntelliJのTextMateバンドルとしても使います. |
-| `intellij/` | IntelliJプラグイン. `vscode/` の文法と、埋め込み用のScala文法をTextMateバンドルとして同梱します. |
+| `intellij/` | IntelliJプラグイン. `.st` をHTMLの方言として解析し、色付けには `vscode/` の文法と埋め込み用のScala文法(TextMateバンドル)を使います. |
 | `../language-server/` | 言語サーバー(Scala 2.12, lsp4j). |
 
 ## 言語サーバーの仕組み
@@ -75,8 +75,17 @@ cd editors/intellij
   [scala/vscode-scala-syntax](https://github.com/scala/vscode-scala-syntax)(MIT)の文法を同梱しています.
   `.scala` ファイルには関連付けないので、Scalaプラグインとは競合しません.
 - CSSの文法はIntelliJ同梱のTextMateバンドルを使います.
+- `.st` は「Scalactive」のファイルタイプ(`ScalactiveLanguage`、HTMLの方言)として開かれます.
+  - 解析はIntelliJのHTMLのものを使うため、テンプレートでHTMLのタグ・属性の補完、閉じタグの挿入、Emmet(Tabキーでの展開)、
+    構造ビューが使え、`<style>` の中はCSS(補完・検査)として扱われます(CSSの機能にはCSSプラグインが必要で、IntelliJ IDEA Ultimateなどに含まれます).
+  - `<script>` の中はJavaScriptとして扱わず、そのままのテキストにします(`ScalactiveLexer`).
+  - 色付けは解析とは別に、同梱のTextMateの文法で行います(`TextMateSyntaxHighlighterFactory` / `TextMateEditorHighlighterProvider` を登録).
+  - ディレクティブ(`v-if`・`:attr`・`@event`・`#slot`・`ref`)、子コンポーネントのタグとその属性、`<script lang>`・`<style scoped>` は、
+    HTMLの検査で「未知のタグ・属性」と警告しないようにしています(`ScalactiveInspectionSuppressor`. propの間違いは言語サーバーが警告します).
+  - コメントの切り替え(Cmd+/)は、scriptでは `//`、styleでは `/* */`、templateではHTMLのコメントです(`ScalactiveCommentProvider`).
+  - 言語サーバーには `initializationOptions` で `{"htmlCompletion": false}` を渡し、HTMLの標準のタグ・属性・属性値の補完を
+    IntelliJの補完と重ならないようにしています(子コンポーネント・prop・ディレクティブ・`:attr`・`@event` は言語サーバーが補完します).
 - `.st` のファイルのアイコンは `intellij/src/main/resources/icons/st.svg`(ダークテーマ用は `st_dark.svg`)です.
-  `.st` はTextMateのファイルタイプとして開かれるため、`FileIconProvider` でアイコンを付けています.
 - 言語サーバーはIntelliJのLSP API(2025.2以降のプラットフォームに含まれます)で起動し、IDEのJava(JBR)で動かします.
   jarはプラグインの `server/` に同梱されます.
 - テストのサンドボックスの状態がおかしくなった場合は `.intellijPlatform/sandbox` を削除してください.

@@ -67,6 +67,12 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
   }
 
   override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = {
+    // IntelliJはテンプレートをHTMLとして扱い、HTMLの補完を自分で出すため {"htmlCompletion": false} を渡す
+    params.getInitializationOptions match {
+      case o: com.google.gson.JsonObject if o.has("htmlCompletion") && o.get("htmlCompletion").isJsonPrimitive =>
+        service.htmlCompletion = o.get("htmlCompletion").getAsBoolean
+      case _ =>
+    }
     val caps = new ServerCapabilities()
     caps.setTextDocumentSync(TextDocumentSyncKind.Full)
     // "." はScalaの部分、"<" "@" "#" "\"" はテンプレートの部分(タグ名・イベント・スロット名・<slot name>)の補完のきっかけ

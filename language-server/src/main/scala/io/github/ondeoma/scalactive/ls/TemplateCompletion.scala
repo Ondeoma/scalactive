@@ -194,8 +194,9 @@ object TemplateCompletion {
    * テンプレートの中なら補完の候補を返します(テンプレートの外・Scalaの部分ならNone).
    *
    * @param file 補完している.stのパス(同じパッケージのコンポーネントを探すため)
+   * @param htmlItems HTMLの標準のタグ・属性・属性値も補完するか(IntelliJはHTMLとして自分で補完するためfalse)
    */
-  def complete(text: String, offset: Int, file: Path, index: LineIndex): Option[List[CompletionItem]] = {
+  def complete(text: String, offset: Int, file: Path, index: LineIndex, htmlItems: Boolean = true): Option[List[CompletionItem]] = {
     val template = try SfcParser.parse(new SourceText(text)).template catch {
       case NonFatal(_) => None
     }
@@ -211,7 +212,7 @@ object TemplateCompletion {
             item(n, CompletionItemKind.Class, "component", r, sort = "0")
           }
           // 子コンポーネントの中の<template>は、スロットに渡す内容
-          components ++ HtmlData.tags.map { case (n, d) => item(n, CompletionItemKind.Keyword, s"<$n> $d", r) }
+          components ++ (if (htmlItems) HtmlData.tags.map { case (n, d) => item(n, CompletionItemKind.Keyword, s"<$n> $d", r) } else Nil)
         case AttrName(tag, start, stack) =>
           val r = range(start)
           if (tag.headOption.exists(_.isUpper)) {
@@ -241,10 +242,10 @@ object TemplateCompletion {
             // 要素の属性 → ディレクティブ → 全体の属性 → イベントの順
             def htmlAttr(n: String, d: String, sort: String) = attr(n, d, r, value = !booleanAttributes.contains(n), sort = sort)
             val own = HtmlData.attributesOf(tag)
-            own.map { case (n, d) => htmlAttr(n, d, "0") } ++
+            (if (htmlItems) own.map { case (n, d) => htmlAttr(n, d, "0") } else Nil) ++
               own.map { case (n, d) => attr(":" + n, d + "(バインド)", r, sort = "1") } ++
               elementDirectives.map(d => attr(d, "directive", r, value = d != "v-else", sort = "1")) ++
-              HtmlData.globalAttributes.map { case (n, d) => htmlAttr(n, d, "2") } ++
+              (if (htmlItems) HtmlData.globalAttributes.map { case (n, d) => htmlAttr(n, d, "2") } else Nil) ++
               HtmlData.events.filterNot { case (e, _) => elementDirectives.contains("@" + e) }.map { case (e, d) =>
                 attr("@" + e, d, r, sort = "3")
               }
@@ -255,7 +256,7 @@ object TemplateCompletion {
           readProps(file).collect {
             case p if (p.isSlot || p.isScopedSlot) && p.name != "slot" => item(kebab(p.name), CompletionItemKind.Property, p.tpe, r)
           }
-        case AttrValue(tag, attrName, start) if !attrName.startsWith(":") && !attrName.startsWith("v-") && !attrName.startsWith("@") =>
+        case AttrValue(tag, attrName, start) if htmlItems && !attrName.startsWith(":") && !attrName.startsWith("v-") && !attrName.startsWith("@") =>
           // 列挙された属性値(input の type など)
           val r = range(start)
           HtmlData.valuesOf(tag, attrName).map(v => item(v, CompletionItemKind.EnumMember, attrName + "=\"" + v + "\"", r))

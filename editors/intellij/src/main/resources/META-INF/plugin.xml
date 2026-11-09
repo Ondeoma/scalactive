@@ -9,7 +9,11 @@
       <li>In <code>&lt;template&gt;</code>, <code>{{ expr }}</code>, <code>v-if</code> / <code>v-else-if</code> / <code>v-show</code> / <code>v-model</code> / <code>v-for</code>,
           <code>:attr</code> and <code>@event</code> values are highlighted as Scala.</li>
       <li>Component tags (starting with an uppercase letter) are highlighted separately.</li>
-      <li><code>.st</code> files get their own file icon.</li>
+      <li>The template is handled as HTML: IntelliJ's HTML completion, closing tag insertion, Emmet and structure view work there,
+          and <code>&lt;style&gt;</code> is handled as CSS (completion and inspections, with the CSS plugin).</li>
+      <li>Directives, component tags and their props are not reported as unknown HTML tags or attributes.</li>
+      <li>Comment with Line Comment uses <code>//</code> in the script, <code>/* */</code> in the style and HTML comments in the template.</li>
+      <li><code>.st</code> files get their own file type and icon.</li>
     </ul>
     <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
        the Scalactive language server (requires an IDE with LSP support and an sbt project that enables <code>ScalactivePlugin</code>;
@@ -17,11 +21,22 @@
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.xml</depends>
   <depends>org.jetbrains.plugins.textmate</depends>
 
   <extensions defaultExtensionNs="com.intellij">
-    <!-- .stファイルのアイコン -->
-    <fileIconProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveFileIconProvider"/>
+    <!-- .stはHTMLの方言として解析し、色付けは同梱のTextMateの文法で行う -->
+    <fileType name="Scalactive" language="Scalactive" extensions="st" fieldName="INSTANCE"
+              implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveFileType"/>
+    <lang.parserDefinition language="Scalactive" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveParserDefinition"/>
+    <lang.syntaxHighlighterFactory language="Scalactive"
+              implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateSyntaxHighlighterFactory"/>
+    <!-- ディレクティブ・子コンポーネントのタグをHTMLの検査で警告しない -->
+    <lang.inspectionSuppressor language="Scalactive" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveInspectionSuppressor"/>
+    <!-- コメントの切り替えをブロックごとの書き方に(script: //、style: /* */、template: HTMLのコメント) -->
+    <multiLangCommenter implementation="io.github.ondeoma.scalactive.intellij.ScalactiveCommentProvider"/>
+    <editorHighlighterProvider filetype="Scalactive"
+              implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
     <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>
     <!-- 補完・型エラーなど(言語サーバー). LSP APIはIntelliJ IDEA 2025.2以降のプラットフォームに含まれます. -->
     <platform.lsp.serverSupportProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLspServerSupportProvider"/>
