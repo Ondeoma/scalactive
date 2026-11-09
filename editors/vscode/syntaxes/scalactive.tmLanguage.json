@@ -92,6 +92,18 @@
           "contentName": "meta.embedded.block.scala",
           "patterns": [
             {
+              "comment": "stripMarginの文字列に埋め込んだ.st(// language=html)で、行頭の | を余白の区切りとして読む(|</script> の | をScalaの演算子として読み、閉じタグを見落とさないため)",
+              "match": "^\\s*(\\|)",
+              "captures": {
+                "1": {
+                  "name": "punctuation.separator.margin.scala"
+                }
+              }
+            },
+            {
+              "include": "#language-injection"
+            },
+            {
               "include": "source.scala"
             }
           ]
@@ -142,6 +154,14 @@
           "end": "(?=</style\\s*>)",
           "contentName": "meta.embedded.block.css",
           "patterns": [
+            {
+              "match": "^\\s*(\\|)",
+              "captures": {
+                "1": {
+                  "name": "punctuation.separator.margin.scala"
+                }
+              }
+            },
             {
               "include": "source.css"
             }
@@ -620,6 +640,172 @@
         },
         {
           "include": "source.scala"
+        }
+      ]
+    },
+    "language-injection": {
+      "patterns": [
+        {
+          "comment": "// language=scala のコメントに続く三重引用符の文字列を、scalaとして色付けする. while で、stripMarginの行(|で始まる)・文字列の始まりの行・定義の行(val x = / val x = {)の間だけ続け、埋め込んだ側が(\\\" などの)エスケープを読み違えても後ろのコードに影響しないようにする.",
+          "begin": "(//)\\s*(language\\s*=\\s*(?:scala))\\b.*$",
+          "beginCaptures": {
+            "0": {
+              "name": "comment.line.double-slash.scala"
+            },
+            "1": {
+              "name": "punctuation.definition.comment.scala"
+            }
+          },
+          "while": "^(?=\\s*\\|)|^(?=\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?\"\"\")|^(?=[^\"/]*=\\s*\\{?\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?(?:\"\"\"|$))",
+          "patterns": [
+            {
+              "begin": "([A-Za-z_][A-Za-z0-9_]*)?(\"\"\")",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.interpolation.scala"
+                },
+                "2": {
+                  "name": "punctuation.definition.string.begin.scala"
+                }
+              },
+              "end": "\"\"\"(?!\")",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.scala"
+                }
+              },
+              "name": "meta.string.injected.scala.scalactive",
+              "contentName": "meta.embedded.block.scala",
+              "patterns": [
+                {
+                  "match": "(?:\\G|^\\s*)(\\|)",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.separator.margin.scala"
+                    }
+                  }
+                },
+                {
+                  "include": "source.scala"
+                }
+              ]
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
+        },
+        {
+          "comment": "// language=html のコメントに続く三重引用符の文字列を、htmlとして色付けする. while で、stripMarginの行(|で始まる)・文字列の始まりの行・定義の行(val x = / val x = {)の間だけ続け、埋め込んだ側が(\\\" などの)エスケープを読み違えても後ろのコードに影響しないようにする.",
+          "begin": "(//)\\s*(language\\s*=\\s*(?:html|st|scalactive))\\b.*$",
+          "beginCaptures": {
+            "0": {
+              "name": "comment.line.double-slash.scala"
+            },
+            "1": {
+              "name": "punctuation.definition.comment.scala"
+            }
+          },
+          "while": "^(?=\\s*\\|)|^(?=\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?\"\"\")|^(?=[^\"/]*=\\s*\\{?\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?(?:\"\"\"|$))",
+          "patterns": [
+            {
+              "begin": "([A-Za-z_][A-Za-z0-9_]*)?(\"\"\")",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.interpolation.scala"
+                },
+                "2": {
+                  "name": "punctuation.definition.string.begin.scala"
+                }
+              },
+              "end": "\"\"\"(?!\")",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.scala"
+                }
+              },
+              "name": "meta.string.injected.html.scalactive",
+              "contentName": "meta.embedded.block.scalactive",
+              "patterns": [
+                {
+                  "match": "(?:\\G|^\\s*)(\\|)",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.separator.margin.scala"
+                    }
+                  }
+                },
+                {
+                  "include": "#comment"
+                },
+                {
+                  "include": "#script-block"
+                },
+                {
+                  "include": "#style-block"
+                },
+                {
+                  "include": "#template-block"
+                },
+                {
+                  "include": "#template-content"
+                }
+              ]
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
+        },
+        {
+          "comment": "// language=css のコメントに続く三重引用符の文字列を、cssとして色付けする. while で、stripMarginの行(|で始まる)・文字列の始まりの行・定義の行(val x = / val x = {)の間だけ続け、埋め込んだ側が(\\\" などの)エスケープを読み違えても後ろのコードに影響しないようにする.",
+          "begin": "(//)\\s*(language\\s*=\\s*(?:css))\\b.*$",
+          "beginCaptures": {
+            "0": {
+              "name": "comment.line.double-slash.scala"
+            },
+            "1": {
+              "name": "punctuation.definition.comment.scala"
+            }
+          },
+          "while": "^(?=\\s*\\|)|^(?=\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?\"\"\")|^(?=[^\"/]*=\\s*\\{?\\s*(?:[A-Za-z_][A-Za-z0-9_]*)?(?:\"\"\"|$))",
+          "patterns": [
+            {
+              "begin": "([A-Za-z_][A-Za-z0-9_]*)?(\"\"\")",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.interpolation.scala"
+                },
+                "2": {
+                  "name": "punctuation.definition.string.begin.scala"
+                }
+              },
+              "end": "\"\"\"(?!\")",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.string.end.scala"
+                }
+              },
+              "name": "meta.string.injected.css.scalactive",
+              "contentName": "meta.embedded.block.css",
+              "patterns": [
+                {
+                  "match": "(?:\\G|^\\s*)(\\|)",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.separator.margin.scala"
+                    }
+                  }
+                },
+                {
+                  "include": "source.css"
+                }
+              ]
+            },
+            {
+              "include": "source.scala"
+            }
+          ]
         }
       ]
     }

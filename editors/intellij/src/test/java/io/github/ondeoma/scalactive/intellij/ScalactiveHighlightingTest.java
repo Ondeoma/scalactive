@@ -71,9 +71,46 @@ public class ScalactiveHighlightingTest extends BasePlatformTestCase {
         assertScope("MyCard", "support.class.component.scalactive");
     }
 
-    /** textの先頭位置のトークンのスコープ(親を含む)に、scopeで始まるものがあることを確認します. */
+    private static final String INJECTION_SAMPLE = String.join("\n",
+        "<script lang=\"scala\">",
+        "val code = // language=scala",
+        "  s\"\"\"// コメント",
+        "     |val rvB = RV(true)",
+        "     |s\\\"\\\"\\\"<p $${clsIf(rvB, \"clsA\")}></p>\\\"\\\"\\\"",
+        "     |\"\"\".stripMargin",
+        "val page = // language=html",
+        "  \"\"\"|<template>",
+        "     |  <button @click=\"n := 1\">{{ n }}</button>",
+        "     |</template>",
+        "     |\"\"\".stripMargin",
+        "def after = 1",
+        "</script>",
+        "");
+
+    public void testLanguageInjectionComment() {
+        myFixture.configureByText("Injection.st", INJECTION_SAMPLE);        // // language=scala / html の後の文字列は、その言語として色付けされる
+        assertScope(INJECTION_SAMPLE, "val rvB", "meta.string.injected.scala.scalactive");
+        assertScope(INJECTION_SAMPLE, "val rvB", "keyword");
+        assertScope(INJECTION_SAMPLE, "button", "entity.name.tag");
+        assertScope(INJECTION_SAMPLE, "{{", "punctuation.definition.interpolation.begin.scalactive");
+        // 文字列の後ろのコードには影響しない
+        assertScope(INJECTION_SAMPLE, "def after", "keyword");
+        assertNoScope(INJECTION_SAMPLE, "def after", "meta.string.injected");
+    }
+
     private void assertScope(String text, String scope) {
-        int offset = SAMPLE.indexOf(text);
+        assertScope(SAMPLE, text, scope);
+    }
+
+    private void assertNoScope(String sample, String text, String scope) {
+        List<String> scopes = scopesAt(sample.indexOf(text));
+        assertFalse("'" + text + "' should not have scope " + scope + " but was " + scopes,
+            scopes.stream().anyMatch(s -> s.startsWith(scope)));
+    }
+
+    /** textの先頭位置のトークンのスコープ(親を含む)に、scopeで始まるものがあることを確認します. */
+    private void assertScope(String sample, String text, String scope) {
+        int offset = sample.indexOf(text);
         assertTrue("not found: " + text, offset >= 0);
         List<String> scopes = scopesAt(offset);
         assertTrue("'" + text + "' should have scope " + scope + " but was " + scopes,

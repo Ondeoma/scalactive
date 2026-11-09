@@ -98,6 +98,10 @@ import Router.*
   <ul>
     <li>シンタックスハイライト(script・テンプレートの中のScala、style)</li>
     <li>
+      script の中で <code>// language=scala</code> / <code>html</code> / <code>css</code> のコメントに続く三重引用符の文字列を、<br>
+      その言語として色付け(<code>html</code> は.stとして色付けします)
+    </li>
+    <li>
       Scalaの補完・型エラー・ホバー・引数のヒント・定義へのジャンプ<br>
       (Scala 3のpresentation compilerを使い、.st上の位置で表示)
     </li>

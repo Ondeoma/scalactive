@@ -242,6 +242,88 @@ test("スコープ付きスロット #name=\"param\" の値はScala", () => {
   expectScopes(t, 1, "idx", ["meta.embedded.inline.scala"]);
 });
 
+
+// ---- // language= のコメントに続く文字列 ----
+
+test("// language=scala の文字列はScala. エスケープした三重引用符があっても後ろのコードに漏れない", () => {
+  const t = tokenize(`<script lang="scala">
+val code = // language=scala
+  s"""// コメント
+     |val rvB = RV(true)
+     |s\\"\\"\\"<p $\${clsIf(rvB, "clsA")}></p>\\"\\"\\"
+     |""".stripMargin
+
+val next = "plain"
+</script>
+`);
+  expectScopes(t, 1, "language=scala", ["comment.line.double-slash.scala"]);
+  expectScopes(t, 3, "val", ["meta.string.injected.scala.scalactive", "meta.embedded.block.scala", "keyword"]);
+  expectScopes(t, 3, "|", ["punctuation.separator.margin.scala"]);
+  expectScopes(t, 4, "rvB", ["meta.string.injected.scala.scalactive"]);
+  expectNotScope(t, 7, "val", "meta.string.injected");
+  expectScopes(t, 7, "plain", ["string.quoted"]);
+  expectScopes(t, 8, "script", ["entity.name.tag.script.html"]);
+});
+
+test("// language=html の文字列は.st(タグ・{{ }}・ディレクティブ). 中の</script>で外側のscriptが閉じない", () => {
+  const t = tokenize(`<script lang="scala">
+// language=html
+val code =
+  """|<script lang="scala">
+     |val n = RV(0)
+     |</script>
+     |<template>
+     |  <button @click="n := n.v + 1">{{ n }}</button>
+     |</template>
+     |""".stripMargin
+val after = 1
+</script>
+`);
+  expectScopes(t, 3, "script", ["meta.string.injected.html.scalactive", "entity.name.tag.script.html"]);
+  expectScopes(t, 4, "val", ["meta.string.injected.html.scalactive", "keyword"]);
+  expectScopes(t, 7, "button", ["entity.name.tag"]);
+  expectScopes(t, 7, "click", ["entity.other.attribute-name"]);
+  expectScopes(t, 7, "n", ["meta.embedded.inline.scala"], 0);
+  expectNotScope(t, 10, "val", "meta.string.injected");
+  expectScopes(t, 10, "val", ["meta.block.script.scalactive"]);
+  expectScopes(t, 11, "script", ["entity.name.tag.script.html"]);
+  expectNotScope(t, 11, "script", "meta.string.injected");
+});
+
+test("// language=css の文字列はCSS", () => {
+  const t = tokenize(`<script lang="scala">
+val css = // language=css
+  """.a { color: red; }"""
+</script>
+`);
+  expectScopes(t, 2, "color", ["meta.string.injected.css.scalactive", "support.type.property-name.css"]);
+});
+
+// ドキュメントの全.stで、language= の文字列が<script>の外に漏れない
+function stFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? stFiles(new URL(e.name + "/", dir)) : e.name.endsWith(".st") ? [new URL(e.name, dir)] : []);
+}
+const contentsDir = new URL("../../../doc/src/main/scalactive/io/github/ondeoma/scalactive/doc/components/contents/", import.meta.url);
+for (const url of stFiles(contentsDir)) {
+  const src = readFileSync(url, "utf8");
+  if (!/\/\/\s*language=/.test(src)) continue;
+  test(`doc/${url.pathname.split("/contents/")[1]} で language= の文字列が<script>の外に漏れない`, () => {
+    const lines = tokenize(src);
+    const closeLine = src.split("\n").findIndex((l) => /^<\/script>/.test(l));
+    assert.ok(closeLine >= 0);
+    const closeTokens = lines[closeLine];
+    assert.ok(closeTokens.some((x) => x.content === "script" && x.scopes.includes("entity.name.tag.script.html") &&
+      !x.scopes.some((s) => s.startsWith("meta.string.injected"))), `</script> on line ${closeLine + 1} is not closing the block`);
+    lines.slice(closeLine + 1).forEach((line, i) => {
+      for (const x of line) {
+        assert.ok(!x.scopes.some((s) => s.startsWith("meta.string.injected") || s === "meta.block.script.scalactive"),
+          `line ${closeLine + 2 + i}: '${x.content}' leaked: ${x.scopes.join(", ")}`);
+      }
+    });
+  });
+}
+
 if (failures > 0) {
   console.log(`${failures} test(s) failed`);
   process.exit(1);

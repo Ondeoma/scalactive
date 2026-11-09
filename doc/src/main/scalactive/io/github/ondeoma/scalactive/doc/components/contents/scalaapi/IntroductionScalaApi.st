@@ -2,7 +2,7 @@
 import io.github.ondeoma.scalactive.doc.components.contents.introduction.SampleComponent
 
 // language=scala
-val code = {
+val code =
   s"""import io.github.ondeoma.scalactive.doc.components.contents.introduction.SampleComponent.State
      |import io.github.ondeoma.scalactive.components.*
      |import io.github.ondeoma.scalactive.reactive.*
@@ -56,7 +56,6 @@ val code = {
      |  }
      |}
      |""".stripMargin
-}
 </script>
 
 <template>
