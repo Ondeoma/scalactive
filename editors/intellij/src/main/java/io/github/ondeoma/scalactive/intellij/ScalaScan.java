@@ -94,7 +94,7 @@ final class ScalaScan {
     /** ファイル全体の、&lt;script&gt;の中の三重引用符の文字列 */
     static List<TripleString> tripleStrings(CharSequence text) {
         List<TripleString> result = new ArrayList<>();
-        for (TextRange r : scriptContents(text)) scan(text, r.getStartOffset(), r.getEndOffset(), result);
+        for (TextRange r : scriptContents(text)) scan(text, r.getStartOffset(), r.getEndOffset(), result, null);
         return result;
     }
 
@@ -103,7 +103,7 @@ final class ScalaScan {
      * コードの中に見つからなければ(閉じていない文字列など)単純に探します. どちらも無ければend.
      */
     static int scriptEnd(CharSequence s, int from, int end) {
-        int found = scan(s, from, end, null);
+        int found = scan(s, from, end, null, null);
         if (found >= 0) return found;
         for (int k = from; k < end; k++) {
             if (s.charAt(k) == '<' && startsWithIgnoreCase(s, k, end, "</script")) return k;
@@ -114,15 +114,18 @@ final class ScalaScan {
     /**
      * [from, end) をScalaとして読み、文字列・コメントの外にある最初の &lt;/script の位置を返します(無ければ-1).
      * strings が null でなければ、そこまでの三重引用符の文字列を加えます.
+     * lineComments が null でなければ、そこまでの // のコメントの範囲を加えます.
      */
-    private static int scan(CharSequence s, int from, int end, List<TripleString> strings) {
+    private static int scan(CharSequence s, int from, int end, List<TripleString> strings, List<TextRange> lineComments) {
         int i = from;
         while (i < end) {
             char c = s.charAt(i);
             if (c == '<' && startsWithIgnoreCase(s, i, end, "</script")) {
                 return i;
             } else if (c == '/' && startsWith(s, i, end, "//")) {
+                int commentStart = i;
                 while (i < end && s.charAt(i) != '\n') i++;
+                if (lineComments != null) lineComments.add(new TextRange(commentStart, i));
             } else if (c == '/' && startsWith(s, i, end, "/*")) {
                 int depth = 0;
                 while (i < end) {
@@ -148,6 +151,119 @@ final class ScalaScan {
             }
         }
         return -1;
+    }
+
+    /** // language=xxx のコメントに続く文字列への言語の注入. ranges は注入する部分(余白の | や ${...} を除いた中身) */
+    record Injection(String languageId, List<TextRange> ranges) {
+    }
+
+    private static final Pattern LANGUAGE_COMMENT = Pattern.compile("^//\\s*language=([\\w.+#-]+)");
+
+    /** コメントの後ろから文字列の始まりまでに書けるもの(定義の左辺、{、補間子) */
+    private static final Pattern BEFORE_STRING = Pattern.compile(
+        "\\s*(?:(?:(?:private|protected|final|lazy|override|implicit|inline)\\s+)*(?:val|var|def|given)\\s+[\\w$]+(?:\\s*:\\s*[^=\\n]+?)?\\s*=)?\\s*\\{?\\s*([A-Za-z_]\\w*)?");
+
+    private static final Pattern STRIP_MARGIN = Pattern.compile("^\\s*\\.stripMargin(?:\\s*\\(\\s*'(.)'\\s*\\))?");
+
+    /**
+     * &lt;script&gt;の中の、// language=xxx のコメントに続く三重引用符の文字列.
+     * (VS Code・IntelliJのTextMateの文法の language-injection と同じ書き方を受け付けます)
+     * <pre>
+     * val code = // language=html
+     *   s"""|&lt;p&gt;${x}&lt;/p&gt;
+     *       |""".stripMargin
+     * </pre>
+     * .stripMargin が続く場合は、各行の行頭の余白と | を除きます. 補間子が付いた文字列では $x・${...} を除きます.
+     */
+    static List<Injection> languageInjections(CharSequence text) {
+        List<Injection> result = new ArrayList<>();
+        for (TextRange r : scriptContents(text)) {
+            List<TripleString> strings = new ArrayList<>();
+            List<TextRange> comments = new ArrayList<>();
+            scan(text, r.getStartOffset(), r.getEndOffset(), strings, comments);
+            for (TextRange c : comments) {
+                Matcher m = LANGUAGE_COMMENT.matcher(text.subSequence(c.getStartOffset(), c.getEndOffset()));
+                if (!m.find()) continue;
+                TripleString str = strings.stream().filter(t -> t.start() >= c.getEndOffset()).findFirst().orElse(null);
+                if (str == null) continue;
+                Matcher b = BEFORE_STRING.matcher(text.subSequence(c.getEndOffset(), str.start()));
+                if (!b.matches()) continue;
+                boolean interpolated = b.group(1) != null;
+                int contentStart = str.start() + 3;
+                int contentEnd = str.closed() ? str.end() - 3 : str.end();
+                if (contentEnd < contentStart) continue;
+                Matcher sm = STRIP_MARGIN.matcher(text.subSequence(str.end(), Math.min(text.length(), str.end() + 40)));
+                Character margin = str.closed() && sm.find() ? (sm.group(1) != null ? sm.group(1).charAt(0) : '|') : null;
+                List<TextRange> ranges = new ArrayList<>();
+                for (TextRange line : contentLines(text, contentStart, contentEnd, margin)) {
+                    if (interpolated) ranges.addAll(withoutInterpolations(text, line));
+                    else if (!line.isEmpty()) ranges.add(line);
+                }
+                if (!ranges.isEmpty()) result.add(new Injection(m.group(1), ranges));
+            }
+        }
+        return result;
+    }
+
+    /** 文字列の中身を行に分け、margin があれば行頭の余白とmarginの文字を除いた範囲にします(stripMarginと同じく1行目も. 改行は行に含める) */
+    private static List<TextRange> contentLines(CharSequence s, int start, int end, Character margin) {
+        List<TextRange> lines = new ArrayList<>();
+        int lineStart = start;
+        while (lineStart <= end) {
+            int nl = indexOf(s, "\n", lineStart, end);
+            int lineEnd = nl < 0 ? end : nl + 1;
+            int from = lineStart;
+            if (margin != null) {
+                int k = lineStart;
+                while (k < lineEnd && (s.charAt(k) == ' ' || s.charAt(k) == '\t')) k++;
+                if (k < lineEnd && s.charAt(k) == margin) from = k + 1;
+            }
+            lines.add(new TextRange(from, lineEnd));
+            if (nl < 0) break;
+            lineStart = lineEnd;
+        }
+        return lines;
+    }
+
+    /** 補間(${...}・$name)を除いた範囲. $$ はそのまま残します */
+    private static List<TextRange> withoutInterpolations(CharSequence s, TextRange line) {
+        List<TextRange> parts = new ArrayList<>();
+        int from = line.getStartOffset();
+        int end = line.getEndOffset();
+        int k = from;
+        while (k < end) {
+            if (s.charAt(k) == '$' && k + 1 < end) {
+                char n = s.charAt(k + 1);
+                int skipTo = -1;
+                if (n == '{') {
+                    int depth = 0;
+                    int j = k + 1;
+                    while (j < end) {
+                        char ch = s.charAt(j);
+                        if (ch == '{') depth++;
+                        else if (ch == '}' && --depth == 0) break;
+                        j++;
+                    }
+                    skipTo = Math.min(j + 1, end);
+                } else if (Character.isJavaIdentifierStart(n) && n != '$') {
+                    int j = k + 1;
+                    while (j < end && Character.isJavaIdentifierPart(s.charAt(j)) && s.charAt(j) != '$') j++;
+                    skipTo = j;
+                } else if (n == '$') {
+                    k += 2;
+                    continue;
+                }
+                if (skipTo >= 0) {
+                    if (k > from) parts.add(new TextRange(from, k));
+                    from = skipTo;
+                    k = skipTo;
+                    continue;
+                }
+            }
+            k++;
+        }
+        if (end > from) parts.add(new TextRange(from, end));
+        return parts;
     }
 
     static boolean startsWith(CharSequence s, int at, int end, String p) {

@@ -12,6 +12,8 @@
       <li>The template is handled as HTML: IntelliJ's HTML completion, closing tag insertion, Emmet and structure view work there,
           and <code>&lt;style&gt;</code> is handled as CSS (completion and inspections, with the CSS plugin).</li>
       <li>Directives, component tags and their props are not reported as unknown HTML tags or attributes.</li>
+      <li>In the script, a triple-quoted string after a <code>// language=xxx</code> comment is injected with that language
+          (any language the IDE supports; <code>html</code> is handled as <code>.st</code>), with its highlighting, completion and inspections.</li>
       <li>Comment with Line Comment uses <code>//</code> in the script, <code>/* */</code> in the style and HTML comments in the template.</li>
       <li>In the script and the style, Enter keeps the indentation of the previous line (aligned after an open bracket),
           and brackets and double quotes are closed automatically.</li>
@@ -50,6 +52,8 @@
     <!-- scriptの中の複数行の三重引用符の文字列を折りたたむ.
          .stに登録するとHTMLのタグの折りたたみが使われなくなるため、HTMLに加え、.stのファイルでだけ働く -->
     <lang.foldingBuilder language="HTML" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveFoldingBuilder"/>
+    <!-- scriptの中の // language=xxx に続く文字列に、その言語を注入する(IntelliJが扱える言語ならどれでも) -->
+    <multiHostInjector implementation="io.github.ondeoma.scalactive.intellij.ScalactiveLanguageInjector"/>
     <!-- script・styleの中の括弧・引用符の自動補完 -->
     <typedHandler implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBracketHandler$Typed" order="first"/>
     <!-- 対になった括弧の間でのEnter -->

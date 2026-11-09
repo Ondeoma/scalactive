@@ -114,6 +114,10 @@ cd editors/intellij
     Scalaの文字列・コメントの中の `</script>` では `<script>` を閉じません(コンパイラーの `SfcParser` と同じ判定. `ScalaScan`).
   - `<script>` の中の複数行の三重引用符の文字列を折りたためます(`ScalactiveFoldingBuilder`. HTMLのタグの折りたたみに加えて登録しています).
   - stripMarginの文字列の中でEnterを押すと、次の行の同じ位置に `|` を補い、`|` の後ろのインデントも引き継ぎます(`ScalactiveEnterHandler`).
+  - `<script>` の中の `// language=xxx` に続く三重引用符の文字列に、その言語を注入します(`ScalactiveLanguageInjector`).
+    IntelliJが扱える言語ならどれでも指定でき(言語のIDか表示名. 大文字・小文字は区別しない)、色付け・補完・検査が効きます.
+    `html` / `st` / `scalactive` は `.st` として注入します. `.stripMargin` が続く場合は行頭の余白と `|` を、
+    補間子の付いた文字列では `$x`・`${...}` を除いて注入します. 言語が見つからなければ、TextMateの文法の色付けだけになります.
   - 色付けは解析とは別に、同梱のTextMateの文法で行います(`TextMateSyntaxHighlighterFactory` / `TextMateEditorHighlighterProvider` を登録).
   - ディレクティブ(`v-if`・`:attr`・`@event`・`#slot`・`ref`)、子コンポーネントのタグとその属性、`<script lang>`・`<style scoped>` は、
     HTMLの検査で「未知のタグ・属性」と警告しないようにしています(`ScalactiveInspectionSuppressor`. propの間違いは言語サーバーが警告します).
