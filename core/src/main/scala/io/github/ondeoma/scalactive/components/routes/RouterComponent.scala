@@ -79,9 +79,15 @@ object RouterComponent extends BaseComponent {
     controller
   }
 
+  /**
+   * @param base   ルートのパターンの基準になるパス(既定ではScalactiveConfig.basePath)
+   * @param prefix ネストしたルートで、baseの下のどのパスより下でコンポーネントを選ぶか(例: "/guide").
+   *               .stでは `<RouterComponent :routes="routes" prefix="/guide" />` と書けます.
+   */
   def apply(routes: PathPatternRoutes,
-            base: String = ScalactiveConfig.fixedBasePath): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, routes, base)
+            base: String = ScalactiveConfig.fixedBasePath,
+            prefix: String = ""): (HTMLElement, AddMethod) => NodesComponentController = {
+    apply(_, _, routes, withPrefix(base, prefix))
   }
 
   /**
@@ -89,24 +95,30 @@ object RouterComponent extends BaseComponent {
    * (タプルのリストを受け取るapplyと名前を分けているのは、オーバーロードにすると関数の型が推論できなくなるため)
    */
   def of(routes: List[Route],
-         base: String = ScalactiveConfig.fixedBasePath): (HTMLElement, AddMethod) => NodesComponentController = {
-    withRoutes(_, _, routes, base)
+         base: String = ScalactiveConfig.fixedBasePath,
+         prefix: String = ""): (HTMLElement, AddMethod) => NodesComponentController = {
+    withRoutes(_, _, routes, withPrefix(base, prefix))
+  }
+
+  private def withPrefix(base: String, prefix: String): String = {
+    if (prefix.isEmpty) base else Router.joinSlash(base, prefix)
   }
 
   /**
    * ネストしたルート. ルートのコンポーネント(レイアウト)の中に置き、prefixより下のパスでコンポーネントを選びます.
    * 外側のルートは "/guide/\*" のように、ワイルドカードでprefix以下のパスにマッチさせてください.
    * 例: `RouterComponent.nested("/guide")(List(("intro", _ => Intro()), ("api", _ => Api())))`
+   * (.stのタグでは、引数を2段に分けて渡せないため `<RouterComponent :routes="routes" prefix="/guide" />` と書きます)
    */
   def nested(prefix: String)
             (routes: PathPatternRoutes): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(routes, Router.joinSlash(ScalactiveConfig.fixedBasePath, prefix))
+    apply(routes, prefix = prefix)
   }
 
   /** Route(ルートごとのガード・meta付き)で定義するネストしたルート */
   def nestedOf(prefix: String)
               (routes: List[Route]): (HTMLElement, AddMethod) => NodesComponentController = {
-    withRoutes(_, _, routes, Router.joinSlash(ScalactiveConfig.fixedBasePath, prefix))
+    of(routes, prefix = prefix)
   }
 
   def toURLPatterns(routes: PathPatternRoutes,

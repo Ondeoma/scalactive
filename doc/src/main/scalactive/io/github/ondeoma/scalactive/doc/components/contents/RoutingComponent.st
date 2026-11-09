@@ -54,7 +54,7 @@ val codeGuideLayout = // language=html
     |    <RouterLink to="/guide/api/router">API</RouterLink>
     |  </nav>
     |  <section>
-    |    <RouterComponent :routes="routes" :base='fixUrl("/guide")' />
+    |    <RouterComponent :routes="routes" prefix="/guide" />
     |  </section>
     |</template>
     |""".stripMargin
@@ -219,9 +219,8 @@ val codeBasePath = // language=scala
       ワイルドカードで子のパスまでマッチさせます.
     </li>
     <li>
-      内側のRouterComponentには、<code>:base='fixUrl("/guide")'</code> を渡します.<br>
-      パターンは <code>/guide</code> からの相対パスで指定します.<br>
-      (<code>fixUrl</code> はベースパスを付けたパスを返します.)
+      内側のRouterComponentには、<code>prefix="/guide"</code> を渡します.<br>
+      パターンは <code>/guide</code> からの相対パスで指定します.
     </li>
     <li>
       /guide/intro から /guide/api/xxx への遷移では、<br>
@@ -273,7 +272,7 @@ val codeBasePath = // language=scala
     <code>Route</code> でルートを定義し、<br>
     <code>&lt;RouterComponent.of :routes="routes" /&gt;</code> に渡すと、<br>
     ルートごとのガード(<code>beforeEnter</code>)と情報(<code>meta</code>)を指定できます.<br>
-    (ネストしたルートでは <code>&lt;RouterComponent.of :routes="routes" :base='fixUrl("/guide")' /&gt;</code>)
+    (ネストしたルートでは <code>&lt;RouterComponent.of :routes="routes" prefix="/guide" /&gt;</code>)
   </p>
 
   <pre><code class="language-st">{{ codeGuardedApp }}</code></pre>

@@ -186,6 +186,27 @@ class RouterSuite extends munit.FunSuite {
     }
   }
 
+  test("ネストしたルート: prefix引数で書いても nested と同じように選ぶ") {
+    window.history.replaceState(js.Object(), "", "/docs/b")
+    Router.href := window.location.href
+    def comp(text: String): GenComponentF =
+      new StatelessComponent { def genHtml(implicit cm: ComponentManager): HTML = s"<i>$text</i>" }.apply()(_, _)
+    val layout: GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = {
+        val routes: PathPatternRoutes = List(("a", _ => comp("A")), ("b", _ => comp("B")))
+        val inner = RouterComponent(routes, prefix = "/docs")
+        s"""<section>${%(inner)}</section>"""
+      }
+    }.apply()(_, _)
+    val outer: PathPatternRoutes = List(("/docs/*", _ => layout))
+    val root = mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent(outer))}</main>")
+    assertEquals(root.querySelector("main").textContent.trim, "B")
+    Router.go("/docs/a")
+    flush().map { _ =>
+      assertEquals(root.querySelector("main").textContent.trim, "A")
+    }
+  }
+
   test("名前付きのパスパラメータが変わったときは描き直す") {
     window.history.replaceState(js.Object(), "", "/users/1")
     Router.href := window.location.href

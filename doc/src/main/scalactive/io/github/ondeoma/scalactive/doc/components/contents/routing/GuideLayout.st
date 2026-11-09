@@ -15,6 +15,6 @@ val routes: PathPatternRoutes = List(
     <RouterLink to="/guide/api/router">API</RouterLink>
   </nav>
   <section>
-    <RouterComponent :routes="routes" :base='fixUrl("/guide")' />
+    <RouterComponent :routes="routes" prefix="/guide" />
   </section>
 </template>

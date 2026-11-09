@@ -172,6 +172,10 @@ import Router.*
       ナビゲーションガード(<code>Router.beforeEach</code> / <code>afterEach</code>)
     </li>
     <li>
+      ネストしたルートは、.stのタグでも <code>&lt;RouterComponent :routes="routes" prefix="/guide" /&gt;</code> と書けます.<br>
+      (<code>RouterComponent</code> / <code>RouterComponent.of</code> の <code>prefix</code> 引数)
+    </li>
+    <li>
       <code>RouterLink</code>(<code>linkC</code>): 現在の場所に応じて、<br>
       <code>router-link-active</code> / <code>router-link-exact-active</code> を付けるリンク
     </li>
