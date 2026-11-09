@@ -7,7 +7,10 @@ import io.github.ondeoma.scalactive.components.ComponentManager
 // class RV[A] @publicInBinary(private var value: A) extends Reactive[A] {
 class RV[A](private var value: A) extends Reactive[A] {
 
-  override def v: A = value
+  override def v: A = {
+    Tracking.record(this)
+    value
+  }
 
   /**
    * 値を更新します. 前の値と等しい(==)場合はウォッチャーに通知しません.

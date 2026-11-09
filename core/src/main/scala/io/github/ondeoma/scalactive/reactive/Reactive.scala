@@ -50,7 +50,16 @@ object Reactive {
 
     summonFrom {
       case cm: ComponentManager => cm.addTmpReactive(rv)
-      case _ => ()
+      case _ => adoptByRunningHook(rv)
     }
+  }
+
+  /**
+   * ComponentManagerの外(.stの def mounted など)で作られた場合は、実行中のonMountedのコンポーネントに登録し、
+   * そのコンポーネントが片付けられたときに止めます. onMountedの実行中でなければ何もしません.
+   */
+  def adoptByRunningHook(rv: Reactive[?]): Unit = {
+    val h = io.github.ondeoma.scalactive.components.LifecycleHooks.running
+    if (h != null) h.adopt(rv)
   }
 }

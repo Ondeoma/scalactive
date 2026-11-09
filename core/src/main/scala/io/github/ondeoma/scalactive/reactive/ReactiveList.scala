@@ -18,7 +18,10 @@ class ReactiveList[A](private var value: List[A]) extends Reactive[List[A]] {
   
   private var oldV = innerV.toList
 
-  override def v: List[A] = innerV.toList
+  override def v: List[A] = {
+    Tracking.record(this)
+    innerV.toList
+  }
 
   def updated(): Unit = {
     watchers.foreach(_._2(oldV, v))

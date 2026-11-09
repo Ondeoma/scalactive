@@ -25,7 +25,19 @@ private[scalactive] final class LifecycleHooks extends Reactive[Unit] {
   override def v: Unit = ()
 
   def runMounted(): Unit = {
-    if (alive) ErrorBoundaryContext.guard(boundary)(mounted.foreach(_()))
+    if (alive) {
+      // onMountedの中で作ったwatch・computedなどは、このコンポーネントが片付けられたときに止める
+      val prev = LifecycleHooks.running
+      LifecycleHooks.running = this
+      try ErrorBoundaryContext.guard(boundary)(mounted.foreach(_()))
+      finally LifecycleHooks.running = prev
+    }
+  }
+
+  /** リアクティブ値を、このコンポーネントが片付けられたときに止めるものとして登録します. */
+  def adopt(r: Reactive[?]): Unit = {
+    if (alive) unmounted += (() => r.abort())
+    else r.abort()
   }
 
   override def abort(): Unit = {
@@ -35,6 +47,13 @@ private[scalactive] final class LifecycleHooks extends Reactive[Unit] {
     }
     super.abort()
   }
+
+}
+
+private[scalactive] object LifecycleHooks {
+
+  /** 実行中のonMountedのフック(実行中でなければnull) */
+  var running: LifecycleHooks = null
 
 }
 
@@ -55,11 +74,15 @@ private[scalactive] object MountQueue {
     }
   }
 
+  /** 実行を待っているonMountedがなければtrue */
+  def isIdle: Boolean = queue.isEmpty
+
   private def flush(): Unit = {
     scheduled = false
     val hs = queue.toList
     queue.clear()
     hs.foreach(_.runMounted())
+    io.github.ondeoma.scalactive.controllers.NextTick.check()
   }
 
 }

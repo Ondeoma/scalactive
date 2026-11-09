@@ -9,8 +9,13 @@ trait CRV[R] extends Reactive[R] {
 
   protected var watchInfos: List[WatchInfo] = Nil
 
+  override def v: R = {
+    Tracking.record(this)
+    value
+  }
+
   /** 計算し直した値が前の値と等しい(==)場合は通知しません(例えば count.mapC(_ > 3) はcountが変わるたびには通知しない) */
-  private def update(newV: R): Unit = {
+  private[reactive] def update(newV: R): Unit = {
     val old = value
     value = newV
     if (old != newV) watchers.foreach(_._2(old, newV))
@@ -31,8 +36,6 @@ object CRV {
     val calc = () => f(r1.v)
     val r = new CRV[R] {
       var value: R = calc()
-
-      override def v: R = value
     }
     r.watchInfos = List(
       r1.addWatcher(_ => r.update(calc()))
@@ -54,8 +57,6 @@ object CRV {
     val calc = () => f(r1.v, r2.v)
     val r = new CRV[R] {
       var value: R = calc()
-
-      override def v: R = value
     }
     r.watchInfos = List(r1, r2).map {
       _.addWatcher(_ => r.update(calc()))
@@ -78,8 +79,6 @@ object CRV {
     val calc = () => f(r1.v, r2.v, r3.v)
     val r = new CRV[R] {
       var value: R = calc()
-
-      override def v: R = value
     }
     r.watchInfos = List(r1, r2, r3).map {
       _.addWatcher(_ => r.update(calc()))
@@ -104,8 +103,6 @@ object CRV {
     val calc = () => f(r1.v, r2.v, r3.v, r4.v)
     val r = new CRV[R] {
       var value: R = calc()
-
-      override def v: R = value
     }
     r.watchInfos = List(r1, r2, r3, r4).map {
       _.addWatcher(_ => r.update(calc()))
@@ -132,8 +129,6 @@ object CRV {
     val calc = () => f(r1.v, r2.v, r3.v, r4.v, r5.v)
     val r = new CRV[R] {
       var value: R = calc()
-
-      override def v: R = value
     }
     r.watchInfos = List(r1, r2, r3, r4, r5).map {
       _.addWatcher(_ => r.update(calc()))
@@ -162,8 +157,6 @@ object CRV {
     val calc = () => f(r1.v, r2.v, r3.v, r4.v, r5.v, r6.v)
     val r = new CRV[R] {
       var value: R = calc()
-
-      override def v: R = value
     }
     r.watchInfos = List(r1, r2, r3, r4, r5, r6).map {
       _.addWatcher(_ => r.update(calc()))

@@ -31,7 +31,11 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
 
   private def fix(v: ListBuffer[RM]) = v.toList.map(_.toOrigin)
 
-  override def v: List[Org] = fix(innerV)
+  // 行のモデルは依存に入れない(このリストが行の変化も通知するため)
+  override def v: List[Org] = {
+    Tracking.record(this)
+    Tracking.untracked(fix(innerV))
+  }
 
   def rv: List[RM] = innerV.toList
 
