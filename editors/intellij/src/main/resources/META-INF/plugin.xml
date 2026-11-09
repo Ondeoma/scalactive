@@ -35,6 +35,10 @@
     <lang.inspectionSuppressor language="Scalactive" implementationClass="io.github.ondeoma.scalactive.intellij.ScalactiveInspectionSuppressor"/>
     <!-- コメントの切り替えをブロックごとの書き方に(script: //、style: /* */、template: HTMLのコメント) -->
     <multiLangCommenter implementation="io.github.ondeoma.scalactive.intellij.ScalactiveCommentProvider"/>
+    <!-- .stの整形は言語サーバーだけに任せ、IntelliJのHTMLの整形(.stを崩す)は使わない -->
+    <formattingService id="ScalactiveFormattingGuard" order="after LspFormattingService, before CoreFormattingService"
+              implementation="io.github.ondeoma.scalactive.intellij.ScalactiveFormattingGuard"/>
+    <notificationGroup id="Scalactive" displayType="BALLOON"/>
     <editorHighlighterProvider filetype="Scalactive"
               implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
     <textmate.bundleProvider implementation="io.github.ondeoma.scalactive.intellij.ScalactiveBundleProvider"/>

@@ -89,6 +89,23 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         assertTrue(text, text.contains("/*.a { color: red; }*/"));
     }
 
+    /** 言語サーバーが動いていないとき、IntelliJのHTMLの整形で.stを崩さない */
+    public void testNoHtmlFormattingWithoutServer() {
+        String text = "<script lang=\"scala\">\nval a = 1\n</script>\n<template>\n  <div>\n    <p><StField label=\"コンポーネントのv-model\" v-model=\"s.input\" /> → {{ s.input }} {{ s.input }} {{ s.input }} {{ s.input }}</p>\n  </div>\n</template>\n<style scoped>\ndiv{ margin: 8px; }\n</style>\n";
+        myFixture.configureByText("A.st", text);
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(getProject(),
+            () -> { com.intellij.psi.codeStyle.CodeStyleManager.getInstance(getProject()).reformat(myFixture.getFile()); });
+        assertEquals(text, myFixture.getEditor().getDocument().getText());
+    }
+
+    /** 整形サービスを差し替えても、Enterでのインデント(前の行のインデントを引き継ぐ)は崩れない */
+    public void testEnterIndentInTemplate() {
+        myFixture.configureByText("A.st", "<template>\n  <div><caret></div>\n</template>\n");
+        myFixture.type("\n");
+        String text = myFixture.getEditor().getDocument().getText();
+        assertTrue(text, text.contains("  <div>\n  </div>") || text.contains("  <div>\n    \n  </div>"));
+    }
+
     public void testCssCompletionInStyle() {
         myFixture.configureByText("A.st", "<template><p class=\"x\"></p></template>\n<style scoped>\n.x { backgr<caret> }\n</style>\n");
         myFixture.completeBasic();

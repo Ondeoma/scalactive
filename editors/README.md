@@ -35,6 +35,7 @@ VS CodeとIntelliJ IDEAに提供します.
   テンプレートは入れ子に合わせてインデントし直し、`<style>` のCSSは `CssFormatter` で整えます(1行のルールは1行のまま、
   複数行のルールは宣言を1行ずつ. `lang` 付きのstyleは対象外). `<script>` は前後の空行と行末の空白だけを整えます.
   IntelliJでは「コードの整形」を言語サーバーだけに任せます(IntelliJのHTMLの整形は `{{ }}` などを崩すため使いません).
+  言語サーバーが起動していないときは、`ScalactiveFormattingGuard` が何もせずに引き受け、通知を出します.
   ライブラリ(jar)内の定義、ドキュメント、自動importには対応していません.
 
 ```sh
