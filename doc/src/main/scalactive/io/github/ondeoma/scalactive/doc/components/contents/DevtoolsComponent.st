@@ -1,28 +1,50 @@
 <script lang="scala">
 import Router.*
+import io.github.ondeoma.scalactive.doc.components.contents.devtools.Counter
+
+val codeCounter = // language=html
+  """<script lang="scala">
+    |case class State(count: RV[Int] = RV(0))
+    |
+    |def initState() = State()
+    |</script>
+    |
+    |<template>
+    |  <div>
+    |    <p>count: {{ s.count }}</p>
+    |    <button @click="s.count := s.count.v + 1">+1</button>
+    |    <p v-if="s.count.mapC(_ >= 3)" class="many">3以上です!</p>
+    |  </div>
+    |</template>
+    |""".stripMargin
 
 val codeTest = // language=scala
-  s"""import io.github.ondeoma.scalactive.testing.TestKit
-     |import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-     |
-     |class CounterSuite extends munit.FunSuite {
-     |
-     |  // 描き直しを待たない・スクロールしない(jsdom向け)設定にする
-     |  override def beforeAll(): Unit = TestKit.useTestConfig()
-     |  override def afterAll(): Unit = TestKit.restoreConfig()
-     |
-     |  test("ボタンを押すと増える") {
-     |    val m = TestKit.mount(Counter()(_, _))
-     |    TestKit.click(m.find("button"))
-     |    // ifC・forCなどの描き直しを待つ
-     |    TestKit.flush().map { _ =>
-     |      assertEquals(m.find("p").textContent, "count: 1")
-     |      m.unmount()
-     |    }
-     |  }
-     |
-     |}
-     |""".stripMargin
+  """import io.github.ondeoma.scalactive.testing.TestKit
+    |import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    |
+    |class CounterSuite extends munit.FunSuite {
+    |
+    |  // 描き直しを待たない・スクロールしない(jsdom向け)設定にする
+    |  override def beforeAll(): Unit = TestKit.useTestConfig()
+    |  override def afterAll(): Unit = TestKit.restoreConfig()
+    |
+    |  test("ボタンを押すと増える") {
+    |    // .stのコンポーネントも Counter()(_, _) で渡せる
+    |    val m = TestKit.mount(Counter()(_, _))
+    |    TestKit.click(m.find("button"))
+    |    // テキストのバインディングはすぐに反映される
+    |    assertEquals(m.find("p").textContent, "count: 1")
+    |    TestKit.click(m.find("button"))
+    |    TestKit.click(m.find("button"))
+    |    // v-if・v-forなどの描き直しを待つ
+    |    TestKit.flush().map { _ =>
+    |      assertEquals(m.find(".many").textContent, "3以上です!")
+    |      m.unmount()
+    |    }
+    |  }
+    |
+    |}
+    |""".stripMargin
 
 val codeSbt = // language=scala
   s"""// build.sbt: jsdom上でテストを実行する(事前に npm install jsdom)
@@ -67,6 +89,22 @@ val codeDevtools = // language=scala
     jsdom(scalajs-env-jsdom-nodejs)上や、ブラウザ上のテストで動きます.
   </p>
 
+  <p>
+    例として、次の.stのコンポーネントをテストします.
+  </p>
+
+  <pre><code class="language-html">{{ codeCounter }}</code></pre>
+
+  <div class="rendered">
+    <Counter />
+  </div>
+
+  <p>
+    .stのコンポーネントは、<code>apply()</code> を持つobjectになります.<br>
+    そのため、<code>TestKit.mount(Counter()(_, _))</code> のように渡せます.<br>
+    (propsのあるコンポーネントは <code>Badge(label = "x")(_, _)</code>)
+  </p>
+
   <pre><code class="language-scala">{{ codeTest }}</code></pre>
 
   <ul>
@@ -76,7 +114,7 @@ val codeDevtools = // language=scala
     </li>
     <li><code>click</code> / <code>input</code> / <code>check</code> / <code>keydown</code>: 要素を操作します(v-modelやイベントが反応します).</li>
     <li>
-      <code>flush()</code>: 予約された描き直し(ifC・forCなど)とonMountedが終わるまで待ちます.<br>
+      <code>flush()</code>: 予約された描き直し(v-if・v-forなど)とmountedが終わるまで待ちます.<br>
       テキストや属性のバインディングは待たずに反映されます.
     </li>
     <li>
@@ -100,7 +138,7 @@ val codeDevtools = // language=scala
 
   <ul>
     <li>
-      <code>logReloads</code>: ifC・forC・リアクティブな値の変化などによる描き直しのたびに、<br>
+      <code>logReloads</code>: v-if・v-for・リアクティブな値の変化などによる描き直しのたびに、<br>
       対象と所要時間をコンソールに出力します.
     </li>
     <li>

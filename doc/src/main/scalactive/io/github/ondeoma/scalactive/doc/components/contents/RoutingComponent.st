@@ -1,102 +1,133 @@
 <script lang="scala">
 import Router.*
 
-val code = // language=scala
-  s"""// RootComponent, AComponent, BComponentは別途実装されている想定です.
-     |val routes: PathPatternRoutes = List(
-     |  ("/", matchResult => RootComponent()),
-     |  ("/a", matchResult => AComponent()),
-     |  ("/b", matchResult => BComponent()),
-     |)
-     |s\"\"\"<main>$${%(RouterComponent(routes))}</main>\"\"\"
-     |""".stripMargin
+val codeRoutingApp = // language=html
+  """<script lang="scala">
+    |import io.github.ondeoma.scalactive.components.routes.RouterComponent
+    |import Router.*
+    |
+    |// パスと、描画するコンポーネントの組のリスト
+    |val routes: PathPatternRoutes = List(
+    |  ("/", _ => PageTitle(title = "TOP")),
+    |  ("/items/:id", r => PageTitle(title = "商品 " + r.pathname.groups("id"))),
+    |  ("/guide/*", _ => GuideLayout()),
+    |)
+    |</script>
+    |
+    |<template>
+    |  <nav>
+    |    <RouterLink to="/">TOP</RouterLink>
+    |    <RouterLink to="/guide/intro">ガイド</RouterLink>
+    |    <button @click='go("/items/1")'>商品1へ</button>
+    |  </nav>
+    |  <main>
+    |    <RouterComponent :routes="routes" />
+    |  </main>
+    |</template>
+    |""".stripMargin
 
-val code2 = // language=scala
-  s"""import io.github.ondeoma.scalactive.routes.Router.go
-     |s\"\"\"<a $${evClick(go("/"))}>TOP</a>
-     |   :<a $${evClick(go("/b"))}>B</a>
-     |   :<a $${evClick(go("/a"))}>A</a>\"\"\".stripMargin(":")""".stripMargin
+val codePageTitle = // language=html
+  """<script lang="scala">
+    |case class Props(title: String)
+    |</script>
+    |
+    |<template>
+    |  <h2>{{ props.title }}</h2>
+    |</template>
+    |""".stripMargin
 
+val codeGuideLayout = // language=html
+  """<script lang="scala">
+    |import io.github.ondeoma.scalactive.components.routes.RouterComponent
+    |import Router.*
+    |
+    |// /guide より下のパス(/guide からの相対パスで書く)
+    |val routes: PathPatternRoutes = List(
+    |  ("intro", _ => PageTitle(title = "はじめに")),             // /guide/intro
+    |  ("api/:name", r => PageTitle(title = r.pathname.groups("name"))), // /guide/api/xxx
+    |)
+    |</script>
+    |
+    |<template>
+    |  <nav>
+    |    <RouterLink to="/guide/intro">はじめに</RouterLink>
+    |    <RouterLink to="/guide/api/router">API</RouterLink>
+    |  </nav>
+    |  <section>
+    |    <RouterComponent :routes="routes" :base='fixUrl("/guide")' />
+    |  </section>
+    |</template>
+    |""".stripMargin
 
-val code3 = // language=scala
-  s"""import io.github.ondeoma.scalactive.components.ComponentManager.*
-     |import org.scalajs.dom.*
-     |import org.scalajs.dom.document.body
-     |import io.github.ondeoma.scalactive.ScalactiveConfig
-     |
-     |object App {
-     |
-     |  @main
-     |  def main(): Unit = {
-     |    // "https://example.com/subpath/..."のような場合.
-     |    ScalactiveConfig.basePath = "subpath" 
-     |    
-     |    // MainComponent()(body, AddMethod.appendS(IdSelector("app"))).init()
-     |  }
-     |}""".stripMargin  
-
-val codeNested = // language=scala
-  s"""// 外側のルート: "/guide/*" で /guide 以下のすべてのパスにマッチさせる
-     |val routes: PathPatternRoutes = List(
-     |  ("/", _ => RootComponent()),
-     |  ("/guide/*", _ => GuideLayout()),
-     |)
-     |
-     |// レイアウト: 内側のRouterComponentで /guide より下のパスを切り替える
-     |object GuideLayout extends StatelessComponent {
-     |  def genHtml(implicit cm: ComponentManager): HTML = {
-     |    val inner = RouterComponent.nested("/guide")(List(
-     |      ("intro", _ => IntroComponent()),        // /guide/intro
-     |      ("api/:name", r => ApiComponent(r.pathname.groups("name"))), // /guide/api/xxx
-     |    ))
-     |    s\"\"\"<nav>...</nav><section>$${%(inner)}</section>\"\"\"
-     |  }
-     |}
-     |""".stripMargin
+val codeGuardedApp = // language=html
+  """<script lang="scala">
+    |import io.github.ondeoma.scalactive.components.routes.RouterComponent
+    |import Router.*
+    |
+    |val loggedIn = RV(false)
+    |val itemsLoaded = RV(false)
+    |
+    |val routes = List(
+    |  Route("/", _ => PageTitle(title = "TOP")),
+    |  Route("/login", _ => PageTitle(title = "ログイン")),
+    |  // ルートに入るときだけ呼ばれるガード
+    |  Route("/items/:id", r => PageTitle(title = "商品 " + r.pathname.groups("id")),
+    |    beforeEnter = (to, from) => if (itemsLoaded.v) Continue else Redirect("/")),
+    |  // ガードの中で to.meta として参照できる情報
+    |  Route("/admin", _ => PageTitle(title = "管理"), meta = Map("requiresAuth" -> true)),
+    |)
+    |
+    |// すべての遷移の前に呼ばれるガード
+    |val removeGuard = Router.beforeEach { (to, from) =>
+    |  if (to.meta.get("requiresAuth").contains(true) && !loggedIn.v) Redirect("/login")
+    |  else Continue
+    |}
+    |
+    |// 遷移の後に呼ばれる
+    |Router.afterEach((to, from) => document.title = "MyApp " + to.path)
+    |</script>
+    |
+    |<template>
+    |  <main>
+    |    <RouterComponent.of :routes="routes" />
+    |  </main>
+    |</template>
+    |""".stripMargin
 
 val codeGuard = // language=scala
-  s"""import io.github.ondeoma.scalactive.routes.Router
-     |import io.github.ondeoma.scalactive.routes.Router.*
-     |
-     |// 遷移の前に呼ばれる(Router.go・戻る/進む・ページを開いた直後)
-     |val removeGuard = Router.beforeEach { (to, from) =>
-     |  if (to.path.startsWith("/admin") && !loggedIn.v) Redirect("/login")
-     |  else if (editing.v && !window.confirm("保存していない変更があります. 移動しますか?")) Cancel
-     |  else Continue
-     |}
-     |
-     |// 遷移の後に呼ばれる
-     |Router.afterEach((to, from) => document.title = s"MyApp $${to.path}")
-     |
-     |// 登録の解除
-     |removeGuard()
-     |""".stripMargin
+  """import io.github.ondeoma.scalactive.routes.Router
+    |import io.github.ondeoma.scalactive.routes.Router.*
+    |
+    |// 遷移の前に呼ばれる(Router.go・戻る/進む・ページを開いた直後)
+    |val removeGuard = Router.beforeEach { (to, from) =>
+    |  if (to.path.startsWith("/admin") && !loggedIn.v) Redirect("/login")
+    |  else if (editing.v && !window.confirm("保存していない変更があります. 移動しますか?")) Cancel
+    |  else Continue
+    |}
+    |
+    |// 遷移の後に呼ばれる
+    |Router.afterEach((to, from) => document.title = s"MyApp ${to.path}")
+    |
+    |// 登録の解除
+    |removeGuard()
+    |""".stripMargin
 
-val codeLink = // language=scala
-  s"""// Scala
-     |s\"\"\"<nav>$${linkC("/")(_ => "TOP")} $${linkC("/guide")(_ => "ガイド")}</nav>\"\"\"
-     |
-     |// .st
-     |// <nav><RouterLink to="/">TOP</RouterLink> <RouterLink to="/guide" active-class="on">ガイド</RouterLink></nav>
-     |""".stripMargin
-
-val codeRoute = // language=scala
-  s"""val routes = List(
-     |  Route("/", _ => HomeComponent()),
-     |  Route("/login", _ => LoginComponent()),
-     |  // ルートに入るときだけ呼ばれるガード
-     |  Route("/items/:id", r => ItemComponent(r.pathname.groups("id")),
-     |    beforeEnter = (to, from) => if (itemsLoaded.v) Continue else Redirect("/")),
-     |  // ガードの中で to.meta として参照できる情報
-     |  Route("/admin", _ => AdminComponent(), meta = Map("requiresAuth" -> true)),
-     |)
-     |
-     |Router.beforeEach { (to, from) =>
-     |  if (to.meta.get("requiresAuth").contains(true) && !loggedIn.v) Redirect("/login") else Continue
-     |}
-     |
-     |s\"\"\"<main>$${%(RouterComponent.of(routes))}</main>\"\"\"
-     |""".stripMargin
+val codeBasePath = // language=scala
+  """import io.github.ondeoma.scalactive.components.ComponentManager.*
+    |import org.scalajs.dom.*
+    |import org.scalajs.dom.document.body
+    |import io.github.ondeoma.scalactive.ScalactiveConfig
+    |
+    |object App {
+    |
+    |  @main
+    |  def main(): Unit = {
+    |    // "https://example.com/subpath/..."のような場合.
+    |    ScalactiveConfig.basePath = "subpath"
+    |
+    |    // MainComponent()(body, AddMethod.appendS(IdSelector("app"))).init()
+    |  }
+    |}""".stripMargin
 </script>
 
 <template>
@@ -108,11 +139,11 @@ val codeRoute = // language=scala
 
   <ul class="toc">
     <li><a @click='setHash("RouterComponent")'>RouterComponent</a></li>
-    <li><a @click='setHash("Router")'>Router</a></li>
+    <li><a @click='setHash("Router")'>Router.go</a></li>
     <li><a @click='setHash("Nested")'>ネストしたルート</a></li>
     <li><a @click='setHash("Guard")'>ナビゲーションガード</a></li>
-    <li><a @click='setHash("Link")'>RouterLink</a></li>
     <li><a @click='setHash("Route")'>ルートごとのガード・meta</a></li>
+    <li><a @click='setHash("Link")'>RouterLink</a></li>
     <li><a @click='setHash("BasePath")'>BasePath</a></li>
   </ul>
 
@@ -120,20 +151,31 @@ val codeRoute = // language=scala
 
   <p>
     RouterComponentを使うことでパスに対し、<br>
-    どのコンポーネントをレンダリングするかを選択することができます.
+    どのコンポーネントをレンダリングするかを選択することができます.<br>
+    <code>&lt;script&gt;</code> にパスとコンポーネントの組のリストを定義し、<br>
+    テンプレートで <code>&lt;RouterComponent :routes="routes" /&gt;</code> と書きます.<br>
+    RouterComponentはimportが必要です.
   </p>
+
+  <pre><code class="language-html">{{ codeRoutingApp }}</code></pre>
+
+  <p>
+    ルートから描画するコンポーネントは、<br>
+    <code>PageTitle(title = "TOP")</code> のように、propsを名前付き引数で渡して作ります.<br>
+    (propsのない.stは <code>Xxx()</code>)
+  </p>
+
+  <pre><code class="language-html">{{ codePageTitle }}</code></pre>
 
   <p>
     パスの判定には
     <a href="https://developer.mozilla.org/ja/docs/Web/API/URLPattern/exec" target="_blank">URLPattern.exec()</a>
-    を利用しています。<br>
-    この関数の戻り値(以下サンプルソースのmatchResult部分)を利用して、<br>
+    を利用しています.<br>
+    この関数の戻り値(上の例の <code>r</code>)を利用して、<br>
     パスパラメータを取得すること等も可能です.<br>
     詳しくは <a href="https://developer.mozilla.org/ja/docs/Web/API/URLPattern/exec" target="_blank">URLPattern.exec()</a>
     を参照ください.
   </p>
-
-  <pre><code class="language-scala">{{ code }}</code></pre>
 
   <p>
     本番環境などへのデプロイの際は、<br>
@@ -141,15 +183,15 @@ val codeRoute = // language=scala
     詳細はご利用になるミドルウェア等のドキュメントを参照ください.
   </p>
 
-  <h2 id="Router">Router</h2>
+  <h2 id="Router">Router.go</h2>
 
   <p>
     画面遷移を行う際は Router.go 関数を利用下さい.<br>
+    <code>import Router.*</code> しておくと、<br>
+    上の例のように <code>@click='go("/items/1")'</code> と書けます.<br>
     RouterComponentはこの関数によるパスの変化を監視しており、<br>
     RouterComponentのみのリレンダリングが行われます.
   </p>
-
-  <pre><code class="language-scala">{{ code2 }}</code></pre>
 
   <p>
     RouterComponentは、次のどれかが変わったときだけ描き直します.<br>
@@ -165,10 +207,11 @@ val codeRoute = // language=scala
   <p>
     ルートに割り当てたコンポーネント(レイアウト)の中にRouterComponentを置くと、<br>
     その部分だけを子のパスで切り替えられます.<br>
-    Vue Routerのネストしたルート(childrenと入れ子のrouter-view)に当たります.
+    Vue Routerのネストしたルート(childrenと入れ子のrouter-view)に当たります.<br>
+    上の例の <code>"/guide/*"</code> に割り当てたレイアウトです.
   </p>
 
-  <pre><code class="language-scala">{{ codeNested }}</code></pre>
+  <pre><code class="language-html">{{ codeGuideLayout }}</code></pre>
 
   <ul>
     <li>
@@ -176,9 +219,9 @@ val codeRoute = // language=scala
       ワイルドカードで子のパスまでマッチさせます.
     </li>
     <li>
-      内側は <code>RouterComponent.nested("/guide")(routes)</code> と書きます.<br>
+      内側のRouterComponentには、<code>:base='fixUrl("/guide")'</code> を渡します.<br>
       パターンは <code>/guide</code> からの相対パスで指定します.<br>
-      (<code>RouterComponent(routes, base = ...)</code> にベースパスを渡しても同じです.)
+      (<code>fixUrl</code> はベースパスを付けたパスを返します.)
     </li>
     <li>
       /guide/intro から /guide/api/xxx への遷移では、<br>
@@ -191,7 +234,8 @@ val codeRoute = // language=scala
   <p>
     <code>Router.beforeEach</code> で、遷移の前に呼ばれる関数(ガード)を登録できます.<br>
     ログインしていない場合のリダイレクトや、<br>
-    編集中の離脱の確認などに使います.
+    編集中の離脱の確認などに使います.<br>
+    ルートのコンポーネントの <code>&lt;script&gt;</code> や、main関数などに書きます.
   </p>
 
   <pre><code class="language-scala">{{ codeGuard }}</code></pre>
@@ -223,44 +267,16 @@ val codeRoute = // language=scala
     </li>
   </ul>
 
-
-  <h2 id="Link">RouterLink</h2>
-
-  <p>
-    <code>&lt;a href&gt;</code> を描画し、クリックでRouter.goするリンクです.<br>
-    (Vue Routerのrouter-link)<br>
-    Ctrl/⌘/Shiftを押しながらのクリックや中クリックは、<br>
-    ブラウザ(新しいタブで開くなど)に任せます.<br>
-    現在の場所に応じてクラスを付けます.
-  </p>
-
-  <ul>
-    <li>
-      <code>router-link-active</code>(<code>activeClass</code>): <br>
-      現在のパスがtoと同じか、その下にある場合(<code>/</code> は完全一致のみ)
-    </li>
-    <li>
-      <code>router-link-exact-active</code>(<code>exactActiveClass</code>): <br>
-      現在のパスがtoと同じ場合
-    </li>
-  </ul>
-
-  <pre><code class="language-scala">{{ codeLink }}</code></pre>
-
-  <div class="rendered">
-    <style>.link-demo .router-link-active { font-weight: bold; } .link-demo .router-link-exact-active { color: tomato; }</style>
-    <p class="link-demo"><RouterLink to="/">はじめに</RouterLink> / <RouterLink to="/routing">ルーティング(このページ)</RouterLink> / <RouterLink to="/sfc">単一ファイルコンポーネント</RouterLink></p>
-  </div>
-
   <h2 id="Route">ルートごとのガード・meta</h2>
 
   <p>
-    <code>Route</code> でルートを定義し、<code>RouterComponent.of(routes)</code> に渡すと、<br>
+    <code>Route</code> でルートを定義し、<br>
+    <code>&lt;RouterComponent.of :routes="routes" /&gt;</code> に渡すと、<br>
     ルートごとのガード(<code>beforeEnter</code>)と情報(<code>meta</code>)を指定できます.<br>
-    (ネストしたルートでは <code>RouterComponent.nestedOf(prefix)(routes)</code>)
+    (ネストしたルートでは <code>&lt;RouterComponent.of :routes="routes" :base='fixUrl("/guide")' /&gt;</code>)
   </p>
 
-  <pre><code class="language-scala">{{ codeRoute }}</code></pre>
+  <pre><code class="language-html">{{ codeGuardedApp }}</code></pre>
 
   <ul>
     <li>
@@ -276,7 +292,25 @@ val codeRoute = // language=scala
       グローバルなガード(<code>Router.beforeEach</code>)が先に呼ばれます.<br>
       すべてContinueの場合に、ルートごとのガードが呼ばれます.
     </li>
+    <li>
+      <code>&lt;script&gt;</code> のトップレベルに書いた処理は、<br>
+      コンポーネント(object)が最初に使われたときに1度だけ実行されます.
+    </li>
   </ul>
+
+  <h2 id="Link">RouterLink</h2>
+
+  <p>
+    <code>&lt;RouterLink to="/x"&gt;</code> は、クリックでRouter.goするリンクです.<br>
+    現在の場所に応じて、<br>
+    <code>router-link-active</code> / <code>router-link-exact-active</code> クラスを付けます.<br>
+    詳しくは <a @click='go("/builtinComponents")'>組込コンポーネント</a> を参照ください.
+  </p>
+
+  <div class="rendered">
+    <style>.link-demo .router-link-active { font-weight: bold; } .link-demo .router-link-exact-active { color: tomato; }</style>
+    <p class="link-demo"><RouterLink to="/">はじめに</RouterLink> / <RouterLink to="/routing">ルーティング(このページ)</RouterLink> / <RouterLink to="/sfc">単一ファイルコンポーネント</RouterLink></p>
+  </div>
 
   <h2 id="BasePath">BasePath</h2>
 
@@ -286,9 +320,13 @@ val codeRoute = // language=scala
     以下はMain関数で設定する例です.
   </p>
 
-  <pre><code class="language-scala">{{ code3 }}</code></pre>
+  <pre><code class="language-scala">{{ codeBasePath }}</code></pre>
 
   <p>
     Router.goで遷移する時と、RouterComponentのパス判定時にベースパスが考慮されます.
+  </p>
+
+  <p>
+    従来の書き方は、<a @click='go("/scalaApi")'>Scala API(従来の書き方)</a> を参照ください.
   </p>
 </template>
