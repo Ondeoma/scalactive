@@ -14,7 +14,7 @@ import scala.scalajs.js.JSConverters.*
  * ベンチマーク用のページ. window.scalactiveBench からbench/run.mjsが操作します.
  *
  * URLパラメータ:
- *  - impl=scala|st  表をScala API(RowsScala)と.st(RowsSt)のどちらで描くか(既定: scala)
+ *  - impl=scala|st|lr  表をScala API(RowsScala)・.st(RowsSt)・ReactiveList版(RowsLR)のどれで描くか(既定: scala)
  *  - delay=ミリ秒    ScalactiveConfig.reloadTimerLazyDuration(指定しなければライブラリの既定値のまま)
  */
 object BenchApp {
@@ -36,6 +36,9 @@ object BenchApp {
 
     val component = impl match {
       case "st" => RowsSt()(app, AddMethod.append(app))
+      case "lr" =>
+        Store.useLR = true
+        RowsLR()(app, AddMethod.append(app))
       case _ => RowsScala()(app, AddMethod.append(app))
     }
     component.init().left.foreach(e => throw new IllegalStateException(e))
@@ -119,7 +122,7 @@ object BenchApp {
   private def metrics(): js.Dynamic = js.Dynamic.literal(
     domNodes = countNodes(app) - 1,
     selectedWatchers = Store.selected.watcherCount,
-    rowsWatchers = Store.rows.watcherCount,
+    rowsWatchers = Store.rowsWatcherCount,
   )
 
   private def run(name: String, warmup: Int, iterations: Int): Future[js.Dynamic] = {

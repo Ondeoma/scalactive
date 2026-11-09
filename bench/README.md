@@ -27,7 +27,7 @@ node run.mjs --compare results/before.json
 
 | オプション | 内容 |
 | --- | --- |
-| `--impl scala,st` | 表の実装. `scala` はScala API(`RowsScala.scala`)、`st` は.st(`RowsSt.st`). 既定は両方 |
+| `--impl scala,st` | 表の実装. `scala` はScala API(`RowsScala.scala`)、`st` は.st(`RowsSt.st`)、`lr` はRVListの代わりにReactiveListを使う版(`RowsLR.scala`). 既定は `scala,st` |
 | `--scenarios a,b` | 実行するシナリオ |
 | `--iterations N` / `--warmup N` | 計測回数(既定: シナリオごと、多くは10) / 計測前の空回し(既定: 3) |
 | `--delay ms` | `ScalactiveConfig.reloadTimerLazyDuration`. 指定しなければライブラリの既定値(0: 現在の処理の直後に描き直す)のまま |
@@ -55,6 +55,8 @@ id、ラベル(行の値を監視するテキスト)、選択状態のclass(`Sto
 | rv-same-value | 同じく、同じ値を100回代入する |
 | crv-chain | 1,000段つながった計算値の根元を100回更新する |
 | rvlist-assign | リスト全体を監視される1,000件のRVListに1,000件を代入する |
+| reactivelist-assign | 同じく、ReactiveListに代入する |
+| rvlist-update / reactivelist-update | リスト全体を監視される1,000件のRVList / ReactiveListの1件を100回書き換える |
 
 - **dom** シナリオ(表を使うもの)は、操作してから画面に反映されてレイアウトが終わるまでの時間です.
   反映は `#app` 以下のDOMの変化を `MutationObserver` で監視して判定します. 準備(前の行の作成など)は計測に含みません.

@@ -30,7 +30,7 @@ const { values: args } = parseArgs({
 
 if (args.help) {
   console.log(`usage: node run.mjs [options]
-  --impl scala,st        表の実装(既定: 両方)
+  --impl scala,st        表の実装(scala, st, lr. 既定: scala,st)
   --scenarios a,b        実行するシナリオ(既定: すべて)
   --iterations N         計測回数(既定: シナリオごとの値)
   --warmup N             計測前の空回し(既定: 3)
