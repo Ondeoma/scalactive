@@ -160,10 +160,25 @@ cd editors/intellij
   - 言語サーバーには `initializationOptions` で `{"htmlCompletion": false}` を渡し、HTMLの標準のタグ・属性・属性値の補完を
     IntelliJの補完と重ならないようにしています(子コンポーネント・prop・ディレクティブ・`:attr`・`@event` は言語サーバーが補完します).
 - `.st` のファイルのアイコンは `intellij/src/main/resources/icons/st.svg`(ダークテーマ用は `st_dark.svg`)です.
+  プラグイン自体のアイコン(Marketplace・プラグインの一覧)は `META-INF/pluginIcon.svg`(40×40. ダークテーマ用は `pluginIcon_dark.svg`)です.
 - 言語サーバーはIntelliJのLSP API(2025.2以降のプラットフォームに含まれます)で起動し、IDEのJava(JBR)で動かします.
   jarはプラグインの `server/` に同梱されます.
 - テストのサンドボックスの状態がおかしくなった場合は `.intellijPlatform/sandbox` を削除してください.
-- JetBrains Marketplaceへの公開は `./gradlew publishPlugin`(トークンの設定が必要).
+
+### JetBrains Marketplaceへの公開
+
+1. `intellij/gradle.properties` の `pluginVersion` を上げ、`intellij/change-notes.html` の先頭にそのバージョンの変更点を書きます
+   (Marketplaceの「What's New」に表示されます. 英語で書きます).
+2. `intellij-v<pluginVersion>` のタグ(例: `intellij-v0.4.1`)をpushすると、`.github/workflows/intellij.yml` が
+   言語サーバーのjarとプラグインを作り、構造を検査して、`./gradlew publishPlugin` で公開します.
+   タグとpluginVersionが違う場合は失敗します. 作ったzipはActionsの成果物(intellij-plugin)にも残ります.
+3. 手動で動かす(workflow_dispatch)場合は、既定ではビルドと検査だけを行います(`publish` を選ぶと公開).
+
+- 公開にはSecretsの `JETBRAINS_TOKEN`(MarketplaceのMy Profile → Tokensで作るトークン)が必要です.
+  手元から公開する場合は `JETBRAINS_TOKEN=... ./gradlew publishPlugin` です.
+- 初回だけは、Marketplaceの「Upload plugin」からzipを手動でアップロードし、JetBrainsの審査を受ける必要があります
+  (vendorは `plugin.xml` の `Ondeoma`. プラグインIDの `io.github.ondeoma.scalactive-st` は登録後に変更できません).
+- IntelliJの各バージョンとの互換性の検査は `./gradlew verifyPlugin` です(IDEをダウンロードするため、CIでは行っていません).
 
 ## 文法を変更したら
 

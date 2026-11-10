@@ -25,7 +25,9 @@
     </ul>
     <p>Code completion, type errors, hover and go to definition for the Scala code in <code>.st</code> files are provided by
        the Scalactive language server (requires an IDE with LSP support and an sbt project that enables <code>ScalactivePlugin</code>;
-       run <code>sbt compile</code> once so that <code>target/scalactive-lsp.json</code> is written).</p>
+       run <code>sbt compile</code> once so that <code>target/scalactive-lsp.json</code> is written).
+       On first use, the language server downloads the Scala 3 presentation compiler for the project's Scala version
+       from Maven Central. It runs on the Java runtime bundled with the IDE.</p>
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>

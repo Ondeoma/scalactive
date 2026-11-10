@@ -1,0 +1,8 @@
+<!-- プラグインのアイコン(40x40). Marketplaceやプラグインの一覧に表示される. 赤い角丸に白い帯(Scala)と光(リアクティブ) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <rect x="2" y="2" width="36" height="36" rx="9" fill="#DB3B4B"/>
+  <path d="M8 15.5Q16 11.8 24 11.6L24 16Q16 16.2 8 19.8Z" fill="#FFFFFF"/>
+  <path d="M8 22.5Q16 18.8 24 18.6L24 23Q16 23.2 8 26.8Z" fill="#FFFFFF" fill-opacity="0.78"/>
+  <path d="M8 29.5Q16 25.8 24 25.6L24 30Q16 30.2 8 33.8Z" fill="#FFFFFF"/>
+  <path d="M30.5 6L31.8 9.4L35.2 10.7L31.8 12L30.5 15.4L29.2 12L25.8 10.7L29.2 9.4Z" fill="#FFC56B"/>
+</svg>

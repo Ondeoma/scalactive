@@ -1,0 +1,65 @@
+name: Publish IntelliJ Plugin
+
+# IntelliJプラグインをJetBrains Marketplaceに公開する.
+# editors/intellij/gradle.properties の pluginVersion と同じバージョンのタグ(例: intellij-v0.4.1)をpushすると動く.
+# 初回の登録はMarketplaceのWebから手動で行い、承認後に作ったトークンを Secrets の JETBRAINS_TOKEN に登録しておくこと.
+on:
+  push:
+    tags: [ "intellij-v*" ]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Marketplaceに公開する(falseならビルドと検査だけ)"
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Check version
+        if: startsWith(github.ref, 'refs/tags/intellij-v')
+        run: |
+          expected=$(grep '^pluginVersion=' editors/intellij/gradle.properties | cut -d= -f2)
+          tag=${GITHUB_REF_NAME#intellij-v}
+          if [ "$tag" != "$expected" ]; then
+            echo "tag $GITHUB_REF_NAME does not match pluginVersion $expected"
+            exit 1
+          fi
+
+      # プラグインに同梱する言語サーバーのjar
+      - name: Build language server
+        run: sbt languageServer/assembly
+
+      - name: Build and check plugin
+        working-directory: editors/intellij
+        run: ./gradlew buildPlugin verifyPluginStructure
+
+      - name: Upload plugin zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: intellij-plugin
+          path: editors/intellij/build/distributions/*.zip
+
+      - name: Publish to JetBrains Marketplace
+        if: startsWith(github.ref, 'refs/tags/intellij-v') || inputs.publish
+        working-directory: editors/intellij
+        run: ./gradlew publishPlugin
+        env:
+          JETBRAINS_TOKEN: ${{ secrets.JETBRAINS_TOKEN }}
