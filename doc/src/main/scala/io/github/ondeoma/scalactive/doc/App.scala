@@ -11,6 +11,8 @@ object App {
   @main
   def main(): Unit = {
     ScalactiveConfig.basePath = "scalactive"
+    // ルートのタイトルの書式(どのルートにもタイトルがなければ、index.htmlのタイトルのまま)
+    ScalactiveConfig.titleTemplate = "%s | Scalactive Doc"
     // ブラウザのコンソールから scalactive.stats() などを使えるようにする
     io.github.ondeoma.scalactive.Devtools.install()
     MainComponent()(body, AddMethod.appendS(IdSelector("app"))).init()
