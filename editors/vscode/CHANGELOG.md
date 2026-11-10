@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.4.2
+
+- `.st` files get their own icon in the Explorer and editor tabs (used when the file icon theme has no icon for them).
+
 ## 0.4.1
 
 First release on the Visual Studio Marketplace and Open VSX.

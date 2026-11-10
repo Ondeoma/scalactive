@@ -102,7 +102,10 @@ code --install-extension scalactive-st-<version>.vsix
 
 - Secretsの `VSCE_PAT`(Visual Studio MarketplaceのpublisherのPAT)と `OVSX_PAT`(Open VSXのアクセストークン)が必要です.
 - publisherは `package.json` の `ondeoma` です(Open VSXの名前空間も `ondeoma`).
-- アイコンは `vscode/images/icon.png`(128×128. IntelliJプラグインの `pluginIcon.svg` から作ったもの)です.
+- 拡張のアイコンは `vscode/images/icon.png`(128×128. IntelliJプラグインの `pluginIcon.svg` から作ったもの)です.
+- `.st` のファイルのアイコン(エクスプローラー・タブ)は `vscode/images/st-file.svg`(ダークテーマ用は `st-file-dark.svg`)で、
+  `package.json` の `languages[].icon` で指定しています. ファイルアイコンのテーマに `.st` のアイコンがない場合に使われます.
+  IntelliJプラグインも同じファイルを使います.
 
 VS Code拡張のコマンド:
 
@@ -159,7 +162,8 @@ cd editors/intellij
   Scalaのソース(`scalactive-lsp.json` の `generatedDirectory` の下)を開けます(`OpenGeneratedSourceAction`).
   - 言語サーバーには `initializationOptions` で `{"htmlCompletion": false}` を渡し、HTMLの標準のタグ・属性・属性値の補完を
     IntelliJの補完と重ならないようにしています(子コンポーネント・prop・ディレクティブ・`:attr`・`@event` は言語サーバーが補完します).
-- `.st` のファイルのアイコンは `intellij/src/main/resources/icons/st.svg`(ダークテーマ用は `st_dark.svg`)です.
+- `.st` のファイルのアイコンは、VS Code拡張の `vscode/images/st-file.svg`(ダークテーマ用は `st-file-dark.svg`)を、ビルド時に
+  `icons/st.svg`・`icons/st_dark.svg` へ写して使います.
   プラグイン自体のアイコン(Marketplace・プラグインの一覧)は `META-INF/pluginIcon.svg`(40×40. ダークテーマ用は `pluginIcon_dark.svg`)です.
 - 言語サーバーはIntelliJのLSP API(2025.2以降のプラットフォームに含まれます)で起動し、IDEのJava(JBR)で動かします.
   jarはプラグインの `server/` に同梱されます.

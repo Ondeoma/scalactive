@@ -67,6 +67,13 @@ tasks {
             rename("^PropsComponent\\.st$", "Scalactive Props Component.st.ft")
             rename("^StatefulComponent\\.st$", "Scalactive Stateful Component.st.ft")
         }
+        // .stのファイルのアイコンも、VS Code拡張と同じもの(../vscode/images)を使う. ダークテーマ用は st_dark.svg
+        from(layout.projectDirectory.dir("../vscode/images")) {
+            include("st-file.svg", "st-file-dark.svg")
+            into("icons")
+            rename("^st-file\\.svg$", "st.svg")
+            rename("^st-file-dark\\.svg$", "st_dark.svg")
+        }
     }
 
     // VS Code拡張(../vscode)の文法をそのままTextMateバンドルとして同梱する.
