@@ -85,6 +85,27 @@ class ReactiveApiSuite extends munit.FunSuite {
     assertEquals((c.v, runs), (300, 3))
   }
 
+  test("computedは計算し直しても、同じ依存の監視を増やさない") {
+    val a = RV(1)
+    val c1 = computed(a.v * 2)
+    val c2 = computed(if (a.v == 3) "x" else "y")
+    (2 to 10).foreach(i => a := i)
+    assertEquals(a.numWatchers, 2)
+    assertEquals((c1.v, c2.v), (20, "y"))
+    c1.abort()
+    c2.abort()
+  }
+
+  test("同じ値を見る多数のcomputedが、変化のたびに全て計算し直される") {
+    val page = RV(1)
+    val cs = (1 to 30).map(n => n -> computed(if (page.v == n) "active" else ""))
+    (2 to 12).foreach { p =>
+      page := p
+      val actives = cs.collect { case (n, c) if c.v == "active" => n }
+      assertEquals(actives, Seq(p), s"page=$p")
+    }
+  }
+
   test("computedは値が等しければ通知しない") {
     val n = RV(1)
     val big = computed(n.v > 3)
