@@ -1,7 +1,7 @@
 package io.github.ondeoma.scalactive.reactive
 
 import io.github.ondeoma.scalactive.models.WatchInfo
-import io.github.ondeoma.scalactive.reactive.Reactive.registerCM
+import io.github.ondeoma.scalactive.reactive.Reactive.registerScoped
 
 /**
  * watchの登録. `stop()` で監視をやめます.
@@ -55,7 +55,7 @@ object ReactiveFunctions {
    */
   inline def computed[R](f: => R): CRV[R] = {
     val c = Computed.make(() => f)
-    registerCM(c)
+    registerScoped(c)
     c
   }
 
@@ -78,7 +78,7 @@ object ReactiveFunctions {
                       immediate: Boolean = false)
                      (f: (A, A) => Unit): WatchHandle = {
     val h = WatchHandle.start(r, immediate, f)
-    registerCM(h)
+    registerScoped(h)
     h
   }
 

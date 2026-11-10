@@ -157,6 +157,7 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.components.ErrorInfo
   export io.github.ondeoma.scalactive.components.Await
   export io.github.ondeoma.scalactive.components.MountHandle
+  export io.github.ondeoma.scalactive.components.TitleHandle
   export io.github.ondeoma.scalactive.components.routes.Route
   export io.github.ondeoma.scalactive.components.routes.RouterLink
   export io.github.ondeoma.scalactive.components.fors.ForGeneralComponent
@@ -226,6 +227,10 @@ object ComponentManager {
 
   export io.github.ondeoma.scalactive.routes.Router
 
+  export io.github.ondeoma.scalactive.storage.PersistentStore
+  export io.github.ondeoma.scalactive.storage.StorageCodec
+  export io.github.ondeoma.scalactive.storage.StorageKind
+
   export io.github.ondeoma.scalactive.utils.ConsoleUtil.*
   export io.github.ondeoma.scalactive.utils.DomUtil.*
   export io.github.ondeoma.scalactive.utils.TypeAlias.*
@@ -281,7 +286,7 @@ object ComponentManager {
   inline def mount(el: Element,
                    component: GenComponentF): Either[String, MountHandle] = {
     val r = Mount.start(el, component)
-    r.foreach(h => Reactive.registerCM(h))
+    r.foreach(h => Reactive.registerScoped(h))
     r
   }
 
@@ -293,6 +298,33 @@ object ComponentManager {
   inline def mount(el: Element)
                   (component: (HTMLElement, AddMethod) ?=> ComponentController[?]): Either[String, MountHandle] = {
     mount(el, (p, am) => component(using p, am))
+  }
+
+  /**
+   * 画面のタイトル(document.title)を指定します. 表示されている間だけ有効です.
+   * 例: .stでは `def mounted(props: Props) = pageTitle(props.title)`
+   *
+   * コンポーネントの中(mountedを含む)で指定した場合は、片付けられると取り下げ、前のタイトルに戻ります.
+   * 複数のコンポーネントが指定している場合は、子(ネストしたルートの側)のものを使います.
+   * ScalactiveConfig.titleTemplate で書式を指定できます.
+   */
+  inline def pageTitle(title: String): TitleHandle = {
+    val h = scala.compiletime.summonFrom {
+      case _: ComponentManager => TitleHandle.create(Left(title), inComponent = true)
+      case _ => TitleHandle.create(Left(title), inComponent = false)
+    }
+    Reactive.registerScoped(h)
+    h
+  }
+
+  /** 画面のタイトルを、リアクティブな値に合わせて変えます(例: 読み込んだデータの名前). */
+  inline def pageTitle(title: Reactive[String]): TitleHandle = {
+    val h = scala.compiletime.summonFrom {
+      case _: ComponentManager => TitleHandle.create(Right(title), inComponent = true)
+      case _ => TitleHandle.create(Right(title), inComponent = false)
+    }
+    Reactive.registerScoped(h)
+    h
   }
 
   /**

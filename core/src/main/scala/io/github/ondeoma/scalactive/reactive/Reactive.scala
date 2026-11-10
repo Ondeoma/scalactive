@@ -50,14 +50,30 @@ object Reactive {
 
     summonFrom {
       case cm: ComponentManager => cm.addTmpReactive(rv)
-      case _ => adoptByRunningHook(rv)
+      case _ => ()
     }
   }
 
   /**
-   * ComponentManagerの外(.stの def mounted など)で作られた場合は、実行中のonMountedのコンポーネントに登録し、
-   * そのコンポーネントが片付けられたときに止めます. onMountedの実行中でなければ何もしません.
+   * 監視の登録(watch・computed・mount)用のregisterCM.
+   * ComponentManagerの外(.stの def mounted など)で作られた場合も、実行中のonMountedのコンポーネントに登録し、
+   * そのコンポーネントが片付けられたときに止めます.
+   *
+   * RVなどの値には使いません. オブジェクトの初期化がonMountedの中で起きた場合に、
+   * オブジェクトの値までコンポーネントと一緒に止められてしまうためです.
    */
+  inline def registerScoped(rv: Reactive[?]): Unit = {
+    import io.github.ondeoma.scalactive.components.ComponentManager
+
+    import scala.compiletime.summonFrom
+
+    summonFrom {
+      case cm: ComponentManager => cm.addTmpReactive(rv)
+      case _ => adoptByRunningHook(rv)
+    }
+  }
+
+  /** 実行中のonMountedのコンポーネントがあれば、rvをそのコンポーネントが片付けられたときに止めます. */
   def adoptByRunningHook(rv: Reactive[?]): Unit = {
     val h = io.github.ondeoma.scalactive.components.LifecycleHooks.running
     if (h != null) h.adopt(rv)

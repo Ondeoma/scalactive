@@ -28,13 +28,16 @@ val codeRoutingApp = // language=html
 
 val codePageTitle = // language=html
   """<script lang="scala">
-    |case class Props(title: String)
-    |</script>
-    |
-    |<template>
-    |  <h2>{{ props.title }}</h2>
-    |</template>
-    |""".stripMargin
+     |case class Props(title: String)
+     |
+     |// 表示している間、画面(タブ)のタイトルにします
+     |def mounted(props: Props): Unit = pageTitle(props.title)
+     |</script>
+     |
+     |<template>
+     |  <h2>{{ props.title }}</h2>
+     |</template>
+     |""".stripMargin
 
 val codeGuideLayout = // language=html
   """<script lang="scala">
@@ -58,6 +61,24 @@ val codeGuideLayout = // language=html
     |  </section>
     |</template>
     |""".stripMargin
+
+val codeTitle = // language=scala
+  """import io.github.ondeoma.scalactive.ScalactiveConfig
+     |
+     |// ルートにタイトルを書く
+     |val routes = List(
+     |  Route("/", _ => Top(), title = _ => "TOP"),
+     |  Route("/items/:id", r => Item(), title = r => "商品 " + r.pathname.groups("id")),
+     |)
+     |
+     |// コンポーネントの中で決める(.stでは def mounted の中で)
+     |pageTitle("TOP")
+     |pageTitle(item.mapC(i => "商品 " + i.name)) // 読み込んだデータに合わせて変わるタイトル
+     |
+     |// 書式と、どれも指定されていない時のタイトル
+     |ScalactiveConfig.titleTemplate = "%s | MyApp"
+     |ScalactiveConfig.defaultTitle = Some("MyApp")
+     |""".stripMargin
 
 val codeGuardedApp = // language=html
   """<script lang="scala">
@@ -143,6 +164,7 @@ val codeBasePath = // language=scala
     <li><a @click='setHash("Nested")'>ネストしたルート</a></li>
     <li><a @click='setHash("Guard")'>ナビゲーションガード</a></li>
     <li><a @click='setHash("Route")'>ルートごとのガード・meta</a></li>
+    <li><a @click='setHash("Title")'>画面のタイトル</a></li>
     <li><a @click='setHash("Link")'>RouterLink</a></li>
     <li><a @click='setHash("BasePath")'>BasePath</a></li>
   </ul>
@@ -296,6 +318,31 @@ val codeBasePath = // language=scala
     <li>
       <code>&lt;script&gt;</code> のトップレベルに書いた処理は、<br>
       コンポーネント(object)が最初に使われたときに1度だけ実行されます.
+    </li>
+  </ul>
+
+  <h2 id="Title">画面のタイトル</h2>
+
+  <p>
+    画面(タブ)のタイトルは、ルートの <code>title</code> か、コンポーネントの中の <code>pageTitle</code> で指定します.<br>
+    上の <code>PageTitle.st</code> は、mountedの中で <code>pageTitle(props.title)</code> を呼んでいるので、<br>
+    遷移すると、表示したページのタイトルに変わります.
+  </p>
+
+  <pre><code class="language-scala">{{ codeTitle }}</code></pre>
+
+  <ul>
+    <li>
+      タイトルは、表示されている間だけ有効です.<br>
+      コンポーネントが片付けられると取り下げ、前のタイトルに戻ります.
+    </li>
+    <li>
+      ルートの <code>title</code> より、ルートのコンポーネントの中の <code>pageTitle</code> が優先されます.<br>
+      レイアウトとページの両方が指定している場合は、ページ(子・ネストしたルートの側)のものを使います.
+    </li>
+    <li>
+      どれも指定されていない場合は、<code>ScalactiveConfig.defaultTitle</code>、<br>
+      それもなければ指定される前のタイトルに戻します.
     </li>
   </ul>
 
