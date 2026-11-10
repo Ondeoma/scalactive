@@ -81,7 +81,7 @@ npm install
 npm test          # 文法のトークン化テスト(shiki)
 npm run test:e2e  # VS Codeを起動して言語サーバーを確認する結合テスト(事前に sbt languageServer/assembly doc/compile)
 npm run package   # scalactive-st-<version>.vsix を作成(言語サーバーのjarを同梱)
-code --install-extension scalactive-st-0.1.0.vsix
+code --install-extension scalactive-st-<version>.vsix
 ```
 
 - Scalaのハイライトには [Scala Syntax (official)](https://marketplace.visualstudio.com/items?itemName=scala-lang.scala) を使います(`extensionDependencies` で自動インストールされます).
@@ -89,7 +89,20 @@ code --install-extension scalactive-st-0.1.0.vsix
   (`scalactive.languageServer.javaHome` → `JAVA_HOME` → `PATH`).
 - `npm run test:e2e` は、インストール済みのVS Code(macOSの既定の場所、または環境変数 `VSCODE_PATH`)を使います.
   なければ安定版をダウンロードします.
-- Marketplaceへの公開は `npx vsce publish`(publisher `ondeoma` のアクセストークンが必要).
+
+### Visual Studio Marketplace・Open VSXへの公開
+
+1. `vscode/package.json` の `version` を上げ、`vscode/CHANGELOG.md` の先頭にそのバージョンの変更点を書きます
+   (Marketplaceの「Changelog」に表示されます. README・CHANGELOGは英語で書きます).
+2. `vscode-v<version>` のタグ(例: `vscode-v0.4.1`)をpushすると、`.github/workflows/vscode.yml` が言語サーバーのjarと
+   vsixを作り、文法のテストを行って、Visual Studio Marketplace(`vsce publish`)とOpen VSX(`ovsx publish`)に公開します.
+   タグとversionが違う場合は失敗します. 作ったvsixはActionsの成果物(vscode-extension)にも残ります.
+3. 手動で動かす(workflow_dispatch)場合は、既定ではvsixの作成と、トークンでpublisher(名前空間)に公開できるかの確認だけを行います
+   (`publish` を選ぶと公開).
+
+- Secretsの `VSCE_PAT`(Visual Studio MarketplaceのpublisherのPAT)と `OVSX_PAT`(Open VSXのアクセストークン)が必要です.
+- publisherは `package.json` の `ondeoma` です(Open VSXの名前空間も `ondeoma`).
+- アイコンは `vscode/images/icon.png`(128×128. IntelliJプラグインの `pluginIcon.svg` から作ったもの)です.
 
 VS Code拡張のコマンド:
 

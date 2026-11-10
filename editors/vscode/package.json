@@ -2,15 +2,23 @@
   "name": "scalactive-st",
   "displayName": "Scalactive Single File Component (.st)",
   "description": "Language support for Scalactive single file components (.st): syntax highlighting, completion, type errors, hover and go to definition",
-  "version": "0.1.0",
+  "version": "0.4.1",
   "publisher": "ondeoma",
   "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#DB3B4B",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Ondeoma/scalactive.git",
     "directory": "editors/vscode"
   },
-  "homepage": "https://ondeoma.github.io/scalactive/sfc",
+  "homepage": "https://ondeoma.github.io/scalactive/editor",
+  "bugs": {
+    "url": "https://github.com/Ondeoma/scalactive/issues"
+  },
   "engines": {
     "vscode": "^1.82.0"
   },
@@ -147,6 +155,7 @@
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.0",
+    "ovsx": "^1.4.0",
     "shiki": "^4.0.0"
   },
   "main": "./dist/extension.js",

@@ -1,0 +1,93 @@
+name: Publish VS Code Extension
+
+# VS Code拡張をVisual Studio MarketplaceとOpen VSXに公開する.
+# editors/vscode/package.json の version と同じバージョンのタグ(例: vscode-v0.4.1)をpushすると動く.
+# Secrets に VSCE_PAT(Visual Studio Marketplace)と OVSX_PAT(Open VSX)を登録しておくこと.
+on:
+  push:
+    tags: [ "vscode-v*" ]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "公開する(falseならパッケージの作成と、トークン・publisherの確認だけ)"
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+
+      - name: Check version
+        if: startsWith(github.ref, 'refs/tags/vscode-v')
+        run: |
+          expected=$(node -p "require('./package.json').version")
+          tag=${GITHUB_REF_NAME#vscode-v}
+          if [ "$tag" != "$expected" ]; then
+            echo "tag $GITHUB_REF_NAME does not match version $expected in package.json"
+            exit 1
+          fi
+
+      # 拡張に同梱する言語サーバーのjar
+      - name: Build language server
+        working-directory: .
+        run: sbt languageServer/assembly
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test grammar
+        run: npm test
+
+      - name: Package
+        run: npm run package
+
+      - name: Upload vsix
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: editors/vscode/*.vsix
+
+      # トークンでpublisher(名前空間)に公開できるかを確かめる(公開しない場合も行う)
+      - name: Verify tokens
+        run: |
+          publisher=$(node -p "require('./package.json').publisher")
+          npx vsce verify-pat "$publisher"
+          npx ovsx verify-pat "$publisher"
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Publish to Visual Studio Marketplace
+        if: startsWith(github.ref, 'refs/tags/vscode-v') || inputs.publish
+        run: npx vsce publish --packagePath *.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        if: startsWith(github.ref, 'refs/tags/vscode-v') || inputs.publish
+        run: npx ovsx publish *.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

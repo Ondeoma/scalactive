@@ -1,48 +1,66 @@
 # Scalactive Single File Component (.st)
 
-[Scalactive](https://ondeoma.github.io/scalactive/) の単一ファイルコンポーネント(`.st`)の言語サポートです.
+Language support for single file components (`.st`) of [Scalactive](https://ondeoma.github.io/scalactive/),
+a reactive frontend framework for Scala.js.
 
-## シンタックスハイライト
+日本語の説明は [ドキュメントの「エディタ」](https://ondeoma.github.io/scalactive/editor) を参照してください.
 
-- `<script lang="scala">` : Scalaとしてハイライト
-- `<style>` : CSSとしてハイライト
-- `<template>` : HTMLとしてハイライトし、以下の中身をScalaとしてハイライト
+## Syntax highlighting
+
+- `<script lang="scala">` is highlighted as Scala, `<style>` as CSS.
+- In `<template>`, the HTML is highlighted, and these parts are highlighted as Scala:
   - `{{ expr }}`
   - `v-if` / `v-else-if` / `v-show` / `v-model` / `v-for`
   - `:attr="expr"` / `v-bind:attr="expr"`
   - `@event.modifier="stmt"` / `v-on:event="stmt"`
-- 大文字で始まるタグ(子コンポーネント)を区別して表示
+- Tags starting with an uppercase letter (child components) are highlighted separately.
+- In the script, a triple-quoted string after a `// language=scala` / `html` / `css` comment is highlighted in that language.
 
-Scalaのハイライトには [Scala Syntax (official)](https://marketplace.visualstudio.com/items?itemName=scala-lang.scala) 拡張機能を利用します(自動でインストールされます).
+Scala highlighting uses the [Scala Syntax (official)](https://marketplace.visualstudio.com/items?itemName=scala-lang.scala)
+extension, which is installed automatically.
 
-## 言語サーバー
+## Language server
 
-上記のScalaの部分で、次の機能が使えます.
+The Scala parts of `.st` files get these features from the Scalactive language server:
 
-- 補完(テンプレートのHTMLの部分では、コンポーネント名・子コンポーネントのprops・ディレクティブ・スロット名・HTMLの標準のタグ・属性・属性値も補完します)
-- 型エラーなどの表示
-- 子コンポーネントのpropの参照の検索と名前の変更(F2)
-- 子コンポーネントのタグの検査(未知のprop・スロット、必須のpropの不足を警告)
-- ホバーでの型の表示(子コンポーネントのタグではPropsの一覧、属性ではpropの型、HTMLのタグ・属性では説明)、引数のヒント
-- 定義へのジャンプ(同じ`.st`内と、プロジェクト内の `.scala` / `.st`. 子コンポーネントのタグ名・属性名からは、その `.st` のPropsへ)
-- ドキュメントのフォーマット(テンプレートのインデントを入れ子に合わせて整え、行末の空白などを取り除きます)
+- Completion, including classes that are not imported yet (an import is added to the `<script>`).
+  In the HTML part of the template: component names, props, events and `v-model` of child components, directives,
+  slot names, and standard HTML tags, attributes and enumerated values.
+- Type errors and other diagnostics, reported at their position in the `.st` file.
+- Hover with types and documentation, and signature help.
+- Go to definition: within the `.st` file, to `.scala` / `.st` files of the project, and into library sources.
+  From a child component's tag or attribute, it goes to the `Props` of that `.st` file.
+- Find references and rename (F2) of child component props.
+- Inspections of child component tags (unknown props and slots, missing required props) with quick fixes.
+- Inlay hints for inferred types.
+- Document formatting (template indentation, `<style>` rules, and scalafmt for `<script>`).
 
-使うには:
+### Requirements
 
-1. sbtプロジェクトで `ScalactivePlugin` を有効にし、`sbt compile` を1度実行します
-   (クラスパスなどが `target/scalactive-lsp.json` に書き出されます).
-2. Java 11以降が必要です. `scalactive.languageServer.javaHome`、`JAVA_HOME`、`PATH` の順に探します.
+1. An sbt project that enables `ScalactivePlugin`. Run `sbt compile` once so that `target/scalactive-lsp.json`
+   (the classpath and other settings for the language server) is written.
+   If it is missing, a notification offers to run `sbt compile`.
+2. Java 11 or later. The extension looks at `scalactive.languageServer.javaHome`, `JAVA_HOME` and `PATH` in this order.
 
-初回はScalaのpresentation compilerをMaven Centralから取得します.
-sbtで再コンパイルすると、他のファイルの変更が反映されます.
+On first use, the language server downloads the Scala 3 presentation compiler for the project's Scala version
+from Maven Central. Definitions in other files are read from the last sbt compilation.
 
-### 設定
+### Settings
 
-| 設定 | 既定値 | 内容 |
+| Setting | Default | Description |
 | --- | --- | --- |
-| `scalactive.languageServer.enabled` | `true` | 言語サーバーを使う |
-| `scalactive.languageServer.javaHome` | `""` | 言語サーバーを動かすJDK |
-| `scalactive.languageServer.jvmOptions` | `["-Xss4m", "-Xmx2G"]` | 言語サーバーのJVMオプション |
-| `scalactive.trace.server` | `off` | 通信のログ |
+| `scalactive.languageServer.enabled` | `true` | Use the language server |
+| `scalactive.languageServer.javaHome` | `""` | JDK to run the language server |
+| `scalactive.languageServer.jvmOptions` | `["-Xss4m", "-Xmx2G"]` | JVM options for the language server |
+| `scalactive.trace.server` | `off` | Trace the communication with the language server |
 
-コマンド `Scalactive: Restart Language Server` で再起動できます.
+## Commands
+
+- **Scalactive: New Scalactive Component** (also in the Explorer's context menu) creates a `.st` file from a template.
+- **Scalactive: Open Generated Scala Source** opens the Scala code generated from the current `.st` file.
+- **Scalactive: Restart Language Server**
+
+## Links
+
+- [Scalactive documentation](https://ondeoma.github.io/scalactive/)
+- [Source code and issues](https://github.com/Ondeoma/scalactive)

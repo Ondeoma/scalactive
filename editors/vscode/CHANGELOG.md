@@ -1,12 +1,20 @@
 # Change Log
 
-## Unreleased
+## 0.4.1
 
-- テンプレートのHTMLの部分の補完を追加(コンポーネント名、子コンポーネントのprops・イベント・v-model、ディレクティブ、スロット名).
-- 子コンポーネントのタグ名・属性名から、その.stのProps(のパラメータ)への定義ジャンプを追加.
-- ドキュメントのフォーマット(整形)を追加.
+First release on the Visual Studio Marketplace and Open VSX.
+
+- Completion in the HTML part of the template: component names, props, events and `v-model` of child components,
+  directives, slot names, and standard HTML tags, attributes and enumerated values.
+- Go to definition from a child component's tag or attribute to the `Props` of that `.st` file,
+  and into library sources (downloaded source jars).
+- Auto-import of classes on completion and a quick fix for "Not found" errors.
+- Find references and rename of props, inspections of child component tags with quick fixes, and inlay hints.
+- Document formatting (template indentation, `<style>` rules and scalafmt for `<script>`).
+- Commands: New Scalactive Component, Open Generated Scala Source and Restart Language Server.
+- `|` is inserted on Enter inside `stripMargin` strings.
 
 ## 0.1.0
 
-- `.st`(Scalactive単一ファイルコンポーネント)のシンタックスハイライトを追加.
-- 言語サーバーによる補完・型エラー・ホバー・引数のヒント・定義ジャンプを追加.
+- Syntax highlighting for `.st` (Scalactive single file component) files.
+- Completion, type errors, hover, signature help and go to definition by the language server.
