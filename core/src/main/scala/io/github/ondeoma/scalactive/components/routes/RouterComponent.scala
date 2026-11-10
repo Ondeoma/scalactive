@@ -16,11 +16,21 @@ import scala.scalajs.js
  *
  * @param beforeEnter このルートに(別のルートから)入るときに呼ばれるガード(既定ではそのまま遷移)
  * @param meta        ガードの中で to.meta として参照できる情報(例: Map("requiresAuth" -> true))
+ * @param title       画面のタイトル(例: `_ => "TOP"`、`r => "商品 " + r.pathname.groups("id")`).
+ *                    ルートのコンポーネントの中でpageTitleを指定した場合は、そちらを優先します
  */
 final case class Route(pattern: String,
                        component: URLPatternResult => GenComponentF,
                        beforeEnter: Router.Guard = (_, _) => Router.Continue,
-                       meta: Map[String, Any] = Map.empty)
+                       meta: Map[String, Any] = Map.empty,
+                       title: URLPatternResult => String = Route.noTitle)
+
+object Route {
+
+  /** タイトルを指定しない(既定) */
+  val noTitle: URLPatternResult => String = _ => ""
+
+}
 
 object RouterComponent extends BaseComponent {
 
@@ -152,7 +162,12 @@ object RouterComponent extends BaseComponent {
                         (implicit cm: ComponentManager) = {
     val href = location.href
     routes.find(r => r._1.test(href)).fold("") { (p, r) =>
-      val cmp = r.component(p.exec(href).get)
+      val result = p.exec(href).get
+      // ルートのタイトルは、ルートのコンポーネント(の中のpageTitle)より先に登録して、そちらを優先させる
+      if (r.title ne Route.noTitle) {
+        cm.addTmpReactive(io.github.ondeoma.scalactive.components.TitleHandle.create(Left(r.title(result)), inComponent = true))
+      }
+      val cmp = r.component(result)
       c(cmp)
     }
   }

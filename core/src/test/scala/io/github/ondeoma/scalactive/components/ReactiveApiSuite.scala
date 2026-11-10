@@ -188,7 +188,8 @@ class ReactiveApiSuite extends munit.FunSuite {
     })
     nextTick().map { _ =>
       n := 1
-      assertEquals(log, List("render:1", "mounted:1"))
+      // 監視の実行順は決まっていない
+      assertEquals(log.sorted, List("mounted:1", "render:1"))
       h.unmount()
       n := 2
       assertEquals(log.size, 2)

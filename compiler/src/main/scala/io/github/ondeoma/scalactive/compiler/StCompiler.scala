@@ -269,7 +269,7 @@ object StCompiler {
         |import io.github.ondeoma.scalactive.reactive.*
         |import org.scalajs.dom.*
         |import io.github.ondeoma.scalactive.components.ComponentManager as __CM
-        |import io.github.ondeoma.scalactive.components.ComponentManager.{computed, mount, nextTick, untracked, watch}
+        |import io.github.ondeoma.scalactive.components.ComponentManager.{computed, mount, nextTick, pageTitle, untracked, watch}
         |import io.github.ondeoma.scalactive.st.StRuntime as __st
         |
         |""".stripMargin

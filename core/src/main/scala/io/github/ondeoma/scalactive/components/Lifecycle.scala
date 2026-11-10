@@ -16,6 +16,9 @@ private[scalactive] final class LifecycleHooks extends Reactive[Unit] {
   val mounted: ListBuffer[() => Unit] = ListBuffer()
   val unmounted: ListBuffer[() => Unit] = ListBuffer()
 
+  /** 描画された順(pageTitleで、親より子のタイトルを優先するため) */
+  val order: Long = TitleStack.nextOrder()
+
   /** 片付けられていなければtrue */
   var alive: Boolean = true
 

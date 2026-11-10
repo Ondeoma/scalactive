@@ -296,6 +296,38 @@ class RouterSuite extends munit.FunSuite {
     flush().map(_ => assertEquals(root.textContent, "admin"))
   }
 
+  test("Route: titleで画面のタイトルを変え、ルートのコンポーネントのpageTitleを優先する") {
+    window.history.replaceState(js.Object(), "", "/items/1")
+    Router.href := window.location.href
+    def page(name: String, own: Option[String]): GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = {
+        own.foreach(t => io.github.ondeoma.scalactive.components.ComponentManager.pageTitle(t))
+        s"<b>$name</b>"
+      }
+    }.apply()(_, _)
+    val routes = List(
+      Route("/items/:id", r => page("item", None), title = r => "商品 " + r.pathname.groups("id")),
+      Route("/about", _ => page("about", Some("自前のタイトル")), title = _ => "ABOUT"),
+      Route("/plain", _ => page("plain", None)),
+    )
+    document.title = "元のタイトル"
+    val root = mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent.of(routes))}</main>")
+    assertEquals(document.title, "商品 1")
+    Router.go("/items/2")
+    flush().flatMap { _ =>
+      assertEquals(document.title, "商品 2")
+      Router.go("/about")
+      flush()
+    }.flatMap { _ =>
+      assertEquals(document.title, "自前のタイトル")
+      Router.go("/plain")
+      flush()
+    }.map { _ =>
+      assertEquals(document.title, "元のタイトル", "タイトルのないルートでは元に戻す")
+      root.remove()
+    }
+  }
+
   test("RouteLocation: ベースパスを除いたパス") {
     ScalactiveConfig.basePath = "app"
     try {

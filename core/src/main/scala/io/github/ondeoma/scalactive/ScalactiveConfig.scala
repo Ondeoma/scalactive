@@ -31,6 +31,16 @@ object ScalactiveConfig {
   var errorHandler: Throwable => Unit = e => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e)
 
   /**
+   * pageTitle・Routeのtitleで指定したタイトルの書式. %s がタイトルに置き換わります(例: "%s | MyApp").
+   */
+  var titleTemplate: String = "%s"
+
+  /**
+   * pageTitle・Routeのtitleが1つも指定されていないときのタイトル. Noneの場合はページを開いたときのタイトルに戻します.
+   */
+  var defaultTitle: Option[String] = None
+
+  /**
    * Router.goで遷移したときに、ウィンドウを先頭までスクロールする場合はtrue.
    */
   var scrollToTopOnNavigate: Boolean = true
