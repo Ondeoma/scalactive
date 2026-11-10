@@ -39,10 +39,16 @@ java {
 intellijPlatform {
     pluginConfiguration {
         version = providers.gradleProperty("pluginVersion")
+        // Marketplaceの「What's New」(change-notes.html)
+        changeNotes = providers.fileContents(layout.projectDirectory.file("change-notes.html")).asText
         ideaVersion {
             sinceBuild = "252"
             untilBuild = provider { null }
         }
+    }
+    // JetBrains Marketplaceへの公開(./gradlew publishPlugin). トークンは環境変数 JETBRAINS_TOKEN で渡す
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_TOKEN")
     }
     // プラグインの検証は手動で: ./gradlew verifyPlugin
     pluginVerification {
