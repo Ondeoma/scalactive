@@ -3,7 +3,8 @@ name: Release
 on:
   push:
     #    branches: [ "main" ]
-    tags: [ "v*" ]
+    # v0.4.1 のような、vの直後が数字のタグだけで動かす(vscode-v0.4.1 などのエディタ用のタグでは動かさない)
+    tags: [ "v[0-9]*" ]
 #  pull_request:
 #    branches: [ "main" ]
 
