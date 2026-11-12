@@ -443,6 +443,24 @@ class StLanguageServiceSuite extends munit.FunSuite {
     assertEquals(tags.size, 3, "開始タグ2つと終了タグ1つ")
   }
 
+  test("参照の検索: scriptの関数の定義から、テンプレートの中の呼び出しも返す") {
+    val locs = service.references(counterUri, pos(counter, "def twice", 4), includeDeclaration = true)
+    val lines = locs.map(_.getRange.getStart.getLine).sorted
+    assertEquals(lines, List(3, 9), locs.toString)
+  }
+
+  test("定義ジャンプ: usagesOnDeclaration(IntelliJ)では、定義の上から使っている場所(テンプレート)へ") {
+    val decl = pos(counter, "def twice", 4)
+    // 既定(VS Code)では定義自身
+    assertEquals(service.definition(counterUri, decl).map(_.getRange.getStart), List(decl))
+    service.usagesOnDeclaration = true
+    try {
+      assertEquals(service.definition(counterUri, decl).map(_.getRange.getStart), List(pos(counter, "twice(s.count")))
+      // 使う側からの定義ジャンプは変わらない
+      assertEquals(service.definition(counterUri, pos(counter, "twice(s.count", 1)).map(_.getRange.getStart), List(decl))
+    } finally service.usagesOnDeclaration = false
+  }
+
   test("名前の変更: propの名前を変えると、属性・スロット・イベントの書き方に合わせて書き換える") {
     val parentUri = parentFile.toUri.toString
     val childUri = childFile.toUri.toString

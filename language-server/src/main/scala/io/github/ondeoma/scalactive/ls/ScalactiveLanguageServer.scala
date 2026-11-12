@@ -67,10 +67,14 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
   }
 
   override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = {
-    // IntelliJはテンプレートをHTMLとして扱い、HTMLの補完を自分で出すため {"htmlCompletion": false} を渡す
+    // IntelliJはテンプレートをHTMLとして扱い、HTMLの補完を自分で出すため {"htmlCompletion": false} を渡す.
+    // また、定義の上での定義ジャンプで使っている場所を出すため {"usagesOnDeclaration": true} を渡す
     params.getInitializationOptions match {
-      case o: com.google.gson.JsonObject if o.has("htmlCompletion") && o.get("htmlCompletion").isJsonPrimitive =>
-        service.htmlCompletion = o.get("htmlCompletion").getAsBoolean
+      case o: com.google.gson.JsonObject =>
+        def bool(name: String): Option[Boolean] =
+          Option(o.get(name)).filter(_.isJsonPrimitive).map(_.getAsBoolean)
+        bool("htmlCompletion").foreach(service.htmlCompletion = _)
+        bool("usagesOnDeclaration").foreach(service.usagesOnDeclaration = _)
       case _ =>
     }
     val caps = new ServerCapabilities()

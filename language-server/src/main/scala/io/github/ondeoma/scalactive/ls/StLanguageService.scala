@@ -27,6 +27,13 @@ final class StLanguageService(log: String => Unit) {
   /** テンプレートでHTMLの標準のタグ・属性・属性値も補完するか(initializationOptionsの htmlCompletion) */
   @volatile var htmlCompletion: Boolean = true
 
+  /**
+   * 定義の上で定義ジャンプしたときに、その名前を使っている場所(テンプレートを含む)を返すか(initializationOptionsの usagesOnDeclaration).
+   * IntelliJはLSPの定義ジャンプで定義自身が返ると何もしないため、Ctrl+クリックで使っている場所へ移れるようにします.
+   * (VS Codeは定義の上では自分で参照の検索を出すため、既定では返しません)
+   */
+  @volatile var usagesOnDeclaration: Boolean = false
+
   import StLanguageService._
 
   private val threadFactory: ThreadFactory = (r: Runnable) => {
@@ -586,8 +593,20 @@ final class StLanguageService(log: String => Unit) {
   }
 
   def definition(uri: String, pos: Position): List[Location] = {
-    templateDefinition(uri, pos).map(List(_)).getOrElse(scalaDefinition(uri, pos))
+    templateDefinition(uri, pos).map(List(_)).getOrElse {
+      val locs = scalaDefinition(uri, pos)
+      if (usagesOnDeclaration && locs.nonEmpty && locs.forall(l => l.getUri == uri && contains(l.getRange, pos))) {
+        // 定義の上: 使っている場所があればそちらを返す
+        val usages = references(uri, pos, includeDeclaration = false)
+        if (usages.nonEmpty) usages else locs
+      } else locs
+    }
   }
+
+  private def before(a: Position, b: Position): Boolean =
+    a.getLine < b.getLine || (a.getLine == b.getLine && a.getCharacter <= b.getCharacter)
+
+  private def contains(r: Range, p: Position): Boolean = before(r.getStart, p) && before(p, r.getEnd)
 
   /** 子コンポーネントのタグ名・属性名からの定義ジャンプ(コンパイルできない書きかけの.stでも動きます) */
   private def templateDefinition(uri: String, pos: Position): Option[Location] = {
@@ -662,7 +681,13 @@ final class StLanguageService(log: String => Unit) {
           }.map { case (s, e) => text.substring(s, e) }
           tag.filter(_.headOption.exists(_.isUpper)).flatMap(c => TemplateNavigation.componentFile(c, path).map(c -> _)) match {
             case Some((c, cf)) => PropRefs.componentOccurrences(c, cf.getParent, fileText).map(toLocation)
-            case None => documentHighlight(uri, pos).map(h => new Location(uri, h.getRange))
+            case None =>
+              val refs = documentHighlight(uri, pos).map(h => new Location(uri, h.getRange))
+              if (includeDeclaration) refs
+              else {
+                val decls = scalaDefinition(uri, pos).toSet
+                refs.filterNot(decls.contains)
+              }
           }
       }
     } catch {
