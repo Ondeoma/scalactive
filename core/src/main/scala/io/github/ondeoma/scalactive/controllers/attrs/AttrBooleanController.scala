@@ -12,8 +12,8 @@ object AttrBooleanController {
             value: String): AttrController = {
     AttrController { ac =>
       val set = () => {
-        if (rv.v) ele.setAttribute(attr, value)
-        else ele.removeAttribute(attr)
+        if (rv.v) FormProps.set(ele, attr, value)
+        else FormProps.remove(ele, attr)
       }
       ac.element = ele.some
       ac.watchInfos = List(rv.addWatcher(_ => set()))

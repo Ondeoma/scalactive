@@ -10,7 +10,7 @@ object AttrStringController {
             attr: String,
             rv: Reactive[String]): AttrController = {
     AttrController { ac =>
-      val set = () => ele.setAttribute(attr, rv.v)
+      val set = () => FormProps.set(ele, attr, rv.v)
       ac.element = ele.some
       ac.watchInfos = List(rv.addWatcher(_ => set()))
       set()

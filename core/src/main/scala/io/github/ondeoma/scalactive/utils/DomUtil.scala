@@ -1,6 +1,7 @@
 package io.github.ondeoma.scalactive.utils
 
 import cats.syntax.all.*
+import io.github.ondeoma.scalactive.controllers.attrs.FormProps
 import io.github.ondeoma.scalactive.enums.EventType
 import io.github.ondeoma.scalactive.models.{AddMethod, Selector}
 import io.github.ondeoma.scalactive.reactive.Reactive
@@ -209,11 +210,11 @@ object DomUtil {
       val reactiveV = rv.v
       val staticV = attrs.get(n)
       (reactiveV, staticV) match {
-        case (false, _) => e.removeAttribute(n)
-        case (true, Some(sv: String)) => e.setAttribute(n, sv)
-        case (true, _) => e.setAttribute(n, "")
-        case (rv: String, Some(sv: String)) => e.setAttribute(n, s"$rv $sv")
-        case (rv: String, _) => e.setAttribute(n, rv)
+        case (false, _) => FormProps.remove(e, n)
+        case (true, Some(sv: String)) => FormProps.set(e, n, sv)
+        case (true, _) => FormProps.set(e, n, "")
+        case (rv: String, Some(sv: String)) => FormProps.set(e, n, s"$rv $sv")
+        case (rv: String, _) => FormProps.set(e, n, rv)
       }
     }
   }

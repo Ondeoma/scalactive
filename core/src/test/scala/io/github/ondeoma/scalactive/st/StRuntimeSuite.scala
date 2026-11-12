@@ -250,6 +250,102 @@ class StRuntimeSuite extends munit.FunSuite {
     assertEquals(ta.value, " hi ")
   }
 
+  test(":value: 利用者が入力した後でも、バインド元を変えると入力欄の表示が変わる") {
+    val s = RV("a")
+    val n = RV(1)
+    val root = mount { implicit cm =>
+      s"""<input id="s" ${StRuntime.attr("value", s)}>""" +
+        s"""<textarea ${StRuntime.attr("value", s)}></textarea>""" +
+        s"""<input id="n" ${StRuntime.attr("value", n)}>"""
+    }
+    val input = q[HTMLInputElement](root, "#s")
+    val ta = q[HTMLTextAreaElement](root, "textarea")
+    val num = q[HTMLInputElement](root, "#n")
+    assertEquals(input.value, "a")
+
+    // 利用者の入力(プロパティが書き換わり、属性とは切り離される)
+    input.value = "typed"
+    fire(input, "input")
+    ta.value = "typed"
+    num.value = "99"
+
+    s := "" // 条件をクリア
+    n := 2
+    assertEquals(input.value, "")
+    assertEquals(input.getAttribute("value"), "")
+    assertEquals(ta.value, "")
+    assertEquals(num.value, "2")
+  }
+
+  test(":value: 値が同じなら代入せず、入力中のカーソル位置を保つ") {
+    val s = RV("abc")
+    val root = mount { implicit cm => s"<input ${StRuntime.attr("value", s)}>" }
+    val input = q[HTMLInputElement](root, "input")
+    input.focus()
+    input.setSelectionRange(1, 1)
+    s.trigger()
+    assertEquals(input.value, "abc")
+    assertEquals(input.selectionStart, 1)
+  }
+
+  test(":value: selectの選択も、バインド元に合わせて変わる") {
+    val s = RV("b")
+    val root = mount { implicit cm =>
+      s"""<select ${StRuntime.attr("value", s)}><option value="a">a</option><option value="b">b</option></select>"""
+    }
+    val select = q[HTMLSelectElement](root, "select")
+    select.value = "a"
+    fire(select, "change")
+    s := "a"
+    s := "b"
+    assertEquals(select.value, "b")
+  }
+
+  test(":checked: 利用者がクリックした後でも、バインド元を変えるとチェックの表示が変わる") {
+    val c = RV(true)
+    val root = mount { implicit cm => s"""<input type="checkbox" ${StRuntime.attr("checked", c)}>""" }
+    val box = q[HTMLInputElement](root, "input")
+    assertEquals(box.checked, true)
+
+    box.click() // 利用者がチェックを外す
+    assertEquals(box.checked, false)
+    c := false
+    c := true
+    assertEquals(box.checked, true)
+
+    box.click()
+    box.click() // チェックした状態のまま、バインド元だけ外す
+    assertEquals(box.checked, true)
+    c := false
+    assertEquals(box.checked, false)
+    assert(!box.hasAttribute("checked"))
+  }
+
+  test(":selected: 利用者が選び直した後でも、バインド元を変えると選択が変わる") {
+    val b = RV(false)
+    val root = mount { implicit cm =>
+      s"""<select><option id="a" value="a">a</option><option id="b" ${StRuntime.attr("selected", b)} value="b">b</option></select>"""
+    }
+    val select = q[HTMLSelectElement](root, "select")
+    val optB = q[HTMLOptionElement](root, "#b")
+    assertEquals(select.value, "a")
+    select.value = "b"
+    select.value = "a" // 利用者が選び直す
+    b := true
+    assertEquals(optB.selected, true)
+    assertEquals(select.value, "b")
+  }
+
+  test(":value以外の属性は、今までどおり属性だけを書き換える") {
+    val p = RV("x")
+    val root = mount { implicit cm => s"<input ${StRuntime.attr("placeholder", p)}>" }
+    val input = q[HTMLInputElement](root, "input")
+    input.value = "typed"
+    p := "y"
+    assertEquals(input.getAttribute("placeholder"), "y")
+    assertEquals(input.value, "typed")
+  }
+
   test("model: lazyはchangeイベントでのみ反映する") {
     val s = RV("")
     val root = mount { implicit cm => s"<input ${StRuntime.model(s, lazyUpdate = true)}>" }
