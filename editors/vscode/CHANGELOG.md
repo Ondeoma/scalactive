@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.4.4
+
+The version now matches the Scalactive library (0.4.4), which compiles `<style lang="scss">` to CSS.
+
+- `<style lang="scss">` is highlighted as SCSS and `<style lang="sass">` as Sass
+  (the indented syntax needs a Sass extension, since VS Code has no built-in grammar for it).
+- The language server reads CSS classes in SCSS and Sass styles too (nested rules, `&-suffix`, `//` comments),
+  for class completion, go to definition and unused-class hints.
+
 ## 0.4.2
 
 - `.st` files get their own icon in the Explorer and editor tabs (used when the file icon theme has no icon for them).
