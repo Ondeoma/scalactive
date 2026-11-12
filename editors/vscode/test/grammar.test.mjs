@@ -11,7 +11,7 @@ const grammar = JSON.parse(readFileSync(new URL("../syntaxes/scalactive.tmLangua
 
 const highlighter = await createHighlighter({
   themes: ["github-dark"],
-  langs: ["scala", "css", { ...grammar, name: "scalactive", embeddedLangs: ["scala", "css"] }],
+  langs: ["scala", "css", "scss", "sass", { ...grammar, name: "scalactive", embeddedLangs: ["scala", "css", "scss", "sass"] }],
 });
 
 /** 行ごとのトークン列([{content, scopes}]) */
@@ -288,6 +288,33 @@ val after = 1
   expectScopes(t, 10, "val", ["meta.block.script.scalactive"]);
   expectScopes(t, 11, "script", ["entity.name.tag.script.html"]);
   expectNotScope(t, 11, "script", "meta.string.injected");
+});
+
+test("<style lang=\"scss\">の中身はSCSS", () => {
+  const t = tokenize(`<template><p></p></template>
+<style lang="scss" scoped>
+$main: red;
+.a { .b { color: $main; } }
+</style>
+<style>
+.c { color: blue; }
+</style>`);
+  expectScopes(t, 2, "$main", ["meta.embedded.block.scss", "variable"]);
+  expectScopes(t, 3, "color", ["meta.embedded.block.scss", "support.type.property-name"]);
+  expectNotScope(t, 3, "color", "meta.embedded.block.css");
+  // langのないstyleは、これまでどおりCSS
+  expectScopes(t, 6, "color", ["meta.embedded.block.css", "support.type.property-name.css"]);
+});
+
+test("<style lang=\"sass\">の中身はSass(インデント記法)", () => {
+  const t = tokenize(`<template><p></p></template>
+<style lang='sass'>
+$main: red
+.a
+  color: $main
+</style>`);
+  expectScopes(t, 2, "$main", ["meta.embedded.block.sass"]);
+  expectScopes(t, 4, "color", ["meta.embedded.block.sass"]);
 });
 
 test("// language=css の文字列はCSS", () => {

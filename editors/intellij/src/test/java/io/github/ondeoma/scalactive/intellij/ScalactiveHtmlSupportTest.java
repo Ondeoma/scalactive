@@ -318,4 +318,35 @@ public class ScalactiveHtmlSupportTest extends BasePlatformTestCase {
         assertTrue("items: " + items, items.contains("background-color"));
     }
 
+
+    /** キャレットの位置の言語のID */
+    private String languageAtCaret() {
+        PsiElement e = myFixture.getFile().findElementAt(myFixture.getCaretOffset());
+        assertNotNull(e);
+        return e.getLanguage().getID();
+    }
+
+    public void testScssInStyle() {
+        myFixture.configureByText("A.st", "<template><p class=\"x\"></p></template>\n<style lang=\"scss\" scoped>\n$main: red;\n.a {\n  .x { col<caret> }\n}\n</style>\n");
+        assertEquals("SCSS", languageAtCaret());
+        myFixture.completeBasic();
+        List<String> items = myFixture.getLookupElementStrings();
+        assertNotNull(items);
+        assertTrue("items: " + items, items.contains("color"));
+    }
+
+    public void testSassInStyle() {
+        myFixture.configureByText("A.st", "<template><p></p></template>\n<style lang=\"sass\">\n.a\n  col<caret>\n</style>\n");
+        assertEquals("SASS", languageAtCaret());
+    }
+
+    public void testCssStyleIsStillCss() {
+        myFixture.configureByText("A.st", "<template><p></p></template>\n<style>\n.a { col<caret> }\n</style>\n");
+        assertEquals("CSS", languageAtCaret());
+    }
+
+    public void testCommentInScssStyle() {
+        String text = commentLine("<template><p></p></template>\n<style lang=\"scss\">\n.a { color: red; }<caret>\n</style>\n");
+        assertTrue(text, text.contains("//.a { color: red; }"));
+    }
 }

@@ -7,7 +7,8 @@ a reactive frontend framework for Scala.js.
 
 ## Syntax highlighting
 
-- `<script lang="scala">` is highlighted as Scala, `<style>` as CSS.
+- `<script lang="scala">` is highlighted as Scala, `<style>` as CSS, `<style lang="scss">` as SCSS
+  and `<style lang="sass">` as Sass (needs a Sass extension, since VS Code has no built-in grammar for the indented syntax).
 - In `<template>`, the HTML is highlighted, and these parts are highlighted as Scala:
   - `{{ expr }}`
   - `v-if` / `v-else-if` / `v-show` / `v-model` / `v-for`

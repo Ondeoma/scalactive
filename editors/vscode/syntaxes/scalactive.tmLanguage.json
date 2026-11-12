@@ -13,6 +13,12 @@
       "include": "#script-block"
     },
     {
+      "include": "#style-block-scss"
+    },
+    {
+      "include": "#style-block-sass"
+    },
+    {
       "include": "#style-block"
     },
     {
@@ -804,6 +810,124 @@
             },
             {
               "include": "source.scala"
+            }
+          ]
+        }
+      ]
+    },
+    "style-block-scss": {
+      "begin": "(<)(style)\\b(?=[^>]*\\blang\\s*=\\s*[\"\\']?scss\\b)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.style.html"
+        }
+      },
+      "end": "(</)(style)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.style.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.block.style.scss.scalactive",
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.attributes.scalactive",
+          "patterns": [
+            {
+              "include": "#plain-attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</style\\s*>)",
+          "contentName": "meta.embedded.block.scss",
+          "patterns": [
+            {
+              "match": "^\\s*(\\|)",
+              "captures": {
+                "1": {
+                  "name": "punctuation.separator.margin.scala"
+                }
+              }
+            },
+            {
+              "include": "source.css.scss"
+            }
+          ]
+        }
+      ]
+    },
+    "style-block-sass": {
+      "begin": "(<)(style)\\b(?=[^>]*\\blang\\s*=\\s*[\"\\']?sass\\b)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.style.html"
+        }
+      },
+      "end": "(</)(style)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.style.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "name": "meta.block.style.sass.scalactive",
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(/?>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.html"
+            }
+          },
+          "name": "meta.tag.attributes.scalactive",
+          "patterns": [
+            {
+              "include": "#plain-attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</style\\s*>)",
+          "contentName": "meta.embedded.block.sass",
+          "patterns": [
+            {
+              "match": "^\\s*(\\|)",
+              "captures": {
+                "1": {
+                  "name": "punctuation.separator.margin.scala"
+                }
+              }
+            },
+            {
+              "include": "source.sass"
             }
           ]
         }

@@ -43,6 +43,9 @@ VS CodeとIntelliJ IDEAに提供します.
   範囲の外で定義された値(`s`・`props`・外側の `v-for` の変数など)はpropsに、元のscriptで定義したものは `元の名前.名前` に書き換えます
   (名前の定義の位置と型はpresentation compilerに問い合わせます). 使っているクラスの `<style scoped>` のルールも写します.
 - CSSのクラス(`CssClasses`): `class="..."` で同じファイルの `<style>` のクラスを補完し、クラス名からセレクタへジャンプできます.
+  `<style lang="scss">` では入れ子のルールと `&-suffix`(`.card { &-title {} }` の `card-title`)、`//` のコメント、`#{...}` も読みます.
+  `<style lang="sass">`(インデント記法)はインデントで入れ子を読み、`color: red` のように `:` の直後が空白の行を宣言とみなします.
+  scss・sassの `<style>` は、言語サーバーのコンパイルでは生成コードに含めません(Sassを同梱しないため. CSSへの変換はsbtプラグインが行います).
   `<style scoped>` のクラスで、テンプレートとscriptのどこにも名前が出てこないものは、使われていないことを薄く表示します(Hint).
 - 定義ジャンプは、同じ `.st` 内に加えて、プロジェクトのソースディレクトリにある `.scala` / `.st` を名前で探します.
   子コンポーネントのタグ名・属性名からは、同じディレクトリの `.st` のProps(のパラメータ)へジャンプします(`TemplateNavigation`).
@@ -107,6 +110,9 @@ code --install-extension scalactive-st-<version>.vsix
   `package.json` の `languages[].icon` で指定しています. ファイルアイコンのテーマに `.st` のアイコンがない場合に使われます.
   IntelliJプラグインも同じファイルを使います.
 
+`<style lang="scss">` の中はSCSS(VS Code組み込みの `source.css.scss`)、`<style lang="sass">` の中はSass(`source.sass`)として色付けします.
+VS CodeにはSassのインデント記法の文法が組み込まれていないため、`lang="sass"` の色付けにはSassの拡張機能が必要です.
+
 VS Code拡張のコマンド:
 
 - **New Scalactive Component**(エクスプローラーのフォルダの右クリック・コマンドパレット): ひな形(`templates/*.st`)から.stを作ります.
@@ -129,10 +135,13 @@ cd editors/intellij
 - IntelliJのTextMateプラグインにはScalaの文法が含まれないため、`intellij/bundles/scala/` に
   [scala/vscode-scala-syntax](https://github.com/scala/vscode-scala-syntax)(MIT)の文法を同梱しています.
   `.scala` ファイルには関連付けないので、Scalaプラグインとは競合しません.
-- CSSの文法はIntelliJ同梱のTextMateバンドルを使います.
+- CSSの文法はIntelliJ同梱のTextMateバンドルを使います. `<style lang="scss">` の色付けも同梱のSCSSのバンドルを使います
+  (Sassのインデント記法のバンドルは同梱されていないため、`lang="sass"` は色付けされません).
 - `.st` は「Scalactive」のファイルタイプ(`ScalactiveLanguage`、HTMLの方言)として開かれます.
   - 解析はIntelliJのHTMLのものを使うため、テンプレートでHTMLのタグ・属性の補完、閉じタグの挿入、Emmet(Tabキーでの展開)、
     構造ビューが使え、`<style>` の中はCSS(補完・検査)として扱われます(CSSの機能にはCSSプラグインが必要で、IntelliJ IDEA Ultimateなどに含まれます).
+    `<style lang="scss">` / `lang="sass"` は、Sassのプラグイン(IntelliJ IDEA Ultimateなどに含まれます)があればSCSS・Sassとして扱います
+    (IntelliJのHTMLは `<style>` の `type` 属性しか見ないため、`ScalactiveLexer` で `lang` も見ています. プラグインがなければCSS).
   - `<script>` の中はJavaScriptとして扱わず、そのままのテキストにします(`ScalactiveLexer`).
     Scalaの文字列・コメントの中の `</script>` では `<script>` を閉じません(コンパイラーの `SfcParser` と同じ判定. `ScalaScan`).
   - `<script>` の中の複数行の三重引用符の文字列を折りたためます(`ScalactiveFoldingBuilder`. HTMLのタグの折りたたみに加えて登録しています).
@@ -144,7 +153,7 @@ cd editors/intellij
   - 色付けは解析とは別に、同梱のTextMateの文法で行います(`TextMateSyntaxHighlighterFactory` / `TextMateEditorHighlighterProvider` を登録).
   - ディレクティブ(`v-if`・`:attr`・`@event`・`#slot`・`ref`)、子コンポーネントのタグとその属性、`<script lang>`・`<style scoped>` は、
     HTMLの検査で「未知のタグ・属性」と警告しないようにしています(`ScalactiveInspectionSuppressor`. propの間違いは言語サーバーが警告します).
-  - コメントの切り替え(Cmd+/)は、scriptでは `//`、styleでは `/* */`、templateではHTMLのコメントです(`ScalactiveCommentProvider`).
+  - コメントの切り替え(Cmd+/)は、scriptでは `//`、styleでは `/* */`(`lang="scss"` では `//`)、templateではHTMLのコメントです(`ScalactiveCommentProvider`).
   - script・styleの中で改行したときは、前の行のインデントを引き継ぎます(閉じていない括弧の直後にそろえる、`{` `=` `=>` の後は1段深く、
     閉じ括弧の前は1段浅く. `ScalactiveLineIndentProvider`). HTMLの規則のままだと、中身がタグより1段深くなるためです.
     対になった括弧の間(`{|}` や `{ x =>|}`)でEnterを押すと、1段深い空の行を作って閉じ括弧を次の行に置き(`ScalactiveEnterHandler`)、

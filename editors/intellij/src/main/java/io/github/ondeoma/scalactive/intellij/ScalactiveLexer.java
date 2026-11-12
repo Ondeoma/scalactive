@@ -1,6 +1,7 @@
 package io.github.ondeoma.scalactive.intellij;
 
 import com.intellij.html.embedding.HtmlEmbeddedContentProvider;
+import com.intellij.lang.Language;
 import com.intellij.html.embedding.HtmlEmbeddedContentSupport;
 import com.intellij.html.embedding.HtmlEmbedmentInfo;
 import com.intellij.lexer.BaseHtmlLexer;
@@ -8,6 +9,7 @@ import com.intellij.lexer.HtmlLexer;
 import com.intellij.lexer.HtmlScriptStyleEmbeddedContentProvider;
 import com.intellij.lexer.LexerBase;
 import com.intellij.lexer.LexerPosition;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.tree.IElementType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +21,8 @@ import java.util.List;
  * .stの字句解析. HTMLの字句解析と同じですが、
  * <ul>
  *   <li>&lt;script&gt;の中身(Scala)をJavaScriptとして扱わず、そのままのテキストにします.
- *       (&lt;style&gt;は通常のHTMLと同じくCSSとして扱われます)</li>
+ *       (&lt;style&gt;は通常のHTMLと同じくCSSとして扱われます. lang="scss" / lang="sass" は、
+ *       Sassのプラグインがあれば、SCSS・Sassとして扱います)</li>
  *   <li>&lt;script&gt;の中身は、Scalaの文字列・コメントの中の &lt;/script&gt; では終わりません
  *       (コンパイラーのSfcParserと同じ). コードサンプルの文字列などで、外側の&lt;script&gt;が途中で閉じ、
  *       残りがHTML・CSSとして解析されて誤ったエラーが出ないようにするためです.</li>
@@ -48,7 +51,10 @@ public final class ScalactiveLexer extends LexerBase {
         }
     }
 
-    /** scriptの中身をそのままのテキストにする(styleの扱いは変えない) */
+    /**
+     * scriptの中身をそのままのテキストにする.
+     * styleは、標準の type 属性に加えて lang 属性も見て、scss・sass をSCSS・Sassとして扱う(Sassのプラグインがない場合はCSS).
+     */
     private static final class ScriptAsRawText extends HtmlScriptStyleEmbeddedContentProvider {
         ScriptAsRawText(BaseHtmlLexer lexer) {
             super(lexer);
@@ -57,6 +63,23 @@ public final class ScalactiveLexer extends LexerBase {
         @Override
         protected HtmlEmbedmentInfo scriptEmbedmentInfo(String mimeType) {
             return HtmlEmbeddedContentProvider.RAW_TEXT_EMBEDMENT;
+        }
+
+        @Override
+        protected boolean isInterestedInAttribute(@NotNull CharSequence attributeName) {
+            return super.isInterestedInAttribute(attributeName)
+                || (StringUtil.equalsIgnoreCase(getTagName(), "style") && StringUtil.equalsIgnoreCase(attributeName, "lang"));
+        }
+
+        @Override
+        protected @Nullable Language styleLanguage(@Nullable String styleLang) {
+            String id = styleLang == null ? null : switch (StringUtil.toLowerCase(styleLang.trim())) {
+                case "scss" -> "SCSS";
+                case "sass" -> "SASS";
+                default -> null;
+            };
+            Language lang = id == null ? null : Language.findLanguageByID(id);
+            return lang != null ? lang : super.styleLanguage(styleLang);
         }
     }
 

@@ -46,8 +46,10 @@ public final class ScalactiveCommentProvider implements com.intellij.psi.templat
         String block = blockAt(file, offsetOf(editor));
         if ("script".equals(block)) return SCALA;
         if ("style".equals(block)) {
+            // <style lang="scss"> では行の言語がSCSSになり、// の行コメントが使える
             Language css = Language.findLanguageByID("CSS");
-            Commenter c = css == null ? null : LanguageCommenters.INSTANCE.forLanguage(css);
+            Language lang = css != null && lineStartLanguage != null && lineStartLanguage.isKindOf(css) ? lineStartLanguage : css;
+            Commenter c = lang == null ? null : LanguageCommenters.INSTANCE.forLanguage(lang);
             return c != null ? c : CSS_FALLBACK;
         }
         return LanguageCommenters.INSTANCE.forLanguage(HTMLLanguage.INSTANCE);

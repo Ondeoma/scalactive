@@ -23,7 +23,7 @@ dependencies {
         bundledPlugin("org.jetbrains.plugins.textmate")
         testFramework(TestFrameworkType.Platform)
         // テストで、<style>のCSS・<script>がJavaScriptとして扱われないことを確かめる
-        testBundledPlugins("com.intellij.css", "JavaScript")
+        testBundledPlugins("com.intellij.css", "JavaScript", "org.jetbrains.plugins.sass")
     }
     testImplementation("junit:junit:4.13.2")
     // IntelliJ Platformのテストフレームワークが要求する(JUnit5 APIはJUnit4テストでも必要)

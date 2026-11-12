@@ -63,7 +63,9 @@
         "embeddedLanguages": {
           "meta.embedded.block.scala": "scala",
           "meta.embedded.inline.scala": "scala",
-          "meta.embedded.block.css": "css"
+          "meta.embedded.block.css": "css",
+          "meta.embedded.block.scss": "scss",
+          "meta.embedded.block.sass": "sass"
         }
       }
     ],

@@ -10,7 +10,8 @@
           <code>:attr</code> and <code>@event</code> values are highlighted as Scala.</li>
       <li>Component tags (starting with an uppercase letter) are highlighted separately.</li>
       <li>The template is handled as HTML: IntelliJ's HTML completion, closing tag insertion, Emmet and structure view work there,
-          and <code>&lt;style&gt;</code> is handled as CSS (completion and inspections, with the CSS plugin).</li>
+          and <code>&lt;style&gt;</code> is handled as CSS (completion and inspections, with the CSS plugin).
+          <code>&lt;style lang="scss"&gt;</code> / <code>lang="sass"</code> are handled as SCSS / Sass with the Sass plugin.</li>
       <li>Directives, component tags and their props are not reported as unknown HTML tags or attributes.</li>
       <li>In the script, a triple-quoted string after a <code>// language=xxx</code> comment is injected with that language
           (any language the IDE supports; <code>html</code> is handled as <code>.st</code>), with its highlighting, completion and inspections.</li>
