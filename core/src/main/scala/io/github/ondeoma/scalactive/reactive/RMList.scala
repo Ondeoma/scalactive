@@ -47,10 +47,7 @@ class RMList[Org, RM <: ReactiveModel[Org, RM]](private var value: List[RM]) ext
   private def watchRow(rm: RM): WatchInfo = rm.addWatcher(_ => updated(true))
 
   def updated(isDetail: Boolean): Unit = {
-    watchers.foreach { (id, wf) =>
-      if (isDetail && id.startsWith(rowLevelWatchingIdPrefix)) ()
-      else wf(oldV, v)
-    }
+    fire(oldV, v, id => isDetail && id.startsWith(rowLevelWatchingIdPrefix))
     // TODO?: 行レベルの前値を別管理？
     oldV = v
   }

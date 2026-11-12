@@ -24,7 +24,7 @@ class ReactiveList[A](private var value: List[A]) extends Reactive[List[A]] {
   }
 
   def updated(): Unit = {
-    watchers.foreach(_._2(oldV, v))
+    fire(oldV, v)
     oldV = v
   }
 

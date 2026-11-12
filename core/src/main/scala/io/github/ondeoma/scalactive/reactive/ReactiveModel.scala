@@ -48,7 +48,7 @@ trait ReactiveModel[Org, Self <: ReactiveModel[Org, Self]] extends Reactive[Org]
 
   private def notifyWatchers(): Unit = {
     notifyQueued = false
-    watchers.foreach(_._2(old, v))
+    fire(old, v)
     old = v
   }
 

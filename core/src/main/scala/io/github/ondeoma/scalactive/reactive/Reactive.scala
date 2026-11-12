@@ -23,6 +23,26 @@ abstract class Reactive[A] {
     WatchInfo(this, id)
   }
 
+  /**
+   * 監視に通知します.
+   * 通知を始めた時点の監視の一覧のコピーで回すため、監視の中で同じ値に監視が追加・削除されても
+   * (例: computedの中でmapCを呼ぶ)、他の監視が飛ばされることはありません.
+   * 通知中に追加された監視は今回は呼ばず、通知中に削除された監視も呼びません.
+   *
+   * @param skip trueを返したIDの監視は呼びません
+   */
+  protected final def fire(oldV: OldV, newV: NewV, skip: ID => Boolean = _ => false): Unit = {
+    if (watchers.nonEmpty) {
+      val snapshot = watchers.toArray
+      var i = 0
+      while (i < snapshot.length) {
+        val (id, w) = snapshot(i)
+        if (!skip(id) && watchers.contains(id)) w((oldV, newV))
+        i += 1
+      }
+    }
+  }
+
   /** 監視している数(Devtools.watcherCountで使います) */
   private[scalactive] def numWatchers: Int = watchers.size
 

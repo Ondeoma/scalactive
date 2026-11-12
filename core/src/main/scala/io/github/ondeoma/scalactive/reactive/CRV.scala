@@ -18,7 +18,7 @@ trait CRV[R] extends Reactive[R] {
   private[reactive] def update(newV: R): Unit = {
     val old = value
     value = newV
-    if (old != newV) watchers.foreach(_._2(old, newV))
+    if (old != newV) fire(old, newV)
   }
 
   override def abort(): Unit = {

@@ -19,7 +19,7 @@ class RV[A](private var value: A) extends Reactive[A] {
   def apply(v: A): Unit = {
     val old = value
     value = v
-    if (old != v) watchers.foreach(_._2(old, v))
+    if (old != v) fire(old, v)
   }
 
   /**
@@ -27,7 +27,7 @@ class RV[A](private var value: A) extends Reactive[A] {
    * 可変なオブジェクトの中身を直接書き換えた後に、画面へ反映させたい場合などに使います.
    */
   def trigger(): Unit = {
-    watchers.foreach(_._2(value, value))
+    fire(value, value)
   }
 
   def :=(v: A): Unit = {

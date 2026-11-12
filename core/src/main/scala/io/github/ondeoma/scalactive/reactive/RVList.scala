@@ -57,10 +57,7 @@ class RVList[A](private var value: List[RV[A]]) extends Reactive[List[A]] {
 
   private def updated(isDetail: Boolean): Unit = {
     val newV = v
-    watchers.foreach { (id, wf) =>
-      if (isDetail && id.startsWith(rowLevelWatchingIdPrefix)) ()
-      else wf(oldV, newV)
-    }
+    fire(oldV, newV, id => isDetail && id.startsWith(rowLevelWatchingIdPrefix))
     // TODO?: 行レベルの前値を別管理？
     oldV = newV
   }
