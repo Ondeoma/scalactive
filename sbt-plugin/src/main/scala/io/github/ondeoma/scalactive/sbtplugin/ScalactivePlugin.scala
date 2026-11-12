@@ -18,6 +18,7 @@ import java.nio.file.{Files, Path}
  *
  * src/main/scalactive と src/main/scala 配下の *.st を対象に、
  * ディレクトリ構成をパッケージとしたobjectを src_managed に生成します.
+ * <style lang="scss"> / <style lang="sass"> は、同梱のDart SassでCSSへ変換します.
  *
  * コンパイル時には、言語サーバー(エディタでの補完・型チェック)向けに
  * クラスパスなどを target/scalactive-lsp.json に、コンパイル完了の印を target/scalactive-lsp.stamp に書き出します.
@@ -100,12 +101,16 @@ object ScalactivePlugin extends AutoPlugin {
   }
 
   private def generate(roots: Seq[Path], inputs: Seq[Path], outDir: Path, log: Logger): Seq[File] = {
-    val results = inputs.sortBy(_.toString).map { file =>
-      val abs = file.toAbsolutePath.normalize
-      val root = StSources.rootOf(roots, abs).getOrElse(sys.error(s"$abs is not under scalactiveSourceDirectories"))
-      val in = StSources.input(root, abs, new String(Files.readAllBytes(abs), StandardCharsets.UTF_8))
-      StCompiler.compile(in).left.map(e => s"$abs:${e.line}: ${e.message}")
-    }
+    val sass = new SassStyles(roots.map(_.toFile))
+    val results = try {
+      inputs.sortBy(_.toString).map { file =>
+        val abs = file.toAbsolutePath.normalize
+        val root = StSources.rootOf(roots, abs).getOrElse(sys.error(s"$abs is not under scalactiveSourceDirectories"))
+        val in = StSources.input(root, abs, new String(Files.readAllBytes(abs), StandardCharsets.UTF_8))
+          .copy(styleCompiler = Some(sass.forFile(abs)))
+        StCompiler.compile(in).left.map(e => s"$abs:${e.line}: ${e.message}")
+      }
+    } finally sass.close()
 
     val errors = results.collect { case Left(e) => e }
     if (errors.nonEmpty) {

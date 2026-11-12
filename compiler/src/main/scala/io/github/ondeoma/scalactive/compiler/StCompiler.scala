@@ -6,6 +6,8 @@ import java.util.zip.CRC32
  * @param fileName    エラーメッセージや生成コードのコメントに使うファイル名(相対パス)
  * @param objectName  生成するobject名(通常はファイル名から拡張子を除いたもの)
  * @param packageName ディレクトリ構成から決まるパッケージ. <script>内のpackage宣言が優先されます.
+ * @param styleCompiler <style lang="scss"> などをCSSへ変換するもの.
+ *                      Noneの場合(言語サーバーなど、CSSを使わない場合)は、それらの<style>を出力しません.
  */
 /**
  * Propsのパラメータ.
@@ -17,7 +19,8 @@ final case class PropInfo(name: String, tpe: String, hasDefault: Boolean, offset
 final case class StInput(source: String,
                          fileName: String,
                          objectName: String,
-                         packageName: Option[String])
+                         packageName: Option[String],
+                         styleCompiler: Option[StyleCompiler] = None)
 
 /**
  * @param sourceMap 生成コードと.stの位置の対応(エディタ支援用)
@@ -251,12 +254,26 @@ object StCompiler {
     val htmlExpr = new TemplateCodegen(src, in.fileName, scopeAttr, slotProps, marks).generate(trimmed)
 
     // ---- style ----
-    val css = sfc.styles.map { b =>
-      b.attr("lang").flatMap(_.value).foreach { l =>
-        if (l != "css") src.fail(b.offset, s"unsupported style lang '$l' (only 'css' is supported)")
+    val css = sfc.styles.flatMap { b =>
+      val lang = b.attr("lang").flatMap(_.value).getOrElse("css")
+      if (lang != "css" && !StyleCompiler.Langs.contains(lang)) {
+        src.fail(b.offset, s"unsupported style lang '$lang' (supported: css, scss, sass)")
       }
-      val c = b.content(src)
-      if (b.has("scoped")) CssScoper.scope(c, scopeId(in.fileName)) else c
+      val content = b.content(src)
+      val compiled =
+        if (lang == "css") Some(content)
+        else in.styleCompiler.map { sc =>
+          sc.compile(lang, content) match {
+            case Right(c) => c
+            case Left(e) =>
+              // 失敗した行の先頭(別のファイルで失敗した場合は<style>の位置)
+              val at = e.line.fold(b.offset) { l =>
+                Iterator.iterate(b.contentStart)(i => src.text.indexOf('\n', i) + 1).drop(l).next()
+              }
+              src.fail(at, s"$lang: ${e.message}")
+          }
+        }
+      compiled.map(c => if (b.has("scoped")) CssScoper.scope(c, scopeId(in.fileName)) else c)
     }.mkString("\n").trim
 
     // ---- 出力 ----

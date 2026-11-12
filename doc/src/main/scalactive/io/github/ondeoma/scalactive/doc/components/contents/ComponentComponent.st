@@ -488,7 +488,10 @@ val lazyRouteCode = // language=html
     <li>
       <code>&lt;style&gt;</code> : CSSを書きます(省略可).<br>
       初回利用時にheadへ挿入されます.<br>
-      <code>scoped</code> を付けると、このコンポーネントの要素にのみ適用されます.
+      <code>scoped</code> を付けると、このコンポーネントの要素にのみ適用されます.<br>
+      <code>lang="scss"</code>(または <code>lang="sass"</code>)を付けると、SCSSで書けます.
+      ビルド時にsbtプラグインに同梱のDart SassでCSSへ変換されます(Node.jsは不要です).<br>
+      <code>@use</code> は、<code>.st</code> のあるディレクトリからの相対パスと、<code>src/main/scalactive</code> などのソースディレクトリから探します.
     </li>
   </ul>
 

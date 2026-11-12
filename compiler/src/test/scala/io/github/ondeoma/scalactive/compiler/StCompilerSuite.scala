@@ -405,6 +405,60 @@ class StCompilerSuite extends munit.FunSuite {
     assert(o.code.contains("p { color: red; }"))
   }
 
+  /** テスト用のStyleCompiler. $cをredに置き換え、"bad"を含む行で失敗する */
+  private object FakeScss extends StyleCompiler {
+    var calls: List[String] = Nil
+
+    override def compile(lang: String, source: String): Either[StyleError, String] = {
+      calls ::= lang
+      source.split("\n", -1).indexWhere(_.contains("bad")) match {
+        case -1 => Right(source.replace("$c", "red").replace(".a { .b", ".a .b"))
+        case l => Left(StyleError("expected \"{\".", Some(l)))
+      }
+    }
+  }
+
+  private def compileWith(src: String, sc: Option[StyleCompiler]): Either[StError, StOutput] =
+    StCompiler.compile(StInput(src, "a/b/Foo.st", "Foo", Some("a.b"), sc))
+
+  test("style lang=scss/sass: StyleCompilerで変換し、scopedは変換後のCSSに付ける") {
+    FakeScss.calls = Nil
+    val o = compileWith(
+      """<template><p class="b">x</p></template>
+        |<style lang="scss" scoped>.a { .b { color: $c; } }</style>
+        |<style lang="sass">p
+        |  color: $c</style>
+        |<style>i { color: blue; }</style>
+        |""".stripMargin, Some(FakeScss)).fold(e => fail(e.toString), identity)
+    val id = StCompiler.scopeId("a/b/Foo.st")
+    assert(o.code.contains(s".a .b[$id] { color: red; } }"), o.code)
+    assert(o.code.contains("color: red"), o.code)
+    assert(o.code.contains("i { color: blue; }"), o.code)
+    // cssはStyleCompilerを通さない
+    assertEquals(FakeScss.calls.reverse, List("scss", "sass"))
+  }
+
+  test("style lang=scss: 変換のエラーは.stの行で報告する") {
+    val e = compileWith(
+      "<template><p>x</p></template>\n<style lang=\"scss\">\n.a {\n  bad\n}\n</style>\n", Some(FakeScss))
+      .fold(identity, o => fail(o.code))
+    assertEquals(e.line, 4)
+    assert(e.message.startsWith("scss: expected"), e.message)
+  }
+
+  test("style lang=scss: StyleCompilerがない場合(言語サーバー)は、そのstyleを出力しない") {
+    val o = compileWith(
+      "<template><p>x</p></template><style lang=\"scss\">.a { .b { c: d } }</style><style>i { e: f; }</style>", None)
+      .fold(e => fail(e.toString), identity)
+    assert(!o.code.contains("c: d"), o.code)
+    assert(o.code.contains("i { e: f; }"), o.code)
+  }
+
+  test("style: 対応していないlangはエラー") {
+    assert(compileError("<template><p>x</p></template>\n<style lang=\"less\">a{}</style>").message
+      .contains("unsupported style lang 'less'"))
+  }
+
   test("errors carry line numbers") {
     assertEquals(compileError("<template>\n<div>\n<span></div>\n</template>").line, 3)
     assertEquals(compileError("<template>\n\n<p v-else>x</p></template>").line, 3)

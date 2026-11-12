@@ -1,0 +1,6 @@
+# <style lang="scss"> / <style lang="sass"> をCSSへ変換する
+> checkScss
+
+# Sassのエラーでは生成タスクが失敗する
+$ copy-file changes/Broken.st src/main/scalactive/app/Broken.st
+-> Compile/scalactiveGenerate

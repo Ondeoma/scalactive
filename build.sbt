@@ -26,6 +26,8 @@ lazy val domV = "2.8.0"
 lazy val scala212 = "2.12.20"
 lazy val catsV = "2.13.0"
 lazy val munitV = "1.0.4"
+// sbt-plugin と project/plugins.sbt(メタビルド)で同じ版を使います
+lazy val sassEmbeddedV = "4.2.0"
 
 lazy val core = project.in(file("core"))
   .enablePlugins(ScalaJSPlugin)
@@ -63,6 +65,8 @@ lazy val sbtScalactive = project.in(file("sbt-plugin"))
   .settings(
     name := "sbt-scalactive",
     scalaVersion := scala212,
+    // <style lang="scss">の変換(Dart Sassを同梱)
+    libraryDependencies += "de.larsgrefer.sass" % "sass-embedded-host" % sassEmbeddedV,
     // sbt scripted でsrc/sbt-test配下のテストプロジェクトを実行します.
     scriptedLaunchOpts ++= Seq("-Xmx1024M", "-Dplugin.version=" + version.value),
     scriptedBufferLog := false,

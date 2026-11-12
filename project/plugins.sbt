@@ -9,5 +9,8 @@ Compile / unmanagedSourceDirectories ++= Seq(
   baseDirectory.value.getParentFile / "sbt-plugin" / "src" / "main" / "scala"
 )
 
+// sbt-pluginの<style lang="scss">の変換用(build.sbtのsassEmbeddedVと同じ版)
+libraryDependencies += "de.larsgrefer.sass" % "sass-embedded-host" % "4.2.0"
+
 // coreのテスト(StRuntime)をjsdom上で実行するため
 libraryDependencies += "org.scala-js" %% "scalajs-env-jsdom-nodejs" % "1.1.0"
