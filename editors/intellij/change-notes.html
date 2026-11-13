@@ -1,3 +1,11 @@
+<h3>0.6.0</h3>
+<ul>
+  <li>The version now matches the Scalactive library (0.6.0). This version needs Scalactive 0.6.0 or later;
+      a warning is shown when the project uses an older library, since errors in <code>.st</code> files may be wrong.</li>
+  <li>The language server compiles templates the same way as the library: expressions that read reactive values (<code>.v</code>)
+      in <code>{{ }}</code>, bindings, <code>v-if</code>, <code>v-for</code> and child component props are tracked.
+      Props of type <code>Reactive</code> accept value expressions such as <code>:count="s.n.v * 2"</code> without false type errors.</li>
+</ul>
 <h3>0.4.4+1</h3>
 <ul>
   <li>Ctrl/Cmd+Click on the definition of a Scala name in the script jumps to its usages, including those in the template

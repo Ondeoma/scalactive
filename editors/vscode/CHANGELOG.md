@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.6.0
+
+The version now matches the Scalactive library (0.6.0). This version needs Scalactive 0.6.0 or later;
+a warning is shown when the project uses an older library, since errors in `.st` files may be wrong.
+
+- The language server compiles templates the same way as the library: expressions that read reactive values (`.v`)
+  in `{{ }}`, bindings, `v-if`, `v-for` and child component props are tracked.
+  Props of type `Reactive` accept value expressions such as `:count="s.n.v * 2"` without false type errors.
+
 ## 0.4.4
 
 The version now matches the Scalactive library (0.4.4), which compiles `<style lang="scss">` to CSS.
