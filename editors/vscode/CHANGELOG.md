@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.6.1
+
+The version now matches the Scalactive library (0.6.1).
+
+- Component tags starting with an uppercase letter (`<Link>`, `<Input>`, ...) are no longer treated as HTML void elements,
+  so they can have children and closing tags.
+- A `.st` component named like a built-in one (`RouterLink`, `Route`, ...) is used instead of the built-in one in the same package.
+- The generated code imports only what it uses, so `-Wunused:imports` no longer warns about it.
+
 ## 0.6.0
 
 The version now matches the Scalactive library (0.6.0). This version needs Scalactive 0.6.0 or later;
