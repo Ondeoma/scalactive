@@ -188,10 +188,12 @@ final class TemplateCodegen(src: SourceText,
         }
         // :key="expr" は行を対応付けるキー関数になる(要素の属性としては出力しない)
         val keyAttr = e.attrs.find(isKeyAttr)
+        // リストの式は __st.each で包み、読んだリアクティブ値が変わったら計算し直す
+        val list = s"__st.each${userExpr(listExpr, a.offset)}"
         val source = keyAttr match {
           // (ラムダを括弧で囲むと、オーバーロードの解決で引数の型が推論できないため囲まない)
-          case Some(k) => s"(${userExpr(listExpr, a.offset)}, key = $itemName => ${attrExpr(k)})"
-          case None => userExpr(listExpr, a.offset)
+          case Some(k) => s"($list, key = $itemName => ${attrExpr(k)})"
+          case None => s"($list)"
         }
         val body = render(genElementCore(e.copy(attrs = e.attrs.filterNot(isKeyAttr))), "      ")
         List(Code(

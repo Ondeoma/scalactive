@@ -181,7 +181,10 @@ class StRuntimeSuite extends munit.FunSuite {
     b := false
     assertEquals((ifV.v, elseIfV.v, elseV.v), (false, false, true))
     assertEquals(notified, 1)
-    assert(!StRuntime.cond(false).v)
+    mount { implicit cm =>
+      assert(!StRuntime.cond(false).v)
+      ""
+    }
   }
 
   test("on: キー修飾子・修飾キー・selfの判定") {
@@ -469,6 +472,88 @@ class StRuntimeSuite extends munit.FunSuite {
     assertEquals(q[HTMLElement](root, "div").textContent, "a:1")
     n := 2
     assertEquals(q[HTMLElement](root, "div").textContent, "a:2")
+  }
+
+  test("式の追跡: Reactiveでない式も、読んだリアクティブ値(.v)が変わると表示し直す") {
+    val price = RV(100)
+    val qty = RV(2)
+    val on = RV(false)
+    val color = RV("red")
+    val root = mount { implicit cm =>
+      s"""<p>${StRuntime.text(price.v * qty.v)}</p>""" +
+        s"""<button ${StRuntime.attr("disabled", !on.v)} ${StRuntime.attr("title", s"${qty.v}個")}></button>""" +
+        s"""<i ${StRuntime.cls(if (on.v) "on" else "off")}></i>""" +
+        s"""<b ${StRuntime.style(s"color: ${color.v}")}></b>""" +
+        s"""<u>${StRuntime.html(s"<em>${qty.v}</em>")}</u>"""
+    }
+    val btn = q[HTMLElement](root, "button")
+    assertEquals(q[HTMLElement](root, "p").textContent, "200")
+    assert(btn.hasAttribute("disabled"))
+    assertEquals(btn.getAttribute("title"), "2個")
+    assertEquals(q[HTMLElement](root, "i").className, "off")
+    assertEquals(q[HTMLElement](root, "b").style.color, "red")
+    assertEquals(q[HTMLElement](root, "u em").textContent, "2")
+    qty := 3
+    on := true
+    color := "blue"
+    flush().map { _ =>
+      assertEquals(q[HTMLElement](root, "p").textContent, "300")
+      assert(!btn.hasAttribute("disabled"))
+      assertEquals(btn.getAttribute("title"), "3個")
+      assertEquals(q[HTMLElement](root, "i").className, "on")
+      assertEquals(q[HTMLElement](root, "b").style.color, "blue")
+      assertEquals(q[HTMLElement](root, "u em").textContent, "3")
+    }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
+  }
+
+  test("式の追跡: 何も読んでいない式は静的なまま、untrackedで囲んだ部分は追跡しない") {
+    val n = RV(1)
+    var calls = 0
+    val root = mount { implicit cm =>
+      s"""<p>${StRuntime.text { calls += 1; "a" }}</p><span>${StRuntime.text(ReactiveFunctions.untracked(n.v) + 1)}</span>"""
+    }
+    assertEquals(calls, 1)
+    assertEquals(q[HTMLElement](root, "span").textContent, "2")
+    n := 5
+    assertEquals(calls, 1)
+    assertEquals(q[HTMLElement](root, "span").textContent, "2")
+  }
+
+  test("式の追跡: v-if・v-forの式も読んだ値に追従し、片付けると監視を解除する") {
+    val show = RV(true)
+    val xs = RV(List(1, 2, 3))
+    val min = RV(2)
+    val el = document.createElement("div")
+    document.body.appendChild(el)
+    def gen(cm: ComponentManager): HTML = {
+      given ComponentManager = cm
+      ComponentManager.ifC(StRuntime.cond(show.v && min.v > 0)) { _ => "<b>shown</b>" } +
+        "<ul>" + ComponentManager.forEachC(StRuntime.each(xs.v.filter(_ >= min.v))) { (cm2, x) =>
+          given ComponentManager = cm2
+          s"<li>${StRuntime.text(x)}</li>"
+        } + "</ul>"
+    }
+    val comp = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = gen(cm)
+    }
+    val h = ComponentManager.mount(el, (r, am) => comp()(using r, am)) match {
+      case Left(e) => fail(e)
+      case Right(h) => h
+    }
+    def items = el.querySelectorAll("li").toList.map(_.textContent)
+    assertEquals(items, List("2", "3"))
+    assertEquals(el.querySelectorAll("b").length, 1)
+    min := 3
+    xs := List(3, 4, 5)
+    show := false
+    flush().map { _ =>
+      assertEquals(items, List("3", "4", "5"))
+      assertEquals(el.querySelectorAll("b").length, 0)
+      h.unmount()
+      assertEquals(min.numWatchers, 0)
+      assertEquals(xs.numWatchers, 0)
+      assertEquals(show.numWatchers, 0)
+    }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
   }
 
   test("injectStyle: 同じidのスタイルは1度だけ挿入する") {

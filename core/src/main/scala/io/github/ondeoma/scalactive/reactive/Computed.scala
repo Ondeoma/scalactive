@@ -10,7 +10,9 @@ import scala.scalajs.js
  * 計算し直すたびに依存を集め直すので、条件によって読む値が変わる場合も、その時点で読んだものだけを監視します.
  * 計算し直した値が前の値と等しい(==)場合は通知しません(CRVと同じ).
  */
-private[scalactive] final class Computed[R](calc: () => R) extends CRV[R] {
+private[scalactive] final class Computed[R] private(calc: () => R,
+                                                   first: Tracking.Collector,
+                                                   firstValue: R) extends CRV[R] {
 
   private var aborted = false
 
@@ -18,7 +20,10 @@ private[scalactive] final class Computed[R](calc: () => R) extends CRV[R] {
   private var deps: js.Array[Reactive[?]] = js.Array()
   private var infos: js.Array[WatchInfo] = js.Array()
 
-  protected var value: R = run()
+  protected var value: R = {
+    resubscribe(first)
+    firstValue
+  }
 
   private def run(): R = {
     val c = new Tracking.Collector
@@ -66,6 +71,21 @@ private[scalactive] final class Computed[R](calc: () => R) extends CRV[R] {
 object Computed {
 
   /** computedの実体を作ります(ComponentManagerへの登録は呼び出し側で行います). */
-  def make[R](calc: () => R): CRV[R] = new Computed(calc)
+  def make[R](calc: () => R): CRV[R] = {
+    val c = new Tracking.Collector
+    val r = Tracking.collect(c)(calc())
+    new Computed(calc, c, r)
+  }
+
+  /**
+   * calcを1回計算し、リアクティブ値を読んでいればcomputed(Right)を、読んでいなければ値(Left)を返します.
+   * テンプレートの式を、読んだ値があるときだけ変化に追従させるのに使います(読んでいなければ監視のための物を作りません).
+   * computedは、ComponentManagerへの登録を呼び出し側で行います.
+   */
+  def track[R](calc: () => R): Either[R, CRV[R]] = {
+    val c = new Tracking.Collector
+    val r = Tracking.collect(c)(calc())
+    if (c.deps.length == 0) Left(r) else Right(new Computed(calc, c, r))
+  }
 
 }

@@ -79,8 +79,25 @@ val codeCrvSt = // language=html
      |    × <input type="number" v-model="s.qty" style="width: 4em">個
      |  </p>
      |  <p>合計: {{ CRV(s.price, s.qty, (p, q) => p * q) }}円</p>
-     |  <p>税込: {{ computed(s.price.v * s.qty.v * 110 / 100) }}円</p>
-     |  <p v-if="s.qty.mapC(_ >= 10)">まとめ買いです!</p>
+     |  <p>税込: {{ s.price.v * s.qty.v * 110 / 100 }}円</p>
+     |  <p v-if="s.qty.v >= 10">まとめ買いです!</p>
+     |</template>
+     |""".stripMargin
+
+val codeTrackText = "{{ s.price.v * s.qty.v }}"
+val codeTrackComputed = "{{ computed(s.price.v * s.qty.v) }}"
+val codeMustache = "{{ }}"
+
+val codeTrackingSt = // language=html
+  """<template>
+     |  <!-- 読んだ値(price・qty)が変わると表示し直す -->
+     |  <p>{{ s.price.v * s.qty.v }}円</p>
+     |  <button :disabled="s.items.v.isEmpty">注文</button>
+     |  <p :class='if (s.qty.v >= 10) "bulk" else "normal"'>...</p>
+     |  <p v-if="s.user.v.isDefined">ようこそ</p>
+     |  <li v-for="item in s.items.v.filter(_.visible)">{{ item.name }}</li>
+     |  <!-- untrackedの中で読んだ値は監視しない -->
+     |  <p>{{ untracked(s.log.v).size }}件</p>
      |</template>
      |""".stripMargin
 
@@ -394,6 +411,7 @@ val codeAfterReload = // language=scala
     <li><a @click='setHash("RMList")'>RMList</a></li>
     <li><a @click='setHash("CRV")'>CRV</a></li>
     <li><a @click='setHash("computed")'>computed</a></li>
+    <li><a @click='setHash("Tracking")'>テンプレートの式の追跡</a></li>
     <li><a @click='setHash("Watch")'>リアクティブ値の監視</a></li>
     <li><a @click='setHash("Timing")'>画面に反映されるタイミング</a></li>
   </ul>
@@ -561,6 +579,23 @@ val codeAfterReload = // language=scala
     <li>テンプレートの中・コンポーネントの中で作ったものは、コンポーネントが片付けられる時に監視も解除されます.</li>
     <li>計算の中では、リアクティブな値を書き換えないでください.</li>
     <li>RVList・RMList・ReactiveModelは、それ自体が監視されます(行・項目の変化でも計算し直します).</li>
+  </ul>
+
+  <h2 id="Tracking">テンプレートの式の追跡</h2>
+
+  <p>
+    テンプレートの式は、Vue.jsと同じく、中で読んだリアクティブな値(<code>.v</code>)を自動で監視します.<br>
+    <code>{{ codeTrackText }}</code> は、<code>{{ codeTrackComputed }}</code> と書いたのと同じように、値が変わると表示し直します.
+  </p>
+
+  <pre><code class="language-st">{{ codeTrackingSt }}</code></pre>
+
+  <ul>
+    <li>対象は <code>{{ codeMustache }}</code>・<code>:属性</code>・<code>:class</code>・<code>:style</code>・<code>v-if</code>・<code>v-else-if</code>・<code>v-show</code>・<code>v-html</code>・<code>v-for</code> のリストの式です.</li>
+    <li>式の値がReactive(<code>s.count</code> など)の場合は、これまでどおりその値に追従します.</li>
+    <li>リアクティブな値を何も読んでいない式は、これまでどおり1度だけ評価され、監視のためのものは作られません.</li>
+    <li>監視したくない部分は <code>untracked(...)</code> で囲みます.</li>
+    <li>子コンポーネントへ渡すprops(<code>:name="..."</code>)は、生成時に1度だけ渡されます. 変化を伝えたい場合はRVなどのリアクティブな値を渡します.</li>
   </ul>
 
   <h2 id="Watch">リアクティブ値の監視</h2>

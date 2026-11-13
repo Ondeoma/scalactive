@@ -3,7 +3,7 @@ package io.github.ondeoma.scalactive.st
 import io.github.ondeoma.scalactive.components.{ComponentManager, ScopedSlot, Slot}
 import io.github.ondeoma.scalactive.components.htmls.HtmlComponent
 import io.github.ondeoma.scalactive.components.texts.TextComponent
-import io.github.ondeoma.scalactive.controllers.attrs.{AttrBooleanController, AttrController, AttrStringController, ClassStringsController}
+import io.github.ondeoma.scalactive.controllers.attrs.{AttrBooleanController, AttrController, AttrStringController, ClassStringsController, FormProps}
 import io.github.ondeoma.scalactive.controllers.events.EventController
 import io.github.ondeoma.scalactive.enums.EventType
 import io.github.ondeoma.scalactive.reactive.*
@@ -37,6 +37,25 @@ object StRuntime {
     }
   }
 
+  // テンプレートの式の追跡
+  // Reactive型でない式(`s.count.v + 1` など)は、評価中に読んだリアクティブ値(`.v`)を監視し、変わったら計算し直します(Vueのテンプレートと同じ).
+  // 何も読んでいない式は、これまでどおり1度だけ評価する静的な値として扱います. 追跡したくない部分は `untracked(...)` で囲みます.
+
+  /** 式を評価し、リアクティブ値を読んでいればcomputed(Right)、読んでいなければ値(Left)を返します. */
+  private def tracked[A](v: => A)
+                        (using cm: ComponentManager): Either[A, Reactive[A]] = {
+    Computed.track(() => v).map { c =>
+      cm.addTmpReactive(c)
+      c
+    }
+  }
+
+  /** 式を評価し、リアクティブ値として返します(何も読んでいなければ変化しない値). */
+  private def trackedR[A](v: => A)
+                         (using cm: ComponentManager): Reactive[A] = {
+    tracked(v).fold(new RV(_), identity)
+  }
+
   def escape(s: String): String = {
     s.replace("&", "&amp;")
       .replace("<", "&lt;")
@@ -52,9 +71,12 @@ object StRuntime {
     ComponentManager.%(TextComponent(rv)(String.valueOf(_)))
   }
 
-  def text(v: Any)
+  def text(v: => Any)
           (using cm: ComponentManager): HTML = {
-    escape(String.valueOf(v))
+    tracked(v) match {
+      case Left(x) => escape(String.valueOf(x))
+      case Right(r) => text(r)
+    }
   }
 
   // v-html="expr"
@@ -71,16 +93,20 @@ object StRuntime {
     ComponentManager.%(HtmlComponent(rv)(a => if (a == null) "" else String.valueOf(a)))
   }
 
-  def html(v: Any)
+  def html(v: => Any)
           (using cm: ComponentManager): HTML = {
-    if (v == null) "" else String.valueOf(v)
+    tracked(v) match {
+      case Left(x) => if (x == null) "" else String.valueOf(x)
+      case Right(r) => html(r)
+    }
   }
 
   // v-if / v-else-if / v-else / v-show
 
   def cond(rv: Reactive[Boolean]): Reactive[Boolean] = rv
 
-  def cond(b: Boolean): Reactive[Boolean] = new RV(b)
+  def cond(b: => Boolean)
+          (using cm: ComponentManager): Reactive[Boolean] = trackedR(b)
 
   def not(rv: Reactive[Boolean])
          (using cm: ComponentManager): Reactive[Boolean] = {
@@ -151,14 +177,31 @@ object StRuntime {
   }
 
   def attr(name: String,
-           v: Any)
+           v: => Any)
           (using cm: ComponentManager): ATTR = {
-    v match {
-      case true => s" $name"
-      case false | null | None => ""
-      case Some(x) => s""" $name="${escape(String.valueOf(x))}""""
-      case x => s""" $name="${escape(String.valueOf(x))}""""
+    tracked(v) match {
+      case Left(true) => s" $name"
+      case Left(false | null | None) => ""
+      case Left(Some(x)) => s""" $name="${escape(String.valueOf(x))}""""
+      case Left(x) => s""" $name="${escape(String.valueOf(x))}""""
+      case Right(r) => ComponentManager.el(anyAttrEffect(name, r))
     }
+  }
+
+  /** 属性に値を設定します. trueは値なし、false・null・Noneは属性を外し、Some(x)・それ以外は文字列にします. */
+  private def setAnyAttr(ele: HTMLElement, name: String, v: Any): Unit = v match {
+    case true => FormProps.set(ele, name, "")
+    case false | null | None => FormProps.remove(ele, name)
+    case Some(x) => FormProps.set(ele, name, String.valueOf(x))
+    case x => FormProps.set(ele, name, String.valueOf(x))
+  }
+
+  private def anyAttrEffect(name: String,
+                            r: Reactive[Any]): ElementEffectF = ele => AttrController { ac =>
+    ac.element = Some(ele)
+    setAnyAttr(ele, name, r.v)
+    ac.watchInfos = List(r.addWatcher { case (_, n) => setAnyAttr(ele, name, n) })
+    Right(ac)
   }
 
   // :class="expr"
@@ -199,14 +242,16 @@ object StRuntime {
     ComponentManager.clsSs(CRV(rv, (m: Map[String, Boolean]) => m.toList.collect { case (k, true) => splitClasses(k) }.flatten))
   }
 
-  def cls(v: Any)
+  def cls(v: => Any)
          (using cm: ComponentManager): ATTR = {
-    ComponentManager.clsSs(classesOf(v))
+    ComponentManager.clsSs(trackedR(classesOf(v)))
   }
 
-  /** :classの値(文字列・リスト・組・Map)から、付与するクラスのリストを求めます. */
-  private def classesOf(v: Any)
-                       (using cm: ComponentManager): Reactive[List[String]] = {
+  /**
+   * :classの値(文字列・リスト・組・Map)から、付与するクラスのリストを求めます.
+   * 条件のReactiveは `.v` で読むので、trackedの中で呼べば変化に追従します.
+   */
+  private def classesOf(v: Any): List[String] = {
     // 文字列の要素はそのまま、組の要素は条件付き
     val entries: List[Either[String, (String, Any)]] = v match {
       case s: String => List(Left(s))
@@ -217,38 +262,8 @@ object StRuntime {
       }
       case x => List(Left(String.valueOf(x)))
     }
-    val static = entries.collect { case Left(s) => splitClasses(s) }.flatten
-    val pairs = entries.collect { case Right(p) => p }
-    if (pairs.isEmpty) new RV(static)
-    else {
-      val reactives = pairs.collect { case (_, r: Reactive[?]) => r }
-      val calc = () => static ++ pairs.collect { case (k, c) if truthy(c) => splitClasses(k) }.flatten
-      if (reactives.isEmpty) new RV(calc())
-      else derived(reactives, calc)
-    }
-  }
-
-  /**
-   * 複数のリアクティブ値から計算される値. 一時リアクティブ値として登録され、abort時に元の値の監視を解除します.
-   */
-  private final class Derived[A](srcs: Seq[Reactive[?]],
-                                 calc: () => A) extends RV[A](calc()) {
-
-    private val infos = srcs.map(_.addWatcher(_ => this := calc()))
-
-    override def abort(): Unit = {
-      infos.foreach(_.abort())
-      super.abort()
-    }
-
-  }
-
-  private def derived[A](srcs: Seq[Reactive[?]],
-                         calc: () => A)
-                        (using cm: ComponentManager): Reactive[A] = {
-    val d = new Derived(srcs, calc)
-    cm.addTmpReactive(d)
-    d
+    entries.collect { case Left(s) => splitClasses(s) }.flatten ++
+      entries.collect { case Right((k, c)) if truthy(c) => splitClasses(k) }.flatten
   }
 
   // :style="expr"
@@ -302,11 +317,20 @@ object StRuntime {
     Right(ac)
   }
 
-  private def stylePairsEffect(ps: List[(String, Any)]): ElementEffectF = ele => AttrController { ac =>
+  /** 変化しないプロパティを設定します(変化するものはstyleMapEffectで扱います). */
+  private def stylePropsEffect(ps: List[(String, Any)]): ElementEffectF = ele => AttrController { ac =>
     ac.element = Some(ele)
     ps.foreach((k, x) => setStyleProp(ele, k, x))
-    ac.watchInfos = ps.collect { case (k, r: Reactive[?]) => r.addWatcher(_ => setStyleProp(ele, k, r)) }
     Right(ac)
+  }
+
+  /**
+   * :styleの値(文字列・組・Map)を、プロパティ名と値のMapにします. 値のないプロパティは含めません.
+   * 値のReactiveは `.v` で読むので、trackedの中で呼べば変化に追従します.
+   */
+  private def styleMapOf(v: Any): Map[String, String] = {
+    val ps = stylePairs(v).getOrElse(parseStyle(if (v == null) "" else String.valueOf(v)))
+    ps.flatMap((k, x) => styleValue(x).map(k -> _)).toMap
   }
 
   private def stylePairs(v: Any): Option[List[(String, Any)]] = v match {
@@ -338,11 +362,19 @@ object StRuntime {
    * プロパティ名と値の組・Map(オブジェクト記法)は、プロパティごとに設定し、静的なstyle属性と併用できます.
    * 値がReactiveの場合は変化に追従します. 例: `Map("color" -> s.color, "fontSize" -> "12px")`
    */
-  def style(v: Any)
+  def style(v: => Any)
            (using cm: ComponentManager): ATTR = {
-    stylePairs(v) match {
-      case None => attr("style", v)
-      case Some(ps) => ComponentManager.el(stylePairsEffect(ps))
+    var raw: Any = null
+    tracked {
+      raw = v
+      styleMapOf(raw)
+    } match {
+      // 何も読んでいなければ、これまでどおり(文字列はstyle属性に、組・Mapはプロパティごとに)
+      case Left(_) => stylePairs(raw) match {
+        case None => attr("style", raw)
+        case Some(ps) => ComponentManager.el(stylePropsEffect(ps))
+      }
+      case Right(r) => ComponentManager.el(styleMapEffect(r))
     }
   }
 
@@ -368,9 +400,9 @@ object StRuntime {
     ClassStringsController(CRV(rv, (m: Map[String, Boolean]) => m.toList.collect { case (k, true) => splitClasses(k) }.flatten))
   }
 
-  def rootCls(v: Any)
+  def rootCls(v: => Any)
              (using cm: ComponentManager): ElementEffectF = {
-    ClassStringsController(classesOf(v))
+    ClassStringsController(trackedR(classesOf(v)))
   }
 
   /** 文字列のstyleも、プロパティごとに子のstyleへ合わせます. */
@@ -385,11 +417,11 @@ object StRuntime {
     styleMapEffect(rv)
   }
 
-  def rootStyle(v: Any)
+  def rootStyle(v: => Any)
                (using cm: ComponentManager): ElementEffectF = {
-    stylePairs(v) match {
-      case Some(ps) => stylePairsEffect(ps)
-      case None => stylePairsEffect(parseStyle(if (v == null) "" else String.valueOf(v)))
+    tracked(styleMapOf(v)) match {
+      case Left(m) => stylePropsEffect(m.toList)
+      case Right(r) => styleMapEffect(r)
     }
   }
 
@@ -415,16 +447,25 @@ object StRuntime {
   }
 
   def rootAttr(name: String,
-               v: Any)
-              (using cm: ComponentManager): ElementEffectF = ele => AttrController { ac =>
-    ac.element = Some(ele)
-    v match {
-      case true => ele.setAttribute(name, "")
-      case false | null | None => ele.removeAttribute(name)
-      case Some(x) => ele.setAttribute(name, String.valueOf(x))
-      case x => ele.setAttribute(name, String.valueOf(x))
+               v: => Any)
+              (using cm: ComponentManager): ElementEffectF = {
+    anyAttrEffect(name, trackedR(v))
+  }
+
+  // v-for="x in expr"
+  // ComponentManager.forC / forEachC へ渡すリスト. リアクティブなリストはそのまま、
+  // Listの式は、読んだリアクティブ値が変わったときに計算し直すCRVにします.
+
+  def each[R <: Reactive[?]](r: R): R = r
+
+  def each[A](xs: => List[A])
+             (using cm: ComponentManager): CRV[List[A]] = {
+    Computed.track(() => xs) match {
+      case Left(l) => new RV(l).mapC(identity)
+      case Right(c) =>
+        cm.addTmpReactive(c)
+        c
     }
-    Right(ac)
   }
 
   // @event="stmt"

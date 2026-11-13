@@ -88,9 +88,9 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("val __if1 = __st.cond(/* Foo.st:2 */ a)"))
     assert(c.contains("__CM.ifC(__if1) { implicit __cm2 =>"))
     assert(c.contains("__CM.ifC(__st.otherwise(__if1)) { implicit __cm3 =>"))
-    assert(c.contains("__CM.forC(/* Foo.st:4 */ xs) { (__cm4, x, i) =>"))
+    assert(c.contains("__CM.forC(__st.each(/* Foo.st:4 */ xs)) { (__cm4, x, i) =>"))
     // 添字の変数がなければforEachC
-    assert(c.contains("__CM.forEachC(/* Foo.st:5 */ ys) { (__cm5, y) =>"))
+    assert(c.contains("__CM.forEachC(__st.each(/* Foo.st:5 */ ys)) { (__cm5, y) =>"))
     assert(c.contains("given __CM = __cm4"))
     assert(c.contains("__CM.showIf(__st.cond(/* Foo.st:6 */ v))"))
     assert(c.contains("__st.attr(\"title\", (/* Foo.st:6 */ t))"))
@@ -117,8 +117,8 @@ class StCompilerSuite extends munit.FunSuite {
         |<li v-for="x in xs" :key="x.id" class="a">{{ x }}</li>
         |<template v-for="(y, i) in ys" v-bind:key="y.id"><dt>{{ y }}</dt></template>
         |</template>""".stripMargin).code
-    assert(c.contains("__CM.forEachC((/* Foo.st:2 */ xs), key = x => (/* Foo.st:2 */ x.id)) { (__cm1, x) =>"), c)
-    assert(c.contains("__CM.forC((/* Foo.st:3 */ ys), key = y => (/* Foo.st:3 */ y.id)) { (__cm2, y, i) =>"), c)
+    assert(c.contains("__CM.forEachC(__st.each(/* Foo.st:2 */ xs), key = x => (/* Foo.st:2 */ x.id)) { (__cm1, x) =>"), c)
+    assert(c.contains("__CM.forC(__st.each(/* Foo.st:3 */ ys), key = y => (/* Foo.st:3 */ y.id)) { (__cm2, y, i) =>"), c)
     assert(!c.contains("\"key\""), "keyは属性として出力しない")
     assertEquals(compileError("<template>\n<p :key=\"k\"></p></template>").line, 2)
   }
