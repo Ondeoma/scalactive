@@ -491,6 +491,35 @@ class StCompilerSuite extends munit.FunSuite {
     assert(withDom("""<template><p>{{ s"${window.innerWidth}" }}</p></template>""").contains("import org.scalajs.dom.*"))
   }
 
+  test("importで名前を指定して使えるようにした名前") {
+    assertEquals(StCompiler.importedNames("import org.scalajs.dom.File"), Set("File"))
+    assertEquals(StCompiler.importedNames("import org.scalajs.dom.{File, Event as DomEvent, Blob => B, Node as _, *}"),
+      Set("File", "DomEvent", "B"))
+    assertEquals(StCompiler.importedNames("import a.{\n  B,\n  C\n}, d.E"), Set("B", "C", "E"))
+    assertEquals(StCompiler.importedNames("import a.b.*"), Set.empty[String])
+    assertEquals(StCompiler.importedNames("import a.b.{given, given Ordering[Int]}"), Set.empty[String])
+  }
+
+  test("scriptで名前を指定してimportした名前は数えず、丸ごとimportしているパッケージはヘッダーでimportしない") {
+    // 生成コードのヘッダー(objectより前)
+    def compile(script: String) = StCompiler.compile(StInput(
+      s"<script>\n$script\n</script>\n<template><p>x</p></template>", "a/b/Foo.st", "Foo", Some("a.b"), domNames = Some(Set("window", "Event", "File"))))
+      .fold(e => fail(e.toString), c => c.code.substring(0, c.code.indexOf("\nobject ")))
+    val dom = "import org.scalajs.dom.*"
+    val reactive = "import io.github.ondeoma.scalactive.reactive.*"
+    // 名前を指定したimportだけで使っている場合は、ヘッダーのimportが使われない
+    assert(!compile("import org.scalajs.dom.{File, Event}\ndef f(x: File, e: Event): Unit = ()").contains(dom))
+    assert(!compile("import org.scalajs.dom.{\n  File,\n  Event\n}\ndef f(x: File): Unit = ()").contains(dom))
+    assert(!compile("import org.scalajs.dom.Event as DomEvent\ndef f(e: DomEvent): Unit = ()").contains(dom))
+    assert(!compile("import io.github.ondeoma.scalactive.reactive.RV\ndef f(x: RV[Int]): Unit = ()").contains(reactive))
+    // importしていない名前を使っていれば、これまでどおりimportする
+    assert(compile("def g(): Unit = {\n  import org.scalajs.dom.File\n  ()\n}\ndef f(x: File): Unit = ()").contains(dom))
+    assert(compile("import org.scalajs.dom.File\ndef f(x: File, e: Event): Unit = ()").contains(dom))
+    // scriptで丸ごとimportしていれば、ヘッダーではimportしない
+    assert(!compile("import org.scalajs.dom.*\ndef f(e: Event): Unit = ()").contains(dom))
+    assert(!compile("import io.github.ondeoma.scalactive.reactive._\ndef f(x: RV[Int]): Unit = ()").contains(reactive))
+  }
+
   test("同じディレクトリの.stは完全修飾名で参照し、組み込み(RouterLinkなど)と同じ名前でも利用者のものを使う") {
     val c = StCompiler.compile(StInput("""<template><div><RouterLink to="/" /><Other /></div></template>""", "a/b/Foo.st", "Foo", Some("a.b"),
       siblings = Set("Foo", "RouterLink"))).fold(e => fail(e.toString), _.code)
