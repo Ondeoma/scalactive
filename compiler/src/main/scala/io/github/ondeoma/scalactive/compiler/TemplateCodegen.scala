@@ -322,7 +322,7 @@ final class TemplateCodegen(src: SourceText,
       val n = a.name
       val (raw, value) =
         if (n.startsWith(":") || n.startsWith("v-bind:")) {
-          (if (n.startsWith(":")) n.drop(1) else n.drop("v-bind:".length), attrExpr(a))
+          (if (n.startsWith(":")) n.drop(1) else n.drop("v-bind:".length), propExpr(a))
         } else if (n.startsWith("@") || n.startsWith("v-on:")) {
           n match {
             case EventPattern(event, mods) =>
@@ -396,7 +396,23 @@ final class TemplateCodegen(src: SourceText,
     }
     val argList = args.map { case (_, n, v, _) => s"$n = $v" }.mkString(", ")
     val extra = fallthrough.map(", " + _).mkString
-    List(Code(s"__st.component(${marks.mark(e.name, e.offset + 1)}($argList)$extra)"))
+    // propsの式で読んだリアクティブ値が変わったら、子を作り直す(__st.componentOf)
+    val id = nextId()
+    List(Code(s"__st.componentOf((__cm$id: __CM) => { given __CM = __cm$id; ${marks.mark(e.name, e.offset + 1)}($argList) }$extra)"))
+  }
+
+  /** 関数リテラル(`x => ...`・`(a, b) => ...`・`{ case ... }`)か. 関数は値を追跡しないので包まない */
+  private val LambdaPattern = """(?s)^\s*(?:\([^()]*\)|[A-Za-z_]\w*(?:\s*:\s*[^=]+)?)\s*=>.*|^\s*\{\s*case\b.*""".r
+
+  /**
+   * 子コンポーネントのprops(`:name="expr"`)の式.
+   * `__st.prop` で包み、Reactive型のpropsには読んだ値を追跡するcomputedを、それ以外は値を渡します.
+   * Reactive型のpropsに値の式(`s.count.v + 1`)を書けるよう、ブロックの中だけ値からReactiveへの変換を使えるようにします.
+   */
+  private def propExpr(a: Attr): String = {
+    val e = attrExpr(a)
+    if (decodedValue(a).exists(v => LambdaPattern.pattern.matcher(v.text).matches())) e
+    else s"__st.prop { import __st.PropConversions.given; import scala.language.implicitConversions; $e }"
   }
 
   private def propName(s: String): String = {

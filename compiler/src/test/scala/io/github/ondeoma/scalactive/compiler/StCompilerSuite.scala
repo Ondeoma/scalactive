@@ -97,7 +97,7 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("__st.cls(/* Foo.st:6 */ c)"))
     assert(compile("""<template><p :style="m"></p></template>""").code.contains("__st.style(/* Foo.st:1 */ m)"))
     assert(c.contains("event.stopPropagation(); go(event)"))
-    assert(c.contains("__st.component(Child())"))
+    assert(c.contains("given __CM = __cm6; Child() })"), c)
   }
 
   test("v-html") {
@@ -142,7 +142,7 @@ class StCompilerSuite extends munit.FunSuite {
 
   test("v-model on component passes the RV as props") {
     val c = compile("""<template><Field v-model="s.name" v-model:first-name="s.first" label="x" /></template>""").code
-    assert(c.contains("__st.component(Field(model = (/* Foo.st:1 */ s.name), firstName = (/* Foo.st:1 */ s.first), label = \"x\"))"), c)
+    assert(c.contains("__st.componentOf((__cm1: __CM) => { given __CM = __cm1; Field(model = (/* Foo.st:1 */ s.name), firstName = (/* Foo.st:1 */ s.first), label = \"x\") })"), c)
     assertEquals(compileError("<template>\n<Field v-model.trim=\"x\" /></template>").line, 2)
     assertEquals(compileError("<template>\n<Field v-model=\"x\" :model=\"y\" /></template>").line, 2)
   }
@@ -184,7 +184,7 @@ class StCompilerSuite extends munit.FunSuite {
 
   test("class/style/id/data-*/aria-* on component fall through to its root element") {
     val c = compile("""<template><Btn label="ok" class="primary" :style="s.st" id="b1" :data-n="s.n" aria-label="a" :aria-busy="s.busy" /></template>""").code
-    assert(c.contains("""__st.component(Btn(label = "ok"), __st.rootCls("primary"), __st.rootStyle((/* Foo.st:1 */ s.st)), __st.rootAttr("id", "b1"), __st.rootAttr("data-n", (/* Foo.st:1 */ s.n)), __st.rootAttr("aria-label", "a"), __st.rootAttr("aria-busy", (/* Foo.st:1 */ s.busy)))"""), c)
+    assert(c.contains("""__st.componentOf((__cm1: __CM) => { given __CM = __cm1; Btn(label = "ok") }, __st.rootCls("primary"), __st.rootStyle((/* Foo.st:1 */ s.st)), __st.rootAttr("id", "b1"), __st.rootAttr("data-n", (/* Foo.st:1 */ s.n)), __st.rootAttr("aria-label", "a"), __st.rootAttr("aria-busy", (/* Foo.st:1 */ s.busy)))"""), c)
   }
 
   test("scoped slots") {
@@ -298,7 +298,7 @@ class StCompilerSuite extends munit.FunSuite {
         |  <p>{{ s.body }}</p>
         |</Card>
         |</template>""".stripMargin)
-    assert(parent.code.contains("__st.component(Card(title = \"t\", onClose = (event => { /* Foo.st:2 */ s.open := false }), slot = __st.slotOf { implicit __cm1 =>"))
+    assert(parent.code.contains("given __CM = __cm2; Card(title = \"t\", onClose = (event => { /* Foo.st:2 */ s.open := false }), slot = __st.slotOf { implicit __cm1 =>"), parent.code)
     assert(parent.code.contains("__st.text(/* Foo.st:3 */ s.body)"))
 
     val child = compile(
@@ -321,8 +321,8 @@ class StCompilerSuite extends munit.FunSuite {
         |<Child label="a &amp; b" :count="s.n" on-close="x" :on-select="i => go(i)" disabled v-if="ok" />
         |</template>""".stripMargin)
     assert(o.code.contains(
-      "__st.component(Child(label = \"a & b\", count = (/* Foo.st:2 */ s.n), onClose = \"x\", onSelect = (/* Foo.st:2 */ i => go(i)), disabled = true))"
-    ))
+      "Child(label = \"a & b\", count = __st.prop { import __st.PropConversions.given; import scala.language.implicitConversions; (/* Foo.st:2 */ s.n) }, onClose = \"x\", onSelect = (/* Foo.st:2 */ i => go(i)), disabled = true) })"
+    ), o.code)
     assert(o.code.contains("__CM.ifC(__st.cond(/* Foo.st:2 */ ok))"))
   }
 

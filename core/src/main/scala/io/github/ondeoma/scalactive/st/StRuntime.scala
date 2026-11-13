@@ -690,6 +690,68 @@ object StRuntime {
     s(value)(fallback)
   }
 
+  // <ChildComponent :name="expr" />
+
+  /**
+   * 子コンポーネントのprops(`:name="expr"`)の値.
+   *  - Reactive型(Reactive・CRV)のprops: 式でリアクティブ値を読んでいれば、追従するcomputedを渡します(子は作り直さない).
+   *    値の式(`s.count.v + 1`)は、生成コードの中だけ使える変換(PropConversions)でReactiveになります.
+   *  - それ以外のprops: 値をそのまま渡します. 読んだリアクティブ値は、外側の [[componentOf]] が監視し、変わったら子を作り直します.
+   *    (`if (s.useA.v) s.a else s.b` のようにReactiveそのものを選ぶ式は、式の型(RV[Int]など)がpropsの型として推論されるため、
+   *    こちらになります. 選ぶものが変わると子を作り直します)
+   */
+  def prop[A](v: => A)
+             (using k: PropKind[A],
+              cm: ComponentManager): A = {
+    if (!k.reactive) v
+    else Computed.track(() => v) match {
+      case Left(x) => x
+      case Right(c) =>
+        // 式が選ぶReactive(c)と、その値の両方に追従する
+        cm.addTmpReactive(c)
+        val flat = Computed.make(() => c.v.asInstanceOf[Reactive[Any]].v)
+        cm.addTmpReactive(flat)
+        flat.asInstanceOf[A]
+    }
+  }
+
+  /** propsの型が、computed(CRV)を渡せるReactive型(Reactive・CRV)か. 渡す先の引数の型から決まります */
+  final class PropKind[A] private[StRuntime](val reactive: Boolean)
+
+  object PropKind extends LowPriorityPropKind {
+
+    given reactive[T]: PropKind[Reactive[T]] = new PropKind(true)
+
+    given crv[T]: PropKind[CRV[T]] = new PropKind(true)
+
+  }
+
+  trait LowPriorityPropKind {
+
+    given other[A]: PropKind[A] = new PropKind(false)
+
+  }
+
+  /** Reactive型のpropsに値の式を書けるようにする変換(生成コードがpropsの式の中だけでimportします) */
+  object PropConversions {
+
+    given toReactive[A]: Conversion[A, Reactive[A]] = a => new RV(a)
+
+  }
+
+  /**
+   * 子コンポーネントを展開します. makeは子を作る関数で、propsの式で読んだリアクティブ値を追跡します.
+   * 読んだ値があれば、それが変わったときに子を作り直します. なければ [[component]] と同じです.
+   */
+  def componentOf(make: ComponentManager => GenComponentF,
+                  attrs: ElementEffectF*)
+                 (using cm: ComponentManager): HTML = {
+    val col = new Tracking.Collector
+    val f = Tracking.collect(col)(make(cm))
+    if (col.deps.length == 0) ComponentManager.c(f, attrs *)
+    else ComponentManager.%(PropsComponent(f, col.deps.toList, make, attrs))
+  }
+
   // <ChildComponent />
 
   def component(f: GenComponentF)

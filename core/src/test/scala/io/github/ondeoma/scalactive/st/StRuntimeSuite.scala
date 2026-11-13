@@ -1,7 +1,7 @@
 package io.github.ondeoma.scalactive.st
 
 import io.github.ondeoma.scalactive.components.*
-import io.github.ondeoma.scalactive.components.ComponentManager.{AddMethod, HTML}
+import io.github.ondeoma.scalactive.components.ComponentManager.{AddMethod, GenComponentF, HTML}
 import io.github.ondeoma.scalactive.reactive.*
 import org.scalajs.dom.*
 
@@ -553,6 +553,105 @@ class StRuntimeSuite extends munit.FunSuite {
       assertEquals(min.numWatchers, 0)
       assertEquals(xs.numWatchers, 0)
       assertEquals(show.numWatchers, 0)
+    }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
+  }
+
+  // .stの子コンポーネント(<Child :name="expr" />)の生成コードに当たる子
+  private object PlainChild extends StatefulPropsComponent[String, Int] {
+    var inits = 0
+    def initState(text: String): Int = { inits += 1; inits }
+    def genHtml(text: String, n: Int)(implicit cm: ComponentManager): HTML = s"<b>${StRuntime.text(text)}#$n</b>"
+    def of(text: String): GenComponentF = (r, am) => apply(text)(r, am)
+  }
+
+  private object ReactiveChild extends StatefulPropsComponent[Reactive[Int], Int] {
+    var inits = 0
+    def initState(count: Reactive[Int]): Int = { inits += 1; inits }
+    def genHtml(count: Reactive[Int], n: Int)(implicit cm: ComponentManager): HTML = s"<i>${StRuntime.text(count)}#$n</i>"
+    def of(count: Reactive[Int]): GenComponentF = (r, am) => apply(count)(r, am)
+  }
+
+  test("props: Reactive型でないpropsは、読んだ値が変わると子を作り直す(読んでいなければ作り直さない)") {
+    PlainChild.inits = 0
+    val name = RV("a")
+    val other = RV(0)
+    val root = mount { implicit cm =>
+      s"<div>${StRuntime.componentOf { c => given ComponentManager = c; PlainChild.of(StRuntime.prop(name.v + "!")) }}</div>" +
+        s"<p>${StRuntime.componentOf { c => given ComponentManager = c; PlainChild.of(StRuntime.prop("static")) }}</p>" +
+        s"<span>${StRuntime.text(other)}</span>"
+    }
+    assertEquals(q[HTMLElement](root, "div").textContent, "a!#1")
+    assertEquals(q[HTMLElement](root, "p").textContent, "static#2")
+    name := "b"
+    other := 1
+    flush().map { _ =>
+      // 作り直したので、子の状態(initState)も新しい
+      assertEquals(q[HTMLElement](root, "div").textContent, "b!#3")
+      assertEquals(q[HTMLElement](root, "p").textContent, "static#2")
+      assertEquals(PlainChild.inits, 3)
+    }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
+  }
+
+  test("props: Reactive型のpropsは値の式でも追従するcomputedになり、子を作り直さない") {
+    ReactiveChild.inits = 0
+    val n = RV(1)
+    val useA = RV(true)
+    val a = RV(10)
+    val b = RV(20)
+    val root = mount { implicit cm =>
+      s"<div>${StRuntime.componentOf { c =>
+        given ComponentManager = c
+        ReactiveChild.of(StRuntime.prop { import StRuntime.PropConversions.given; import scala.language.implicitConversions; n.v * 2 })
+      }}</div>" +
+        s"<p>${StRuntime.componentOf { c => given ComponentManager = c; ReactiveChild.of(StRuntime.prop(if (useA.v) a else b)) }}</p>" +
+        s"<u>${StRuntime.componentOf { c => given ComponentManager = c; ReactiveChild.of(StRuntime.prop(a)) }}</u>"
+    }
+    assertEquals(q[HTMLElement](root, "div").textContent, "2#1")
+    assertEquals(q[HTMLElement](root, "p").textContent, "10#2")
+    assertEquals(q[HTMLElement](root, "u").textContent, "10#3")
+    n := 5
+    a := 11
+    flush().flatMap { _ =>
+      assertEquals(q[HTMLElement](root, "div").textContent, "10#1")
+      assertEquals(q[HTMLElement](root, "p").textContent, "11#2")
+      assertEquals(q[HTMLElement](root, "u").textContent, "11#3")
+      // Reactiveそのものを選ぶ式(型はRV[Int])は、選ぶものが変わると子を作り直して追従する
+      useA := false
+      b := 21
+      flush()
+    }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).map { _ =>
+      assertEquals(q[HTMLElement](root, "p").textContent, "21#4")
+      assertEquals(q[HTMLElement](root, "div").textContent, "10#1")
+      assertEquals(ReactiveChild.inits, 4)
+    }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
+  }
+
+  test("props: 片付けると、propsの式の監視も解除する") {
+    val name = RV("a")
+    val n = RV(1)
+    val el = document.createElement("div")
+    document.body.appendChild(el)
+    def gen(cm: ComponentManager): HTML = {
+      given ComponentManager = cm
+      StRuntime.componentOf { c => given ComponentManager = c; PlainChild.of(StRuntime.prop(name.v)) } +
+        StRuntime.componentOf { c =>
+          given ComponentManager = c
+          ReactiveChild.of(StRuntime.prop { import StRuntime.PropConversions.given; import scala.language.implicitConversions; n.v + 1 })
+        }
+    }
+    val comp = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = gen(cm)
+    }
+    val h = ComponentManager.mount(el, (r, am) => comp()(using r, am)) match {
+      case Left(e) => fail(e)
+      case Right(h) => h
+    }
+    name := "b"
+    flush().map { _ =>
+      assertEquals(el.textContent.take(2), "b#")
+      h.unmount()
+      assertEquals(name.numWatchers, 0)
+      assertEquals(n.numWatchers, 0)
     }(using scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
   }
 

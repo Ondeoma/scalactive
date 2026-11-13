@@ -567,8 +567,16 @@ val lazyRouteCode = // language=html
       すべて省略可能なら、属性なしのタグ(<code>&lt;Greeting /&gt;</code> など)で書けます.
     </li>
     <li>
-      propsは生成時に1度だけ渡されます.<br>
-      値の変化を子に伝えたい場合は、Reactiveを渡してください.
+      <code>:name="expr"</code> の式で読んだリアクティブな値(<code>.v</code>)は、テンプレートの他の式と同じく監視されます.<br>
+      ・propsの型がReactive(<code>Reactive[Int]</code> など)の場合は、<code>:count="s.n.v * 2"</code> のような値の式も書けます.
+      値が変わると、子を作り直さずに表示が変わります(子の状態は保たれます).<br>
+      ・それ以外の型の場合は、値が変わると子を作り直します.
+      子の状態(<code>initState</code>)は初期化されます(Vue.jsで <code>:key</code> が変わった場合と同じです).<br>
+      ・リアクティブな値を読んでいない式は、生成時に1度だけ渡されます.
+    </li>
+    <li>
+      子の状態を保ったまま値の変化を伝えたい場合は、propsをReactive型にしてください.<br>
+      <code>if (s.useA.v) s.a else s.b</code> のようにReactiveそのものを選ぶ式は、選ぶものが変わると子を作り直します.
     </li>
     <li>
       <code>def initState()</code> と併用できます.<br>

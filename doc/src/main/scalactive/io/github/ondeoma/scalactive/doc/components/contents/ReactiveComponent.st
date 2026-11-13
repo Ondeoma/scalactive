@@ -96,6 +96,8 @@ val codeTrackingSt = // language=html
      |  <p :class='if (s.qty.v >= 10) "bulk" else "normal"'>...</p>
      |  <p v-if="s.user.v.isDefined">ようこそ</p>
      |  <li v-for="item in s.items.v.filter(_.visible)">{{ item.name }}</li>
+     |  <!-- 子のprops: 型がReactiveならその場で、それ以外なら子を作り直して追従する -->
+     |  <Price :amount="s.price.v * s.qty.v" />
      |  <!-- untrackedの中で読んだ値は監視しない -->
      |  <p>{{ untracked(s.log.v).size }}件</p>
      |</template>
@@ -591,11 +593,11 @@ val codeAfterReload = // language=scala
   <pre><code class="language-st">{{ codeTrackingSt }}</code></pre>
 
   <ul>
-    <li>対象は <code>{{ codeMustache }}</code>・<code>:属性</code>・<code>:class</code>・<code>:style</code>・<code>v-if</code>・<code>v-else-if</code>・<code>v-show</code>・<code>v-html</code>・<code>v-for</code> のリストの式です.</li>
+    <li>対象は <code>{{ codeMustache }}</code>・<code>:属性</code>・子コンポーネントのprops・<code>:class</code>・<code>:style</code>・<code>v-if</code>・<code>v-else-if</code>・<code>v-show</code>・<code>v-html</code>・<code>v-for</code> のリストの式です.</li>
     <li>式の値がReactive(<code>s.count</code> など)の場合は、これまでどおりその値に追従します.</li>
     <li>リアクティブな値を何も読んでいない式は、これまでどおり1度だけ評価され、監視のためのものは作られません.</li>
     <li>監視したくない部分は <code>untracked(...)</code> で囲みます.</li>
-    <li>子コンポーネントへ渡すprops(<code>:name="..."</code>)は、生成時に1度だけ渡されます. 変化を伝えたい場合はRVなどのリアクティブな値を渡します.</li>
+    <li>子コンポーネントへ渡すprops(<code>:name="..."</code>)も対象です. propsの型がReactiveなら追従するcomputedを渡し、それ以外の型なら値が変わったときに子を作り直します(詳しくはコンポーネントのpropsを見てください).</li>
   </ul>
 
   <h2 id="Watch">リアクティブ値の監視</h2>
