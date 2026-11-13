@@ -24,6 +24,12 @@ final class ScalactiveLanguageServer extends LanguageServer with LanguageClientA
 
   private val service = new StLanguageService(log)
 
+  // プロジェクトのScalactiveが古い場合などは、ログだけでなく画面にも出す
+  service.warn = { msg =>
+    log(msg)
+    client.foreach(_.showMessage(new MessageParams(MessageType.Warning, msg)))
+  }
+
   private val requests = Executors.newCachedThreadPool((r: Runnable) => {
     val t = new Thread(r, "scalactive-ls")
     t.setDaemon(true)

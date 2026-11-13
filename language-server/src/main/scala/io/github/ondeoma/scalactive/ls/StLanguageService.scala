@@ -34,6 +34,9 @@ final class StLanguageService(log: String => Unit) {
    */
   @volatile var usagesOnDeclaration: Boolean = false
 
+  /** 利用者に知らせる警告(プロジェクトのScalactiveが古い場合など). 既定ではログに書くだけです */
+  @volatile var warn: String => Unit = log
+
   import StLanguageService._
 
   private val threadFactory: ThreadFactory = (r: Runnable) => {
@@ -129,6 +132,7 @@ final class StLanguageService(log: String => Unit) {
           .newInstance("scalactive", config.classpath.asJava, config.compilerOptions.asJava)
         val p = new Project(config, modified, pc, null, stampOf(config))
         p.compiler = p.newCompiler()
+        LibraryVersion.warning(config.classpath).foreach(warn)
         Right(p)
       } catch {
         case NonFatal(e) =>
