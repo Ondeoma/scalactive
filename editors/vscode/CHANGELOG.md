@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.6.2
+
+The version now matches the Scalactive library (0.6.2).
+
+- Names imported by name in `<script>` (`import org.scalajs.dom.File`) are no longer counted as uses of the generated
+  wildcard imports, and a package the script already imports with `*` is not imported again, so `-Wunused:imports`
+  no longer warns about `import org.scalajs.dom.*` in the generated code.
+
 ## 0.6.1
 
 The version now matches the Scalactive library (0.6.1).

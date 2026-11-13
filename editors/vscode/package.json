@@ -2,7 +2,7 @@
   "name": "scalactive-st",
   "displayName": "Scalactive Single File Component (.st)",
   "description": "Language support for Scalactive single file components (.st): syntax highlighting, completion, type errors, hover and go to definition",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "publisher": "ondeoma",
   "license": "MIT",
   "icon": "images/icon.png",

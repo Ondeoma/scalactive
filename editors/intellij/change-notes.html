@@ -1,3 +1,10 @@
+<h3>0.6.2</h3>
+<ul>
+  <li>The version now matches the Scalactive library (0.6.2).</li>
+  <li>Names imported by name in <code>&lt;script&gt;</code> (<code>import org.scalajs.dom.File</code>) are no longer counted as uses of the
+      generated wildcard imports, and a package the script already imports with <code>*</code> is not imported again,
+      so <code>-Wunused:imports</code> no longer warns about <code>import org.scalajs.dom.*</code> in the generated code.</li>
+</ul>
 <h3>0.6.1</h3>
 <ul>
   <li>The version now matches the Scalactive library (0.6.1).</li>
