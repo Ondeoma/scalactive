@@ -14,5 +14,14 @@ $ copy-file changes/Broken.st src/main/scalactive/app/Broken.st
 
 $ delete src/main/scalactive/app/Broken.st
 
+# 組み込みと同じ名前の.st・<Link>
+$ copy-file changes/RouterLink.st src/main/scalactive/app/RouterLink.st
+$ copy-file changes/Link.st src/main/scalactive/app/Link.st
+$ copy-file changes/Nav.st src/main/scalactive/app/Nav.st
+> checkSiblings
+$ delete src/main/scalactive/app/RouterLink.st
+$ delete src/main/scalactive/app/Link.st
+$ delete src/main/scalactive/app/Nav.st
+
 # 言語サーバー向けの設定を書き出す
 > checkLspConfig

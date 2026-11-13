@@ -1,6 +1,6 @@
 package io.github.ondeoma.scalactive.sbtplugin
 
-import io.github.ondeoma.scalactive.compiler.{StCompiler, StSources}
+import io.github.ondeoma.scalactive.compiler.{DomNames, StCompiler, StSources}
 import sbt.Keys._
 import sbt._
 import sbt.nio.Keys._
@@ -44,7 +44,9 @@ object ScalactivePlugin extends AutoPlugin {
       val roots = scalactiveSourceDirectories.value.map(_.toPath.toAbsolutePath.normalize)
       val inputs = scalactiveGenerate.inputFiles
       val outDir = (sourceManaged.value / "scalactive").toPath
-      generate(roots, inputs, outDir, streams.value.log)
+      // dom.* を使っている場合だけimportするため、scalajs-domのjarから名前を読む(外部の依存だけで足りる)
+      val classpath = externalDependencyClasspath.value.map(_.data.toPath)
+      generate(roots, inputs, outDir, classpath, streams.value.log)
     },
     sourceGenerators += scalactiveGenerate.taskValue,
     scalactiveLspConfig := {
@@ -100,14 +102,15 @@ object ScalactivePlugin extends AutoPlugin {
 
   }
 
-  private def generate(roots: Seq[Path], inputs: Seq[Path], outDir: Path, log: Logger): Seq[File] = {
+  private def generate(roots: Seq[Path], inputs: Seq[Path], outDir: Path, classpath: Seq[Path], log: Logger): Seq[File] = {
     val sass = new SassStyles(roots.map(_.toFile))
+    val domNames = DomNames.fromClasspath(classpath)
     val results = try {
       inputs.sortBy(_.toString).map { file =>
         val abs = file.toAbsolutePath.normalize
         val root = StSources.rootOf(roots, abs).getOrElse(sys.error(s"$abs is not under scalactiveSourceDirectories"))
         val in = StSources.input(root, abs, new String(Files.readAllBytes(abs), StandardCharsets.UTF_8))
-          .copy(styleCompiler = Some(sass.forFile(abs)))
+          .copy(styleCompiler = Some(sass.forFile(abs)), domNames = domNames)
         StCompiler.compile(in).left.map(e => s"$abs:${e.line}: ${e.message}")
       }
     } finally sass.close()

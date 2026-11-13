@@ -52,8 +52,8 @@ class StCompilerSuite extends munit.FunSuite {
         |</script>
         |<template><p>{{ s.n }}</p></template>
         |""".stripMargin)
-    assert(o.code.contains("object Foo extends StatefulComponent[Foo.State] {"))
-    assert(o.code.contains("def genHtml(s: Foo.State)"))
+    assert(o.code.contains("object Foo extends StatefulComponent[_root_.a.b.Foo.State] {"))
+    assert(o.code.contains("def genHtml(s: _root_.a.b.Foo.State)"))
     assert(o.code.contains("__st.text(/* Foo.st:5 */ s.n)"))
   }
 
@@ -321,7 +321,7 @@ class StCompilerSuite extends munit.FunSuite {
         |<Child label="a &amp; b" :count="s.n" on-close="x" :on-select="i => go(i)" disabled v-if="ok" />
         |</template>""".stripMargin)
     assert(o.code.contains(
-      "Child(label = \"a & b\", count = __st.prop { import __st.PropConversions.given; import scala.language.implicitConversions; (/* Foo.st:2 */ s.n) }, onClose = \"x\", onSelect = (/* Foo.st:2 */ i => go(i)), disabled = true) })"
+      "Child(label = \"a & b\", count = __st.prop(({ import __st.PropConversions.given; import scala.language.implicitConversions; (/* Foo.st:2 */ s.n) }: @scala.annotation.nowarn(\"msg=unused import\"))), onClose = \"x\", onSelect = (/* Foo.st:2 */ i => go(i)), disabled = true) })"
     ), o.code)
     assert(o.code.contains("__CM.ifC(__st.cond(/* Foo.st:2 */ ok))"))
   }
@@ -336,10 +336,10 @@ class StCompilerSuite extends munit.FunSuite {
         |</script>
         |<template><p>{{ props.label }}</p></template>""".stripMargin)
     val c = o.code
-    assert(c.contains("object Foo extends StatelessPropsComponent[Foo.Props] {"))
+    assert(c.contains("object Foo extends StatelessPropsComponent[_root_.a.b.Foo.Props] {"))
     assert(c.contains("def apply(label: String, count: Reactive[Int] = RV(0), onClick: (Int, String) => Unit = (_, _) => (), sep: String = \", \")"))
     assert(c.contains("apply(Props(label = label, count = count, onClick = onClick, sep = sep))"))
-    assert(c.contains("def genHtml(props: Foo.Props)(implicit __cm0: __CM): String"))
+    assert(c.contains("def genHtml(props: _root_.a.b.Foo.Props)(implicit __cm0: __CM): String"))
   }
 
   test("stateful component with props") {
@@ -351,9 +351,9 @@ class StCompilerSuite extends munit.FunSuite {
         |</script>
         |<template props="p" state="st"><p>{{ p.n }}{{ st.x }}</p></template>""".stripMargin)
     val c = o.code
-    assert(c.contains("object Foo extends StatefulPropsComponent[Foo.Props, Foo.State] {"))
-    assert(c.contains("def initState(props: Foo.Props): Foo.State = initState()"))
-    assert(c.contains("def genHtml(p: Foo.Props, st: Foo.State)(implicit __cm0: __CM): String"))
+    assert(c.contains("object Foo extends StatefulPropsComponent[_root_.a.b.Foo.Props, _root_.a.b.Foo.State] {"))
+    assert(c.contains("def initState(props: _root_.a.b.Foo.Props): _root_.a.b.Foo.State = initState()"))
+    assert(c.contains("def genHtml(p: _root_.a.b.Foo.Props, st: _root_.a.b.Foo.State)(implicit __cm0: __CM): String"))
   }
 
   test("initState taking props") {
@@ -364,7 +364,7 @@ class StCompilerSuite extends munit.FunSuite {
         |def initState(props: Props): State = State(RV(props.n))
         |</script>
         |<template><p>{{ s.x }}</p></template>""".stripMargin)
-    assert(o.code.contains("extends StatefulPropsComponent[Foo.Props, Foo.State]"))
+    assert(o.code.contains("extends StatefulPropsComponent[_root_.a.b.Foo.Props, _root_.a.b.Foo.State]"))
     assert(!o.code.contains("= initState()"))
   }
 
@@ -457,6 +457,45 @@ class StCompilerSuite extends munit.FunSuite {
   test("style: 対応していないlangはエラー") {
     assert(compileError("<template><p>x</p></template>\n<style lang=\"less\">a{}</style>").message
       .contains("unsupported style lang 'less'"))
+  }
+
+  test("<Link>・<Input> など大文字で始まるタグは、HTMLの空要素・<script>などと扱わずコンポーネントにする") {
+    val c = compile("""<template><p><Link to="/">戻る</Link><Input :v="s.x"></Input><Script>x</Script></p></template>""").code
+    assert(c.contains("Link(to = \"/\", slot = __st.slotOf"), c)
+    assert(c.contains("Input(v = "), c)
+    assert(c.contains("Script(slot = __st.slotOf"), c)
+  }
+
+  test("import: 使っているものだけをimportする(-Wunused:importsの警告を出さない)") {
+    val plain = compile("<template><p>static</p></template>").code
+    assert(!plain.contains("scalactive.reactive.*"), plain)
+    assert(!plain.contains("ComponentManager.{"), plain)
+    assert(!plain.contains("StRuntime as __st"), plain)
+    assert(plain.contains("ComponentManager as __CM"), plain)
+    val used = compile(
+      """<script lang="scala">
+        |case class State(n: RV[Int] = RV(0))
+        |def initState() = State()
+        |def mounted(s: State): Unit = watch(s.n)((_, _) => ())
+        |</script>
+        |<template><p>{{ computed(s.n.v + 1) }}</p></template>""".stripMargin).code
+    // computed・watchは、コンポーネントが継承するBaseComponentのexportで使える. 型のRV[Int]にはreactive.*が要る
+    assert(used.contains("import io.github.ondeoma.scalactive.reactive.*"), used)
+    assert(!used.contains("ComponentManager.{"), used)
+    assert(used.contains("import io.github.ondeoma.scalactive.st.StRuntime as __st"), used)
+    // dom.* は、domの名前を使っている場合だけ
+    def withDom(src: String) = StCompiler.compile(StInput(src, "a/b/Foo.st", "Foo", Some("a.b"), domNames = Some(Set("window", "Event"))))
+      .fold(e => fail(e.toString), _.code)
+    assert(!withDom("<template><button @click=\"go()\">x</button></template>").contains("import org.scalajs.dom.*"))
+    assert(withDom("<template><button @click=\"window.alert(1)\">x</button></template>").contains("import org.scalajs.dom.*"))
+    assert(withDom("""<template><p>{{ s"${window.innerWidth}" }}</p></template>""").contains("import org.scalajs.dom.*"))
+  }
+
+  test("同じディレクトリの.stは完全修飾名で参照し、組み込み(RouterLinkなど)と同じ名前でも利用者のものを使う") {
+    val c = StCompiler.compile(StInput("""<template><div><RouterLink to="/" /><Other /></div></template>""", "a/b/Foo.st", "Foo", Some("a.b"),
+      siblings = Set("Foo", "RouterLink"))).fold(e => fail(e.toString), _.code)
+    assert(c.contains("_root_.a.b.RouterLink(to = \"/\")"), c)
+    assert(c.contains("given __CM = __cm2; Other() })"), c)
   }
 
   test("errors carry line numbers") {

@@ -10,7 +10,7 @@ TaskKey[Unit]("checkHello") := {
   val code = IO.read(hello)
   assert(hello.getParentFile.getName == "app", hello)
   assert(code.contains("package app\n"), code)
-  assert(code.contains("object Hello extends StatefulComponent[Hello.State]"), code)
+  assert(code.contains("object Hello extends StatefulComponent[_root_.app.Hello.State]"), code)
   assert(code.contains("__st.text(/* Hello.st:6 */ s.n)"), code)
 }
 
@@ -30,4 +30,14 @@ TaskKey[Unit]("checkLspConfig") := {
   assert(json.contains("\"scalaVersion\": \"3.3.7\""), json)
   assert(json.contains((Compile / classDirectory).value.getAbsolutePath), json)
   assert(json.contains((sourceDirectory.value / "main" / "scalactive").getAbsolutePath), json)
+}
+
+// 組み込み(RouterLink)と同じ名前の.stは、同じディレクトリの部品から完全修飾名で参照する. <Link>は空要素の<link>と扱わない
+TaskKey[Unit]("checkSiblings") := {
+  val files = (Compile / scalactiveGenerate).value
+  val code = IO.read(files.find(_.getName == "Nav.scala").getOrElse(sys.error(s"Nav.scala not generated: $files")))
+  assert(code.contains("_root_.app.RouterLink(to = \"/\""), code)
+  assert(code.contains("_root_.app.Link(to = \"/a\", slot = __st.slotOf"), code)
+  val own = IO.read(files.find(_.getName == "RouterLink.scala").get)
+  assert(own.contains("extends StatelessPropsComponent[_root_.app.RouterLink.Props]"), own)
 }

@@ -11,12 +11,14 @@ import scala.collection.mutable.ListBuffer
  * @param scopeAttr scoped CSS用に各要素へ付与する属性名
  * @param props     propsの変数名とPropsのパラメータ名(Propsがある場合のみ). <slot>で展開するSlotを探すのに使う
  * @param marks     ユーザーのコードの位置を記録する目印(LSPで使うSourceMapのため)
+ * @param componentRefs 子コンポーネントのタグ名 → 生成コードで参照する名前(同じパッケージの.stの完全修飾名)
  */
 final class TemplateCodegen(src: SourceText,
                             fileName: String,
                             scopeAttr: Option[String],
                             props: Option[(String, Set[String])] = None,
-                            marks: Marks = new Marks) {
+                            marks: Marks = new Marks,
+                            componentRefs: Map[String, String] = Map.empty) {
 
   import TemplateCodegen._
 
@@ -398,7 +400,9 @@ final class TemplateCodegen(src: SourceText,
     val extra = fallthrough.map(", " + _).mkString
     // propsの式で読んだリアクティブ値が変わったら、子を作り直す(__st.componentOf)
     val id = nextId()
-    List(Code(s"__st.componentOf((__cm$id: __CM) => { given __CM = __cm$id; ${marks.mark(e.name, e.offset + 1)}($argList) }$extra)"))
+    // 同じパッケージの.stは完全修飾名で(組み込みのRouterLinkなど、コンポーネントが継承する名前より優先する)
+    val prefix = componentRefs.get(e.name).fold("")(_.stripSuffix(e.name))
+    List(Code(s"__st.componentOf((__cm$id: __CM) => { given __CM = __cm$id; $prefix${marks.mark(e.name, e.offset + 1)}($argList) }$extra)"))
   }
 
   /** 関数リテラル(`x => ...`・`(a, b) => ...`・`{ case ... }`)か. 関数は値を追跡しないので包まない */
@@ -412,7 +416,8 @@ final class TemplateCodegen(src: SourceText,
   private def propExpr(a: Attr): String = {
     val e = attrExpr(a)
     if (decodedValue(a).exists(v => LambdaPattern.pattern.matcher(v.text).matches())) e
-    else s"__st.prop { import __st.PropConversions.given; import scala.language.implicitConversions; $e }"
+    // 変換を使わなかった場合のimportの警告(-Wunused:imports)は出さない
+    else s"""__st.prop(({ import __st.PropConversions.given; import scala.language.implicitConversions; $e }: @scala.annotation.nowarn("msg=unused import")))"""
   }
 
   private def propName(s: String): String = {

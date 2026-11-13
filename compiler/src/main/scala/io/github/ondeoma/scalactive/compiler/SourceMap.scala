@@ -77,6 +77,9 @@ final class Marks {
 
   def mark(text: String, start: Int): String = mark(Located(text, start))
 
+  /** 目印だけを取り除いたコード(位置の対応は記録しません) */
+  def strip(marked: String): String = extract(marked)._1
+
   /** 目印を取り除いたコードと、そのSourceMapを返します. */
   def extract(marked: String): (String, SourceMap) = {
     val out = new StringBuilder

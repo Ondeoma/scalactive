@@ -25,8 +25,22 @@ object StSources {
       source = source,
       fileName = rel.toString.replace('\\', '/'),
       objectName = rel.getFileName.toString.stripSuffix(".st"),
-      packageName = if (dirs.isEmpty) None else Some(dirs.mkString("."))
+      packageName = if (dirs.isEmpty) None else Some(dirs.mkString(".")),
+      siblings = siblingsOf(file)
     )
+  }
+
+  /** fileと同じディレクトリにある.stのobject名(自分を含む) */
+  def siblingsOf(file: Path): Set[String] = {
+    val dir = file.toAbsolutePath.normalize.getParent
+    if (dir == null || !java.nio.file.Files.isDirectory(dir)) Set.empty
+    else {
+      val s = java.nio.file.Files.list(dir)
+      try {
+        import scala.collection.JavaConverters._
+        s.iterator.asScala.map(_.getFileName.toString).filter(_.endsWith(".st")).map(_.stripSuffix(".st")).toSet
+      } finally s.close()
+    }
   }
 
   /** 生成したScalaソースの出力先 */

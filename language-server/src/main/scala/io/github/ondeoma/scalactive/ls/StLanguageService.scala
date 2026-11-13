@@ -1,6 +1,6 @@
 package io.github.ondeoma.scalactive.ls
 
-import io.github.ondeoma.scalactive.compiler.{StCompiler, StError, StOutput, StSources}
+import io.github.ondeoma.scalactive.compiler.{DomNames, StCompiler, StError, StOutput, StSources}
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.messages.{Either => LspEither}
 
@@ -55,6 +55,9 @@ final class StLanguageService(log: String => Unit) {
                               val pc: PresentationCompiler,
                               @volatile var compiler: InteractiveCompiler,
                               var stamp: Long) {
+
+    /** dom.* で使える名前(使っている場合だけimportする. sbtプラグインの生成コードと合わせる) */
+    lazy val domNames: Option[Set[String]] = DomNames.fromClasspath(config.classpath)
 
     def newCompiler(): InteractiveCompiler = {
       new InteractiveCompiler(PcLoader.classLoader(config.scalaVersion), config.classpath.map(_.toString), config.compilerOptions)
@@ -162,7 +165,7 @@ final class StLanguageService(log: String => Unit) {
           case Left(msg) => Left(PcFailure(msg))
           case Right(p) =>
             val root = StSources.rootOf(p.config.sourceRoots, path).get
-            StCompiler.compile(StSources.input(root, path, text)) match {
+            StCompiler.compile(StSources.input(root, path, text).copy(domNames = p.domNames)) match {
               case Left(e) => Left(StFailure(e, index))
               case Right(out) =>
                 val genUri = StSources.outputFile(p.config.generatedDirectory, out).toUri

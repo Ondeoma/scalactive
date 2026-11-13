@@ -162,7 +162,8 @@ object HtmlParser {
         flushText()
         val t = TagReader.readOpenTag(src, i)
         if (t.end > until) src.fail(i, s"unclosed tag <${t.name}>")
-        val lname = t.name.toLowerCase
+        // 大文字で始まるタグはコンポーネント(<Link>・<Input> などをHTMLの空要素・<script>などと扱わない)
+        val lname = if (t.name.head.isUpper) "" else t.name.toLowerCase
         if (t.selfClosing || voidElements.contains(lname)) {
           stack.head.children += Element(t.name, t.attrs, Nil, t.selfClosing, i)
           i = t.end

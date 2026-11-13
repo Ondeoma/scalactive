@@ -8,6 +8,10 @@ import java.util.zip.CRC32
  * @param packageName ディレクトリ構成から決まるパッケージ. <script>内のpackage宣言が優先されます.
  * @param styleCompiler <style lang="scss"> などをCSSへ変換するもの.
  *                      Noneの場合(言語サーバーなど、CSSを使わない場合)は、それらの<style>を出力しません.
+ * @param domNames    `import org.scalajs.dom.*` で使えるようになる名前(DomNames). 指定すると、使っている場合だけimportします.
+ *                    Noneの場合は常にimportします.
+ * @param siblings    同じディレクトリ(パッケージ)にある.stのobject名. テンプレートのタグからは完全修飾名で参照し、
+ *                    組み込みのコンポーネント(RouterLinkなど)と同じ名前でも、利用者のものが使われるようにします.
  */
 /**
  * Propsのパラメータ.
@@ -20,7 +24,9 @@ final case class StInput(source: String,
                          fileName: String,
                          objectName: String,
                          packageName: Option[String],
-                         styleCompiler: Option[StyleCompiler] = None)
+                         styleCompiler: Option[StyleCompiler] = None,
+                         siblings: Set[String] = Set.empty,
+                         domNames: Option[Set[String]] = None)
 
 /**
  * @param sourceMap 生成コードと.stの位置の対応(エディタ支援用)
@@ -33,6 +39,17 @@ final case class StOutput(packageName: Option[String], objectName: String, code:
 object StCompiler {
 
   private val Identifier = """[A-Za-z_][A-Za-z0-9_]*"""
+  /**
+   * io.github.ondeoma.scalactive.reactive の公開している型・object. .stの中にどれかがあるときだけ reactive.* をimportします.
+   * (値・関数(RV(0)・computedなど)はBaseComponentのexportで使えますが、型(RV[Int]など)にはimportが要ります.
+   *  reactiveパッケージに公開の型を追加したら、ここにも追加します)
+   */
+  private val ReactiveNames = Set("CRV", "RMCompatible", "RMConversion", "RMList", "RV", "RVList", "Reactive", "ReactiveFunctions",
+    "ReactiveList", "ReactiveModel", "ReactiveModelMacro", "ReactiveModelOf", "WatchHandle")
+
+  /** 名前だけで参照している識別子(`a.b` の `b` のようなメンバーの選択は除く) */
+  private val WordPattern = """(?<![.\w])[A-Za-z_][A-Za-z0-9_]*""".r
+
   private val PackageDecl = """(?s)^\s*package\s+([A-Za-z_][\w.]*)\s*;?[ \t]*(?:\r?\n|$)(.*)""".r
   private val InitState = """def\s+initState\s*(?:\(\s*([^)]*?)\s*\))?\s*(?::\s*([^=]+?))?\s*=""".r
   private val PropsDecl = """\bcase\s+class\s+Props\s*\(""".r
@@ -43,8 +60,17 @@ object StCompiler {
    * 文字列リテラル・文字リテラル・コメントの中身を空白にした文字列(長さと改行の位置は同じ).
    * scriptから initState・Props・ライフサイクルフックの定義を探すときに、コードサンプルの文字列などの中を拾わないために使います.
    */
-  private[compiler] def codeOnly(s: String): String = {
+  /**
+   * 使っている名前を探すためのコード. コメントと文字列リテラルの中を空白にしますが、
+   * 埋め込みのある文字列(s"...${x}"など. 直前が識別子の文字)の中はコードがあり得るので残します.
+   */
+  private[compiler] def codeForWords(s: String): String = codeOnly(s, keepInterpolated = true)
+
+  private[compiler] def codeOnly(s: String): String = codeOnly(s, keepInterpolated = false)
+
+  private def codeOnly(s: String, keepInterpolated: Boolean): String = {
     val sb = new StringBuilder(s)
+    def interpolated(quote: Int): Boolean = quote > 0 && (s.charAt(quote - 1).isLetterOrDigit || s.charAt(quote - 1) == '_')
     def blank(from: Int, until: Int): Unit = for (k <- from until math.min(until, s.length)) if (s.charAt(k) != '\n') sb.setCharAt(k, ' ')
     var i = 0
     while (i < s.length) {
@@ -68,12 +94,12 @@ object StCompiler {
         val e = s.indexOf("\"\"\"", i + 3)
         var end = if (e < 0) s.length else e + 3
         while (end < s.length && s.charAt(end) == '"') end += 1
-        blank(i + 3, end - 3)
+        if (!(keepInterpolated && interpolated(i))) blank(i + 3, end - 3)
         i = end
       } else if (s.charAt(i) == '"') {
         var j = i + 1
         while (j < s.length && s.charAt(j) != '"' && s.charAt(j) != '\n') j += (if (s.charAt(j) == '\\') 2 else 1)
-        blank(i + 1, j)
+        if (!(keepInterpolated && interpolated(i))) blank(i + 1, j)
         i = math.min(j + 1, s.length)
       } else if (s.charAt(i) == '\'' && i + 2 < s.length && (s.charAt(i + 2) == '\'' || s.charAt(i + 1) == '\\')) {
         val e = s.indexOf('\'', i + 2)
@@ -182,11 +208,15 @@ object StCompiler {
     // 定義を探すときは、文字列・コメントの中を除く(コードサンプルの文字列の中の def initState などを拾わない)
     val scriptCode = codeOnly(scriptBody)
 
+    // 自分自身のobject. コンポーネントが継承する名前(RouterLink・Routeなど. BaseComponentがexportしている)と
+    // 同じ名前でも自分を指すよう、パッケージがあれば完全修飾名にする
+    val selfRef = packageName.fold(in.objectName)(p => s"_root_.$p.${in.objectName}")
+
     // object内で定義された型は object名.型 で参照する
     def qualify(t: String): String = {
       val definedInside = s"""\\b(?:class|trait|object|enum|type)\\s+${java.util.regex.Pattern.quote(t)}\\b""".r
         .findFirstIn(scriptCode).isDefined
-      if (t.matches(Identifier) && definedInside) s"${in.objectName}.$t" else t
+      if (t.matches(Identifier) && definedInside) s"$selfRef.$t" else t
     }
 
     val initState = InitState.findFirstMatchIn(scriptCode)
@@ -208,7 +238,7 @@ object StCompiler {
     if (props.isEmpty && initStateTakesProps) {
       src.fail(sfc.script.map(_.offset).getOrElse(0), "initState can take a parameter only when 'case class Props' is defined")
     }
-    val propsType = props.map(_ => s"${in.objectName}.Props")
+    val propsType = props.map(_ => s"$selfRef.Props")
 
     // ---- template ----
     val template = sfc.template.getOrElse(src.fail(0, "<template> block is required"))
@@ -227,7 +257,7 @@ object StCompiler {
               case PropParam(_, t) => t.trim
               case p => src.fail(scriptOffset, s"cannot parse parameter '${p.trim}' of 'def $name'")
             }
-            val stateTypes = stateType.toList.flatMap(t => List(t, t.stripPrefix(s"${in.objectName}.")))
+            val stateTypes = stateType.toList.flatMap(t => List(t, t.stripPrefix(s"$selfRef.")))
             val propsTypes = propsType.toList.flatMap(t => List(t, "Props"))
             types.map {
               case t if stateTypes.contains(t) => stateName0
@@ -251,7 +281,11 @@ object StCompiler {
     val nodes = HtmlParser.parse(src, template.contentStart, template.contentEnd)
     val trimmed = trimEdges(nodes)
     val slotProps = props.map(ps => (propsName, ps.map(_._1).toSet))
-    val htmlExpr = new TemplateCodegen(src, in.fileName, scopeAttr, slotProps, marks).generate(trimmed)
+    // 同じディレクトリの.stは、ディレクトリから決まるパッケージで完全修飾する
+    val componentRefs: Map[String, String] = in.packageName.filter(_.nonEmpty).fold(Map.empty[String, String]) { p =>
+      in.siblings.map(n => n -> s"_root_.$p.$n").toMap
+    }
+    val htmlExpr = new TemplateCodegen(src, in.fileName, scopeAttr, slotProps, marks, componentRefs).generate(trimmed)
 
     // ---- style ----
     val css = sfc.styles.flatMap { b =>
@@ -277,21 +311,8 @@ object StCompiler {
     }.mkString("\n").trim
 
     // ---- 出力 ----
+    // 本体(object)を先に作り、使っているものだけをimportする(-Wunused:importsの警告を出さないため)
     val sb = new StringBuilder
-    sb ++= s"// Generated by sbt-scalactive from ${in.fileName}. DO NOT EDIT.\n"
-    packageName.foreach(p => sb ++= s"package $p\n")
-    // components の下のパッケージ(utils・routes など)は短い名前で見えないようにする.
-    // 利用者のトップレベルのパッケージ(utils など)と名前が衝突するため.
-    sb ++=
-      """
-        |import io.github.ondeoma.scalactive.components.{fors as _, htmls as _, ifs as _, inputs as _, routes as _, texts as _, utils as _, *}
-        |import io.github.ondeoma.scalactive.reactive.*
-        |import org.scalajs.dom.*
-        |import io.github.ondeoma.scalactive.components.ComponentManager as __CM
-        |import io.github.ondeoma.scalactive.components.ComponentManager.{computed, mount, nextTick, pageTitle, untracked, watch}
-        |import io.github.ondeoma.scalactive.st.StRuntime as __st
-        |
-        |""".stripMargin
     (propsType, stateType) match {
       case (Some(p), Some(t)) => sb ++= s"object ${in.objectName} extends StatefulPropsComponent[$p, $t] {\n"
       case (Some(p), None) => sb ++= s"object ${in.objectName} extends StatelessPropsComponent[$p] {\n"
@@ -331,7 +352,23 @@ object StCompiler {
     sb ++= s"    $htmlExpr\n"
     sb ++= "  }\n"
     sb ++= "\n}\n"
-    val (code, sourceMap) = marks.extract(sb.toString)
+    val body = sb.toString
+    // 使っている名前. コメントと、埋め込みのない文字列リテラル(テンプレートのHTML・コード例など)の中は除く
+    val words = WordPattern.findAllIn(codeForWords(marks.strip(body))).toSet
+    val header = new StringBuilder
+    header ++= s"// Generated by sbt-scalactive from ${in.fileName}. DO NOT EDIT.\n"
+    packageName.foreach(p => header ++= s"package $p\n")
+    // components の下のパッケージ(utils・routes など)は短い名前で見えないようにする.
+    // 利用者のトップレベルのパッケージ(utils など)と名前が衝突するため.
+    // computed・watchなどの関数はimportしない. コンポーネントが継承するBaseComponentが ComponentManager.* をexportしており、
+    // objectの中ではそちらが使われるため. 型(RV[Int]など)は継承では使えないので、使っている場合だけ reactive.* をimportする
+    header ++= "\nimport io.github.ondeoma.scalactive.components.{fors as _, htmls as _, ifs as _, inputs as _, routes as _, texts as _, utils as _, *}\n"
+    if (ReactiveNames.exists(words.contains)) header ++= "import io.github.ondeoma.scalactive.reactive.*\n"
+    if (in.domNames.forall(_.exists(words.contains))) header ++= "import org.scalajs.dom.*\n"
+    header ++= "import io.github.ondeoma.scalactive.components.ComponentManager as __CM\n"
+    if (body.contains("__st.")) header ++= "import io.github.ondeoma.scalactive.st.StRuntime as __st\n"
+    header ++= "\n"
+    val (code, sourceMap) = marks.extract(header.toString + body)
     StOutput(packageName, in.objectName, code, sourceMap)
   }
 
