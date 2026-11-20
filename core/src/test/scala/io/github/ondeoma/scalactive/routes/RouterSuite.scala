@@ -337,4 +337,58 @@ class RouterSuite extends munit.FunSuite {
     } finally ScalactiveConfig.basePath = ""
   }
 
+
+  test("query・queryParam・withQuery・parseQuery") {
+    window.history.replaceState(js.Object(), "", "/q?a=1&b=%E7%8C%AB&a=2")
+    Router.href := window.location.href
+    assertEquals(Router.query.v, Map("a" -> "1", "b" -> "猫"))
+    val b = Router.queryParam("b")
+    assertEquals(b.v, Some("猫"))
+    assertEquals(Router.withQuery("/s?x=1#h", "q" -> Some("a b"), "x" -> None), "/s?q=a+b#h")
+    assertEquals(Router.parseQuery("?x=1&y="), Map("x" -> "1", "y" -> ""))
+  }
+
+  test("setQuery・replace: 履歴を積まずにURLを変え、hrefも変わる") {
+    window.history.replaceState(js.Object(), "", "/list?page=1#top")
+    Router.href := window.location.href
+    val len = window.history.length
+    Router.setQuery("page" -> Some("2"), "q" -> Some("x"))
+    assertEquals(window.location.pathname + window.location.search + window.location.hash, "/list?page=2&q=x#top")
+    assertEquals(Router.query.v.get("page"), Some("2"))
+    Router.replace("/other")
+    assertEquals(path, "/other")
+    assertEquals(window.history.length, len)
+  }
+
+  test("reloadOnQueryChange = false のルートは、クエリ文字列だけの変化では作り直さない") {
+    window.history.replaceState(js.Object(), "", "/r1")
+    Router.href := window.location.href
+    var a = 0
+    var b = 0
+    def page(onRender: => Unit): GenComponentF = new StatelessComponent {
+      def genHtml(implicit cm: ComponentManager): HTML = {
+        onRender
+        "<b>p</b>"
+      }
+    }.apply()(_, _)
+    val routes = List(
+      Route("/r1", _ => page(a += 1), reloadOnQueryChange = false),
+      Route("/r2", _ => page(b += 1))
+    )
+    mount(implicit cm => s"<main>${ComponentManager.%(RouterComponent.of(routes))}</main>")
+    assertEquals(a, 1)
+    Router.setQuery("tab" -> Some("x"))
+    flush().flatMap { _ =>
+      assertEquals(a, 1)
+      Router.go("/r2")
+      flush()
+    }.flatMap { _ =>
+      assertEquals(b, 1)
+      Router.go("/r2?tab=y")
+      flush()
+    }.map { _ =>
+      assertEquals(b, 2, "既定ではクエリ文字列の変化で作り直す")
+    }
+  }
+
 }

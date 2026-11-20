@@ -1,6 +1,18 @@
 <script lang="scala">
 import Router.*
 
+val codeQuery = // language=scala
+  """val routes = List(
+    |  // クエリ文字列(?tab=...)が変わっても作り直さない
+    |  Route("/members", _ => MembersView(), reloadOnQueryChange = false),
+    |)
+    |
+    |// MembersView.st
+    |val tab = Router.queryParam("tab")            // CRV[Option[String]]
+    |def select(t: String) = Router.setQuery("tab" -> Some(t), "page" -> None)
+    |// <section v-if='tab.mapC(_.contains("admins"))'>...</section>
+    |""".stripMargin
+
 val codeRoutingApp = // language=html
   """<script lang="scala">
     |import io.github.ondeoma.scalactive.components.routes.RouterComponent
@@ -219,12 +231,43 @@ val codeBasePath = // language=scala
 
   <p>
     RouterComponentは、次のどれかが変わったときだけ描き直します.<br>
-    マッチしたルート・名前付きのパスパラメータ(<code>:id</code> など)・クエリ文字列.<br>
+    マッチしたルート・名前付きのパスパラメータ(<code>:id</code> など)・クエリ文字列
+    (<a @click='setHash("Query")'>クエリ文字列</a>で作り直さないようにもできます).<br>
     名前のないワイルドカード(<code>*</code>)の部分だけが変わった場合は描き直しません.<br>
     (次のネストしたルートのため)<br>
     ワイルドカードの値を使って描く場合は、<br>
     <code>/files/:path*</code> のように名前を付けてください.
   </p>
+
+  <p>
+    履歴を積まずに遷移する場合は <code>Router.replace(url)</code> を使います(Vue Routerの router.replace).
+  </p>
+
+  <h2 id="Query">クエリ文字列</h2>
+
+  <p>
+    タブ・検索語・ページ番号など、表示の状態をURLに残すときに使います.
+  </p>
+
+  <table>
+    <tr><th>API</th><th>内容</th></tr>
+    <tr><td><code>Router.query</code></td><td>今のURLのクエリ文字列の値(<code>CRV[Map[String, String]]</code>. URLに追従します).</td></tr>
+    <tr><td><code>Router.queryParam(name)</code></td><td>1つの値(<code>CRV[Option[String]]</code>). その値が変わったときだけ通知します.</td></tr>
+    <tr><td><code>Router.setQuery(name -> Some(v), ...)</code></td><td>
+      今のURLのクエリ文字列の値を変えます. 履歴は積まず、スクロールもしません.<br>
+      値が <code>None</code> の名前は取り除きます.
+    </td></tr>
+    <tr><td><code>Router.withQuery(path, name -> Some(v), ...)</code></td><td>パスにクエリ文字列を付けます(リンクの作成に).</td></tr>
+    <tr><td><code>Router.current</code></td><td>今の場所(<code>CRV[RouteLocation]</code>).</td></tr>
+  </table>
+
+  <p>
+    RouterComponentは、既定ではクエリ文字列が変わると画面を作り直します.<br>
+    画面の中でクエリ文字列を見て表示を切り替える場合は、<br>
+    ルートに <code>reloadOnQueryChange = false</code> を指定してください(入力中の検索欄なども作り直されません).
+  </p>
+
+  <pre><code class="language-scala">{{ codeQuery }}</code></pre>
 
   <h2 id="Nested">ネストしたルート</h2>
 
@@ -352,6 +395,7 @@ val codeBasePath = // language=scala
     <code>&lt;RouterLink to="/x"&gt;</code> は、クリックでRouter.goするリンクです.<br>
     現在の場所に応じて、<br>
     <code>router-link-active</code> / <code>router-link-exact-active</code> クラスを付けます.<br>
+    RouterLinkの <code>&lt;a&gt;</code> にも、置いたコンポーネントの <code>&lt;style scoped&gt;</code> が当たります.<br>
     詳しくは <a @click='go("/builtinComponents")'>組込コンポーネント</a> を参照ください.
   </p>
 

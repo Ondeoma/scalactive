@@ -128,6 +128,23 @@ test("v-if / v-else-if / v-else", () => {
   expectScopes(tokens, 9, "amp", ["constant.character.entity.html"]);
 });
 
+test("v-focus・v-click-outside・独自のディレクティブ(値あり・なし、修飾子つき)", () => {
+  const t = tokenize(`<template>
+  <input v-focus.select>
+  <ul v-click-outside="close(s)" v-scroll-into-view.smooth="s.sel"></ul>
+  <div v-highlight="s.body" v-auto-size></div>
+</template>`);
+  expectScopes(t, 1, "v-focus", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 1, ".select", ["entity.other.attribute-name.modifier.scalactive"]);
+  expectScopes(t, 2, "v-click-outside", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 2, "close", ["meta.embedded.inline.scala"]);
+  expectScopes(t, 2, "v-scroll-into-view", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 2, ".smooth", ["entity.other.attribute-name.modifier.scalactive"]);
+  expectScopes(t, 3, "v-highlight", ["entity.other.attribute-name.directive.scalactive"]);
+  expectScopes(t, 3, "body", ["meta.embedded.inline.scala"]);
+  expectScopes(t, 3, "v-auto-size", ["entity.other.attribute-name.directive.scalactive"]);
+});
+
 test("{{ }} の中身はScala", () => {
   expectScopes(tokens, 7, "{{", ["punctuation.definition.interpolation.begin.scalactive"]);
   expectScopes(tokens, 7, "s.count", ["meta.interpolation.scalactive", "meta.embedded.inline.scala"]);

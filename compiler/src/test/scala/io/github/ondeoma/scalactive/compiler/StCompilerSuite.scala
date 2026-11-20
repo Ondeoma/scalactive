@@ -321,9 +321,62 @@ class StCompilerSuite extends munit.FunSuite {
         |<Child label="a &amp; b" :count="s.n" on-close="x" :on-select="i => go(i)" disabled v-if="ok" />
         |</template>""".stripMargin)
     assert(o.code.contains(
-      "Child(label = \"a & b\", count = __st.prop(({ import __st.PropConversions.given; import scala.language.implicitConversions; (/* Foo.st:2 */ s.n) }: @scala.annotation.nowarn(\"msg=unused import\"))), onClose = \"x\", onSelect = (/* Foo.st:2 */ i => go(i)), disabled = true) })"
+      "Child(label = \"a & b\", count = __st.prop(({ import __st.PropConversions.given; import scala.language.implicitConversions; (/* Foo.st:2 */ s.n) }: @scala.annotation.nowarn(\"msg=unused import\"))), onClose = \"x\", onSelect = (/* Foo.st:2 */ i => go(i)), disabled = true) }, 1)"
     ), o.code)
     assert(o.code.contains("__CM.ifC(__st.cond(/* Foo.st:2 */ ok))"))
+  }
+
+  test("import statements inside string literals are not treated as imports") {
+    val o = StCompiler.compile(StInput(
+      "<script lang=\"scala\">\n" +
+        "val code = s\"\"\"import org.scalajs.dom.window\n$${x}\"\"\"\n" +
+        "def go() = window.alert(\"x\")\n" +
+        "</script>\n<template><p>a</p></template>", "a/b/Foo.st", "Foo", Some("a.b"), domNames = Some(Set("window")))).fold(e => fail(e.toString), identity)
+    assert(o.code.contains("import org.scalajs.dom.*"), o.code)
+  }
+
+  test("effects types used in the script are imported") {
+    val o = compile(
+      "<script lang=\"scala\">\ncase class State(a: AsyncState[Int], b: ActionState = useAction())\n</script>\n<template><p>a</p></template>")
+    assert(o.code.contains("import io.github.ondeoma.scalactive.effects.{ActionState, AsyncState}"), o.code)
+  }
+
+  test("scoped style attribute is passed to child components") {
+    val o = compile(
+      """<template>
+        |<div><RouterLink to="/a" class="nav">A</RouterLink></div>
+        |</template>
+        |<style scoped>.nav { color: red; }</style>""".stripMargin)
+    val id = StCompiler.scopeId("a/b/Foo.st")
+    assert(o.code.contains(s"""__st.rootCls("nav"), __st.scope("$id"))"""), o.code)
+  }
+
+  test("built-in directives v-focus / v-scroll-into-view / v-click-outside") {
+    val o = compile(
+      """<template>
+        |<div><input v-focus.select><input v-focus="s.editing"><p v-scroll-into-view.smooth.center="s.sel"></p><ul v-click-outside="close(s)"></ul></div>
+        |</template>""".stripMargin)
+    val d = "_root_.io.github.ondeoma.scalactive.components.Directive"
+    assert(o.code.contains(s"__st.directive($d.focus(select = true), true)"), o.code)
+    assert(o.code.contains(s"__st.directive($d.focus(select = false), (/* Foo.st:2 */ s.editing))"), o.code)
+    assert(o.code.contains(s"""__st.directive($d.scrollIntoView(smooth = true, block = "center"), (/* Foo.st:2 */ s.sel))"""), o.code)
+    assert(o.code.contains(s"__st.directive($d.clickOutside(), (event: org.scalajs.dom.Event) => { /* Foo.st:2 */ close(s) })"), o.code)
+  }
+
+  test("custom directives") {
+    val o = compile(
+      """<template>
+        |<div><p v-highlight="s.body"></p><p v-auto-size></p></div>
+        |</template>""".stripMargin)
+    assert(o.code.contains("__st.directive(highlight, (/* Foo.st:2 */ s.body))"), o.code)
+    assert(o.code.contains("__st.directive(autoSize, ())"), o.code)
+  }
+
+  test("unsupported directives and modifiers are errors") {
+    assert(compileError("<template><p v-once></p></template>").message.contains("unknown directive"))
+    assert(compileError("<template><p v-focus.foo></p></template>").message.contains("unknown modifier"))
+    assert(compileError("<template><p v-highlight.x></p></template>").message.contains("unknown modifier"))
+    assert(compileError("<template><p v-click-outside></p></template>").message.contains("needs a statement"))
   }
 
   test("stateless component with props") {

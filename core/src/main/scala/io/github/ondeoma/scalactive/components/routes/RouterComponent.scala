@@ -18,12 +18,16 @@ import scala.scalajs.js
  * @param meta        ガードの中で to.meta として参照できる情報(例: Map("requiresAuth" -> true))
  * @param title       画面のタイトル(例: `_ => "TOP"`、`r => "商品 " + r.pathname.groups("id")`).
  *                    ルートのコンポーネントの中でpageTitleを指定した場合は、そちらを優先します
+ * @param reloadOnQueryChange クエリ文字列が変わったときに画面を作り直す場合はtrue(既定).
+ *                    falseにすると、クエリ文字列だけの変化では作り直さないので、画面の中で
+ *                    `Router.query` / `Router.queryParam` を監視して表示を切り替えます(タブ・検索語・ページ番号など)
  */
 final case class Route(pattern: String,
                        component: URLPatternResult => GenComponentF,
                        beforeEnter: Router.Guard = (_, _) => Router.Continue,
                        meta: Map[String, Any] = Map.empty,
-                       title: URLPatternResult => String = Route.noTitle)
+                       title: URLPatternResult => String = Route.noTitle,
+                       reloadOnQueryChange: Boolean = true)
 
 object Route {
 
@@ -36,7 +40,8 @@ object RouterComponent extends BaseComponent {
 
   /**
    * 描き直すかどうかを決めるための、マッチしたルートの情報.
-   * ルート・名前付きのパスパラメータ・クエリ文字列のどれかが変わったときだけ描き直します.
+   * ルート・名前付きのパスパラメータ・クエリ文字列のどれかが変わったときだけ描き直します
+   * (クエリ文字列は、ルートのreloadOnQueryChangeがtrueの場合だけ).
    * 名前のないワイルドカード(*)の部分だけが変わった場合は描き直さないので、
    * ルートのコンポーネントの中に置いたRouterComponent(ネストしたルート)だけが切り替わります.
    */
@@ -44,9 +49,9 @@ object RouterComponent extends BaseComponent {
 
   private def matchKey(routes: List[(URLPattern, Route)], href: String): Option[MatchKey] = {
     routes.iterator.zipWithIndex.collectFirst {
-      case ((p, _), i) if p.test(href) =>
+      case ((p, r), i) if p.test(href) =>
         val groups = p.exec(href).toOption.map(_.pathname.groups.toMap).getOrElse(Map.empty)
-        MatchKey(i, groups.filterNot(_._1.forall(_.isDigit)), new URL(href).search)
+        MatchKey(i, groups.filterNot(_._1.forall(_.isDigit)), if (r.reloadOnQueryChange) new URL(href).search else "")
     }
   }
 
@@ -55,6 +60,10 @@ object RouterComponent extends BaseComponent {
             routes: PathPatternRoutes,
             base: String): NodesComponentController = {
     withRoutes(root, am, routes.map((p, f) => Route(p, f)), base)
+  }
+
+  private def tupleRoutes(routes: PathPatternRoutes, reloadOnQueryChange: Boolean): List[Route] = {
+    routes.map((p, f) => Route(p, f, reloadOnQueryChange = reloadOnQueryChange))
   }
 
   /** Route(ルートごとのガード・meta付き)で定義する */
@@ -93,11 +102,13 @@ object RouterComponent extends BaseComponent {
    * @param base   ルートのパターンの基準になるパス(既定ではScalactiveConfig.basePath)
    * @param prefix ネストしたルートで、baseの下のどのパスより下でコンポーネントを選ぶか(例: "/guide").
    *               .stでは `<RouterComponent :routes="routes" prefix="/guide" />` と書けます.
+   * @param reloadOnQueryChange クエリ文字列が変わったときに画面を作り直す場合はtrue(既定). [[Route]] の同名の引数を参照
    */
   def apply(routes: PathPatternRoutes,
             base: String = ScalactiveConfig.fixedBasePath,
-            prefix: String = ""): (HTMLElement, AddMethod) => NodesComponentController = {
-    apply(_, _, routes, withPrefix(base, prefix))
+            prefix: String = "",
+            reloadOnQueryChange: Boolean = true): (HTMLElement, AddMethod) => NodesComponentController = {
+    withRoutes(_, _, tupleRoutes(routes, reloadOnQueryChange), withPrefix(base, prefix))
   }
 
   /**

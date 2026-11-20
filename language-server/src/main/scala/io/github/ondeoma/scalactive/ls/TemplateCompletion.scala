@@ -138,6 +138,7 @@ object TemplateCompletion {
 
   private val elementDirectives = List(
     "v-if", "v-else-if", "v-else", "v-for", ":key", "v-show", "v-model", "v-html", "ref", ":class", ":style",
+    "v-focus", "v-scroll-into-view", "v-click-outside",
     "@click", "@input", "@change", "@submit.prevent", "@keydown.enter")
 
   private val componentDirectives = List("v-if", "v-else-if", "v-else", "v-for", ":key", "class", ":class", "style", ":style", "id")

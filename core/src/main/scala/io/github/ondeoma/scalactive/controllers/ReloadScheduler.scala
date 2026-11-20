@@ -14,6 +14,7 @@ import scala.scalajs.js
  *    (マイクロタスク)に描き直します. 同じ処理の中での複数の変更は1回の描き直しにまとまります.
  *  - 0より大きければ、最後の予約からその時間だけ待ってから描き直します(入力中の連続した変更をまとめたいときなど).
  *  - 親と子の両方が予約されていたら親から描き直します. 親の描き直しで片付けられた子は描き直しません.
+ *  - 描き直しでフォーカスのあった要素が作り直されたら、同じ位置の要素へフォーカスと選択範囲を戻します(FocusKeeper).
  */
 private[scalactive] object ReloadScheduler {
 
@@ -58,6 +59,7 @@ private[scalactive] object ReloadScheduler {
       val ordered = pending.toSeq.zipWithIndex.sortBy { (c, i) => (c.depth, i) }.map(_._1)
       val keepScroll = ScalactiveConfig.keepWindowScrollPositionWhenReload
       val (x, y) = (window.scrollX, window.scrollY)
+      val focus = if (ScalactiveConfig.keepFocusWhenReload) FocusKeeper.snapshot() else None
       ordered.foreach { c =>
         // 先に描き直した親に片付けられた(cancelされた)ものは飛ばす
         if (pending.contains(c)) {
@@ -66,6 +68,7 @@ private[scalactive] object ReloadScheduler {
           ErrorBoundaryContext.guard(c.boundary)(io.github.ondeoma.scalactive.Devtools.measure(c)(c.refresh()))
         }
       }
+      focus.foreach(FocusKeeper.restore)
       if (keepScroll) window.scrollTo(x.toInt, y.toInt)
     }
     NextTick.check()

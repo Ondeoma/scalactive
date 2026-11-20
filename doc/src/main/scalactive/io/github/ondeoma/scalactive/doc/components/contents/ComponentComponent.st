@@ -489,6 +489,7 @@ val lazyRouteCode = // language=html
       <code>&lt;style&gt;</code> : CSSを書きます(省略可).<br>
       初回利用時にheadへ挿入されます.<br>
       <code>scoped</code> を付けると、このコンポーネントの要素にのみ適用されます.<br>
+      子コンポーネント(RouterLinkなど)のルート要素にも適用されます(Vue.jsと同じです).<br>
       <code>lang="scss"</code>(または <code>lang="sass"</code>)を付けると、SCSSで書けます.
       ビルド時にsbtプラグインに同梱のDart SassでCSSへ変換されます(Node.jsは不要です).<br>
       <code>@use</code> は、<code>.st</code> のあるディレクトリからの相対パスと、<code>src/main/scalactive</code> などのソースディレクトリから探します.
@@ -572,6 +573,9 @@ val lazyRouteCode = // language=html
       値が変わると、子を作り直さずに表示が変わります(子の状態は保たれます).<br>
       ・それ以外の型の場合は、値が変わると子を作り直します.
       子の状態(<code>initState</code>)は初期化されます(Vue.jsで <code>:key</code> が変わった場合と同じです).<br>
+      読んだ値が変わっても、propsの値がすべて前と同じ(<code>==</code>)なら作り直しません.<br>
+      作り直した場合も、フォーカスのあった入力欄には、フォーカスとカーソルの位置を戻します
+      (<code>ScalactiveConfig.keepFocusWhenReload</code>).<br>
       ・リアクティブな値を読んでいない式は、生成時に1度だけ渡されます.
     </li>
     <li>
@@ -952,6 +956,13 @@ val lazyRouteCode = // language=html
       要素が作られると設定され、片付けられると空に戻ります.<br>
       インスタンスごとの参照になるよう、<br>
       Stateに <code>ElementRef()</code> を持たせてください(<a @click='setHash("ref")'>テンプレート参照</a>).
+    </td></tr>
+    <tr><td><code>v-focus</code> / <code>v-scroll-into-view</code><br><code>v-click-outside="stmt"</code></td><td>
+      フォーカス・スクロール・要素の外のクリック(<a @click='go("/directives")'>ディレクティブ</a>).
+    </td></tr>
+    <tr><td><code>v-名前="expr"</code></td><td>
+      独自のディレクティブ. スコープにある <code>Directive</code> の <code>名前</code> を使います
+      (<a @click='go("/directives")'>ディレクティブ</a>).
     </td></tr>
     <tr><td><code>v-html="expr"</code></td><td>
       要素の中身を、式の値のHTMLで置き換えます.<br>

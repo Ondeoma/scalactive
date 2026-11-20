@@ -24,6 +24,12 @@ object ScalactiveConfig {
   var keepWindowScrollPositionWhenReload: Boolean = true
 
   /**
+   * 描き直しでフォーカスのあった要素(入力欄など)が作り直されたときに、
+   * 同じ位置に作られた同じ種類の要素へフォーカスと選択範囲(カーソルの位置)を戻す場合はtrue.
+   */
+  var keepFocusWhenReload: Boolean = true
+
+  /**
    * エラーの境界(ErrorBoundary)で受け止められなかった例外を受け取る関数(Vueのapp.config.errorHandler).
    * 描き直し・onMounted・イベントハンドラーの中の例外が渡されます. 既定ではコンソールに出力します.
    * エラーの報告サービスへの送信などに使います.

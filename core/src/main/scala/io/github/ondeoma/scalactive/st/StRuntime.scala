@@ -452,6 +452,62 @@ object StRuntime {
     anyAttrEffect(name, trackedR(v))
   }
 
+  // v-focus / v-scroll-into-view / v-click-outside / v-独自のディレクティブ
+
+  /**
+   * 要素にディレクティブを付けます. 値の式で読んだリアクティブ値が変わったら、描き直しが終わった後に updated を呼びます.
+   */
+  def directive[A](d: io.github.ondeoma.scalactive.components.Directive[A],
+                   rv: Reactive[A])
+                  (using cm: ComponentManager): ATTR = {
+    directiveOf(d, Right(rv))
+  }
+
+  def directive[A](d: io.github.ondeoma.scalactive.components.Directive[A],
+                   v: => A)
+                  (using dummy: DummyImplicit,
+                   cm: ComponentManager): ATTR = {
+    directiveOf(d, tracked(v))
+  }
+
+  private def directiveOf[A](d: io.github.ondeoma.scalactive.components.Directive[A],
+                             value: Either[A, Reactive[A]])
+                            (using cm: ComponentManager): ATTR = {
+    ComponentManager.el(ele => AttrController { ac =>
+      ac.element = Some(ele)
+      var alive = true
+      var current: A = value.fold(identity, _.v)
+      var mounted = false
+      cm.lifecycle.mounted += (() => if (alive) {
+        mounted = true
+        d.mounted(ele, current)
+      })
+      value.foreach { r =>
+        ac.watchInfos = List(r.addWatcher { case (_, n) =>
+          // 値の変更による描き直し(v-htmlの中身など)が終わってから知らせる
+          ComponentManager.nextTick().foreach { _ =>
+            if (alive && mounted && n != current) {
+              val old = current
+              current = n
+              d.updated(ele, n, old)
+            }
+          }(using scala.scalajs.concurrent.JSExecutionContext.queue)
+        })
+      }
+      ac.onClear = () => {
+        alive = false
+        if (mounted) d.unmounted(ele)
+      }
+      Right(ac)
+    })
+  }
+
+  /**
+   * `<style scoped>` の属性(data-st-xxxx)を子コンポーネントのルート要素に付けます.
+   * ルート要素のない子(RouterComponentなど)では何もしません(警告も出しません).
+   */
+  def scope(name: String): ElementEffectF = new io.github.ondeoma.scalactive.components.ScopeAttrEffect(name)
+
   // v-for="x in expr"
   // ComponentManager.forC / forEachC へ渡すリスト. リアクティブなリストはそのまま、
   // Listの式は、読んだリアクティブ値が変わったときに計算し直すCRVにします.
@@ -703,8 +759,23 @@ object StRuntime {
   def prop[A](v: => A)
              (using k: PropKind[A],
               cm: ComponentManager): A = {
-    if (!k.reactive) v
-    else Computed.track(() => v) match {
+    if (!k.reactive) {
+      val x = v
+      PropKeys.record(x)
+      x
+    } else if (PropKeys.keyOnly) {
+      // 作り直すかどうかの判断だけのとき. Reactive型のpropsは子が自分で追従するので、値は計算しない
+      PropKeys.record(PropKeys.ReactiveProp)
+      null.asInstanceOf[A]
+    } else {
+      PropKeys.record(PropKeys.ReactiveProp)
+      reactiveProp(v)
+    }
+  }
+
+  private def reactiveProp[A](v: => A)
+                             (using cm: ComponentManager): A = {
+    Computed.track(() => v) match {
       case Left(x) => x
       case Right(c) =>
         // 式が選ぶReactive(c)と、その値の両方に追従する
@@ -746,10 +817,25 @@ object StRuntime {
   def componentOf(make: ComponentManager => GenComponentF,
                   attrs: ElementEffectF*)
                  (using cm: ComponentManager): HTML = {
+    componentOfProps(make, -1, attrs *)
+  }
+
+  /**
+   * 子コンポーネントを展開します([[componentOf]] と同じ).
+   * propCountは `__st.prop` で包んだpropsの数です. 読んだリアクティブ値が変わっても、
+   * それらのpropsの値がすべて前と同じ(==)なら子を作り直しません(-1のときは常に作り直します).
+   */
+  def componentOfProps(make: ComponentManager => GenComponentF,
+                       propCount: Int,
+                       attrs: ElementEffectF*)
+                 (using cm: ComponentManager): HTML = {
     val col = new Tracking.Collector
-    val f = Tracking.collect(col)(make(cm))
+    val (f, keys) = PropKeys.collect(Tracking.collect(col)(make(cm)))
     if (col.deps.length == 0) ComponentManager.c(f, attrs *)
-    else ComponentManager.%(PropsComponent(f, col.deps.toList, make, attrs))
+    else {
+      val firstKeys = if (propCount > 0 && keys.length == propCount) Some(keys) else None
+      ComponentManager.%(PropsComponent(f, col.deps.toList, make, attrs, propCount, firstKeys))
+    }
   }
 
   // <ChildComponent />

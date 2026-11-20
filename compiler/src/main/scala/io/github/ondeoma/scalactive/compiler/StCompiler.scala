@@ -48,6 +48,9 @@ object StCompiler {
   private val ReactiveNames = Set("CRV", "RMCompatible", "RMConversion", "RMList", "RV", "RVList", "Reactive", "ReactiveFunctions",
     "ReactiveList", "ReactiveModel", "ReactiveModelMacro", "ReactiveModelOf", "WatchHandle")
 
+  /** io.github.ondeoma.scalactive.effects の型(Stateのフィールドの型などに書けるよう、使っていればimportする) */
+  private val EffectNames = Set("AsyncState", "ActionState", "EffectHandle", "DebouncedFn", "ThrottledFn", "LatestFn")
+
   /** 名前だけで参照している識別子(`a.b` の `b` のようなメンバーの選択は除く) */
   private val WordPattern = """(?<![.\w])[A-Za-z_][A-Za-z0-9_]*""".r
 
@@ -390,12 +393,21 @@ object StCompiler {
     // 使っている名前. コメントと、埋め込みのない文字列リテラル(テンプレートのHTML・コード例など)の中は除く
     val bodyCode = codeForWords(marks.strip(body))
     // object直下(script の一番外側)のimportだけ. defの中などのimportは、その外では使えないため
-    val imports = ImportStmt.findAllMatchIn(bodyCode).filter { m =>
-      val before = bodyCode.substring(0, m.start)
+    // import文は文字列の外だけから探す(s"""...""" の中のコード例の import を、本物のimportと見なさない)
+    val pureCode = codeOnly(marks.strip(body))
+    val importMatches = ImportStmt.findAllMatchIn(pureCode).toList
+    val imports = importMatches.filter { m =>
+      val before = pureCode.substring(0, m.start)
       before.count(_ == '{') - before.count(_ == '}') == 1
-    }.map(_.matched).toList
-    // scriptで名前を指定してimportしたものは除く(ヘッダーのimportは使われないため)
-    val words = WordPattern.findAllIn(ImportStmt.replaceAllIn(bodyCode, " ")).toSet -- imports.flatMap(importedNames)
+    }.map(_.matched)
+    // scriptで名前を指定してimportしたものは除く(ヘッダーのimportは使われないため).
+    // codeOnlyは位置を変えないので、見つけたimport文の範囲をbodyCodeから消す
+    val withoutImports = {
+      val sb = new StringBuilder(bodyCode)
+      importMatches.foreach(m => for (k <- m.start until m.end) if (sb.charAt(k) != '\n') sb.setCharAt(k, ' '))
+      sb.toString
+    }
+    val words = WordPattern.findAllIn(withoutImports).toSet -- imports.flatMap(importedNames)
     // scriptで同じパッケージを丸ごとimportしている場合も、ヘッダーではimportしない
     def importsAll(pkg: String): Boolean = {
       val all = s"""(?s)import\\s+(?:_root_\\.)?${java.util.regex.Pattern.quote(pkg)}\\.[*_]\\s*""".r
@@ -410,6 +422,9 @@ object StCompiler {
     // objectの中ではそちらが使われるため. 型(RV[Int]など)は継承では使えないので、使っている場合だけ reactive.* をimportする
     header ++= "\nimport io.github.ondeoma.scalactive.components.{fors as _, htmls as _, ifs as _, inputs as _, routes as _, texts as _, utils as _, *}\n"
     if (ReactiveNames.exists(words.contains) && !importsAll("io.github.ondeoma.scalactive.reactive")) header ++= "import io.github.ondeoma.scalactive.reactive.*\n"
+    if (EffectNames.exists(words.contains) && !importsAll("io.github.ondeoma.scalactive.effects")) {
+      header ++= s"import io.github.ondeoma.scalactive.effects.{${EffectNames.toList.sorted.filter(words.contains).mkString(", ")}}\n"
+    }
     if (in.domNames.forall(_.exists(words.contains)) && !importsAll("org.scalajs.dom")) header ++= "import org.scalajs.dom.*\n"
     header ++= "import io.github.ondeoma.scalactive.components.ComponentManager as __CM\n"
     if (body.contains("__st.")) header ++= "import io.github.ondeoma.scalactive.st.StRuntime as __st\n"

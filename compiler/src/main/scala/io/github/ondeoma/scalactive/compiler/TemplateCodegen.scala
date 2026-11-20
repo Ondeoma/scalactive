@@ -397,12 +397,22 @@ final class TemplateCodegen(src: SourceText,
       case (n, offset) => src.fail(offset, s"duplicate prop or slot '$n' on component <${e.name}>")
     }
     val argList = args.map { case (_, n, v, _) => s"$n = $v" }.mkString(", ")
-    val extra = fallthrough.map(", " + _).mkString
+    // <style scoped> の属性は子のルート要素にも付ける(Vueと同じ). RouterLinkの<a>などにも親のscopedのCSSが当たる
+    val scope = scopeAttr.map(a => s"__st.scope(${StringLiteral(a)})").toList
+    val extra = (fallthrough ++ scope).map(", " + _).mkString
     // propsの式で読んだリアクティブ値が変わったら、子を作り直す(__st.componentOf)
     val id = nextId()
     // 同じパッケージの.stは完全修飾名で(組み込みのRouterLinkなど、コンポーネントが継承する名前より優先する)
     val prefix = componentRefs.get(e.name).fold("")(_.stripSuffix(e.name))
-    List(Code(s"__st.componentOf((__cm$id: __CM) => { given __CM = __cm$id; $prefix${marks.mark(e.name, e.offset + 1)}($argList) }$extra)"))
+    // __st.propで包んだpropsの数. 読んだ値が変わっても、それらの値が前と同じなら子を作り直さない
+    val propCount = e.attrs.count { a =>
+      val bound = boundName(a.name)
+      bound.exists(b => !isFallthrough(b)) && !decodedValue(a).exists(v => LambdaPattern.pattern.matcher(v.text).matches())
+    }
+    // (componentOfをオーバーロードにすると、関数の中の式に期待する型が伝わらず、組込コンポーネントのapplyを選べなくなるので名前を分ける)
+    val fn = if (propCount > 0) "componentOfProps" else "componentOf"
+    val count = if (propCount > 0) s", $propCount" else ""
+    List(Code(s"__st.$fn((__cm$id: __CM) => { given __CM = __cm$id; $prefix${marks.mark(e.name, e.offset + 1)}($argList) }$count$extra)"))
   }
 
   /** 関数リテラル(`x => ...`・`(a, b) => ...`・`{ case ... }`)か. 関数は値を追跡しないので包まない */
@@ -515,7 +525,7 @@ final class TemplateCodegen(src: SourceText,
         case _ => src.fail(a.offset, s"invalid event binding '$n'")
       }
     } else if (n.startsWith("v-")) {
-      src.fail(a.offset, s"unknown directive '$n'")
+      genDirective(a)
     } else {
       val v = a.value match {
         case None => ""
@@ -523,6 +533,51 @@ final class TemplateCodegen(src: SourceText,
         case Some(x) => "=" + a.quote + x + a.quote
       }
       List(Static(" " + n + v))
+    }
+  }
+
+  private val DirectiveObj = "_root_.io.github.ondeoma.scalactive.components.Directive"
+
+  /** Vueにあって、Scalactiveにはないディレクティブ(独自のディレクティブとしても扱わない) */
+  private val unsupportedDirectives = Set("v-text", "v-pre", "v-once", "v-cloak", "v-memo", "v-is", "v-slot", "v-bind", "v-on")
+
+  private val DirectivePattern = """^v-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)((?:\.[\w-]+)*)$""".r
+
+  /**
+   * v-focus / v-scroll-into-view / v-click-outside と、独自のディレクティブ(`v-名前="値"` → スコープにあるDirectiveの `名前`).
+   */
+  private def genDirective(a: Attr): List[Part] = {
+    val n = a.name
+    if (unsupportedDirectives.contains(n.takeWhile(_ != '.')) || n.contains(":")) src.fail(a.offset, s"unknown directive '$n'")
+    n match {
+      case DirectivePattern(name, modsRaw) =>
+        val mods = modsRaw.split('.').filter(_.nonEmpty).toList
+        def allowMods(allowed: String*): Unit = mods.find(m => !allowed.contains(m)).foreach { m =>
+          val list = if (allowed.isEmpty) "none" else allowed.map("." + _).mkString(", ")
+          src.fail(a.offset, s"unknown modifier '.$m' on 'v-$name' (supported: $list)")
+        }
+        // 値のない v-focus などは、常に真
+        def condValue: String = if (decodedValue(a).exists(_.text.trim.nonEmpty)) attrExpr(a) else "true"
+        name match {
+          case "focus" =>
+            allowMods("select")
+            List(Code(s"__st.directive($DirectiveObj.focus(select = ${mods.contains("select")}), $condValue)"))
+          case "scroll-into-view" =>
+            allowMods("smooth", "start", "center", "end", "nearest")
+            val block = mods.filter(Set("start", "center", "end", "nearest")).lastOption.getOrElse("nearest")
+            List(Code(s"__st.directive($DirectiveObj.scrollIntoView(smooth = ${mods.contains("smooth")}, block = ${StringLiteral(block)}), $condValue)"))
+          case "click-outside" =>
+            allowMods()
+            if (!decodedValue(a).exists(_.text.trim.nonEmpty)) src.fail(a.offset, "v-click-outside needs a statement (e.g. v-click-outside=\"close(s)\")")
+            List(Code(s"__st.directive($DirectiveObj.clickOutside(), (event: org.scalajs.dom.Event) => { ${lineComment(a.offset)} ${userStmt(a)}})"))
+          case _ =>
+            allowMods()
+            val ident = propName(name)
+            val identCode = if (ident == name) marks.mark(ident, a.offset + 2) else ident
+            val value = if (decodedValue(a).exists(_.text.trim.nonEmpty)) attrExpr(a) else "()"
+            List(Code(s"__st.directive($identCode, $value)"))
+        }
+      case _ => src.fail(a.offset, s"unknown directive '$n'")
     }
   }
 

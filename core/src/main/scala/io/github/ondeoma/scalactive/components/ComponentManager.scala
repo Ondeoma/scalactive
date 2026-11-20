@@ -150,6 +150,7 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
 object ComponentManager {
 
   export io.github.ondeoma.scalactive.components.Slot
+  export io.github.ondeoma.scalactive.components.Directive
   export io.github.ondeoma.scalactive.components.ScopedSlot
   export io.github.ondeoma.scalactive.components.ElementRef
   export io.github.ondeoma.scalactive.components.Teleport
@@ -226,6 +227,14 @@ object ComponentManager {
   export io.github.ondeoma.scalactive.reactive.ReactiveFunctions.*
 
   export io.github.ondeoma.scalactive.routes.Router
+
+  export io.github.ondeoma.scalactive.effects.Effects.*
+  export io.github.ondeoma.scalactive.effects.EffectHandle
+  export io.github.ondeoma.scalactive.effects.DebouncedFn
+  export io.github.ondeoma.scalactive.effects.ThrottledFn
+  export io.github.ondeoma.scalactive.effects.LatestFn
+  export io.github.ondeoma.scalactive.effects.AsyncState
+  export io.github.ondeoma.scalactive.effects.ActionState
 
   export io.github.ondeoma.scalactive.storage.PersistentStore
   export io.github.ondeoma.scalactive.storage.StorageCodec
@@ -352,6 +361,8 @@ object ComponentManager {
   def c(f: GenComponentF,
         attrs: ElementEffectF*)
        (using cc: ComponentManager): HTML = {
+    // scopedのCSSの属性だけなら、付けられなくても警告しない
+    lazy val onlyScope = attrs.forall(_.isInstanceOf[ScopeAttrEffect])
     if (attrs.isEmpty) componentWithComment(f)
     else componentWithComment((parent, am) => {
       val ctrl = f(parent, am)
@@ -364,10 +375,12 @@ object ComponentManager {
                   case Right(cs) => nc.children = nc.children ++ cs
                   case Left(e) => io.github.ondeoma.scalactive.utils.ConsoleUtil.error(e)
                 }
-              case None => io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on a component without a root element are ignored")
+              case None =>
+                if (!onlyScope) io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on a component without a root element are ignored")
             }
           }
-        case _ => io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on this component are ignored")
+        case _ =>
+          if (!onlyScope) io.github.ondeoma.scalactive.utils.ConsoleUtil.warn("attributes on this component are ignored")
       }
       ctrl
     })

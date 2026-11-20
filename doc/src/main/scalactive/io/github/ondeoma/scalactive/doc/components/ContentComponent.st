@@ -13,6 +13,8 @@ val routes = List(
   Route("/conditionalRendering", _ => ConditionalRenderingComponent(), title = _ => "条件付きレンダリング"),
   Route("/listRendering", _ => ListRenderingComponent(), title = _ => "リストレンダリング"),
   Route("/event", _ => EventComponent(), title = _ => "イベントハンドリング"),
+  Route("/directives", _ => DirectiveComponent(), title = _ => "ディレクティブ"),
+  Route("/effects", _ => EffectsComponent(), title = _ => "副作用・非同期"),
   Route("/routing", _ => RoutingComponent(), title = _ => "ルーティング"),
   Route("/state", _ => StateComponent(), title = _ => "状態管理"),
   Route("/editor", _ => EditorComponent(), title = _ => "エディタ"),

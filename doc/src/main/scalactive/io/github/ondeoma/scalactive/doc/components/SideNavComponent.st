@@ -14,6 +14,8 @@ import Router.*
       <li @click='go("/listRendering")'>リストレンダリング</li>
       <li @click='go("/event")'>イベントハンドリング</li>
       <li @click='go("/builtinComponents")'>組込コンポーネント</li>
+      <li @click='go("/directives")'>ディレクティブ</li>
+      <li @click='go("/effects")'>副作用・非同期</li>
       <li @click='go("/routing")'>ルーティング</li>
       <li @click='go("/state")'>状態管理</li>
       <li @click='go("/editor")'>エディタ</li>

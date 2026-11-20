@@ -484,7 +484,7 @@
       ]
     },
     "directive": {
-      "begin": "(?:(v-(?:if|else-if|show|html|model(?::[A-Za-z_][\\w-]*)?)|ref(?=\\s*=))|(:|v-bind:)([A-Za-z_][\\w:-]*)|(@|v-on:)([A-Za-z_][\\w-]*))((?:\\.[\\w-]+)*)\\s*(=)\\s*([\"'])",
+      "begin": "(?:(v-(?:model(?::[A-Za-z_][\\w-]*)?|(?!for(?![\\w-])|slot(?![\\w-])|bind:|on:)[a-z][a-z0-9]*(?:-[a-z0-9]+)*)|ref(?=\\s*=))|(:|v-bind:)([A-Za-z_][\\w:-]*)|(@|v-on:)([A-Za-z_][\\w-]*))((?:\\.[\\w-]+)*)\\s*(=)\\s*([\"'])",
       "beginCaptures": {
         "1": {
           "name": "entity.other.attribute-name.directive.scalactive"
@@ -525,8 +525,16 @@
       ]
     },
     "v-else": {
-      "match": "v-else(?![\\w-])",
-      "name": "entity.other.attribute-name.directive.scalactive"
+      "comment": "値のないディレクティブ(v-else・v-focus・独自のディレクティブなど)",
+      "match": "(v-(?!for(?![\\w-])|slot(?![\\w-]))[a-z][a-z0-9]*(?:-[a-z0-9]+)*)((?:\\.[\\w-]+)*)(?![\\w:-]|\\s*=)",
+      "captures": {
+        "1": {
+          "name": "entity.other.attribute-name.directive.scalactive"
+        },
+        "2": {
+          "name": "entity.other.attribute-name.modifier.scalactive"
+        }
+      }
     },
     "slot-directive": {
       "patterns": [

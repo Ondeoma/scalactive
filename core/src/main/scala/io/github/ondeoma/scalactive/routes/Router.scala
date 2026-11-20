@@ -1,7 +1,7 @@
 package io.github.ondeoma.scalactive.routes
 
 import io.github.ondeoma.scalactive.ScalactiveConfig
-import io.github.ondeoma.scalactive.reactive.RV
+import io.github.ondeoma.scalactive.reactive.{CRV, RV}
 import io.github.ondeoma.scalactive.utils.ConsoleUtil
 import org.scalajs.dom.window.{history, location}
 import org.scalajs.dom.{HTMLElement, document, window}
@@ -106,6 +106,51 @@ object Router {
 
   val href = RV(location.href)
 
+  /** 現在の場所(hrefに追従します) */
+  val current: CRV[RouteLocation] = href.mapC(RouteLocation(_))
+
+  /**
+   * 現在のURLのクエリ文字列の値(hrefに追従します). 同じ名前が複数ある場合は最初の値です.
+   * 例: `Router.query.v.get("q")`
+   */
+  val query: CRV[Map[String, String]] = href.mapC(h => parseQuery(new org.scalajs.dom.URL(h).search))
+
+  /**
+   * クエリ文字列の1つの値(変わったときだけ通知します).
+   * コンポーネントの中で呼んだ場合は、コンポーネントが片付けられたときに監視を解除します.
+   */
+  inline def queryParam(name: String): CRV[Option[String]] = query.mapC(_.get(name))
+
+  /** クエリ文字列("?a=1&b=2" または "a=1&b=2")を名前と値のMapにします. 同じ名前が複数ある場合は最初の値です. */
+  def parseQuery(search: String): Map[String, String] = {
+    val ps = new org.scalajs.dom.URLSearchParams(search.stripPrefix("?"))
+    val b = scala.collection.mutable.LinkedHashMap[String, String]()
+    ps.asInstanceOf[js.Dynamic].forEach((v: String, k: String) => if (!b.contains(k)) b.update(k, v))
+    b.toMap
+  }
+
+  /**
+   * パスにクエリ文字列を付けます. 値がNoneの名前は付けません.
+   * 例: `Router.withQuery("/search", "q" -> Some("猫"), "page" -> None)` → "/search?q=%E7%8C%AB"
+   */
+  def withQuery(path: String, params: (String, Option[String])*): String = {
+    val (base, hash) = path.indexOf('#') match {
+      case -1 => (path, "")
+      case i => (path.take(i), path.drop(i))
+    }
+    val (p, search) = base.indexOf('?') match {
+      case -1 => (base, "")
+      case i => (base.take(i), base.drop(i + 1))
+    }
+    val ps = new org.scalajs.dom.URLSearchParams(search)
+    params.foreach {
+      case (k, Some(v)) => ps.set(k, v)
+      case (k, None) => ps.delete(k)
+    }
+    val q = ps.toString
+    p + (if (q.isEmpty) "" else "?" + q) + hash
+  }
+
   window.addEventListener("popstate", _ => onPopState())
 
   /**
@@ -166,16 +211,40 @@ object Router {
     Try(navigate(url, replace = false, redirects = 0))
   }
 
+  /**
+   * 履歴を積まずに遷移します(Vue Routerのrouter.replace). ガードも呼ばれます.
+   * クエリ文字列だけを変える場合は [[setQuery]] を使うと、スクロール位置も変わりません.
+   */
+  def replace(url: String): Try[Unit] = {
+    Try(navigate(url, replace = true, redirects = 0))
+  }
+
+  /**
+   * 今のURLのクエリ文字列の値を変えます(履歴は積まず、スクロールもしません). 値がNoneの名前は取り除きます.
+   * 表示の状態(タブ・検索語など)をURLに残すときに使います.
+   * RouterComponentはクエリ文字列が変わると画面を作り直すので、作り直したくないルートには
+   * `Route(..., reloadOnQueryChange = false)` を指定してください.
+   * 例: `Router.setQuery("tab" -> Some("members"))`
+   */
+  def setQuery(params: (String, Option[String])*): Try[Unit] = {
+    Try {
+      val now = new org.scalajs.dom.URL(location.href)
+      val path = RouteLocation(now.href).path
+      navigate(withQuery(path + now.search + now.hash, params *), replace = true, redirects = 0, scroll = false)
+    }
+  }
+
   private def navigate(url: String,
                        replace: Boolean,
-                       redirects: Int): Unit = {
+                       redirects: Int,
+                       scroll: Boolean = true): Unit = {
     val now = location.href
     val fixedUrl = fixUrl(url)
     val to = RouteLocation(new org.scalajs.dom.URL(fixedUrl, now).href)
     val from = Some(RouteLocation(now))
     runGuards(to, from) match {
       case Continue =>
-        if (ScalactiveConfig.scrollToTopOnNavigate) window.scrollTo(0, 0)
+        if (scroll && ScalactiveConfig.scrollToTopOnNavigate) window.scrollTo(0, 0)
         if (replace) history.replaceState(js.Object.apply(), "", fixedUrl)
         else history.pushState(js.Object.apply(), "", fixedUrl)
         startCheckHref(now)
@@ -183,7 +252,7 @@ object Router {
       case Cancel => ()
       case Redirect(next) =>
         if (redirects >= maxRedirects) ConsoleUtil.error(s"Router: too many redirects (last: $next)")
-        else navigate(next, replace, redirects + 1)
+        else navigate(next, replace, redirects + 1, scroll)
     }
   }
 
