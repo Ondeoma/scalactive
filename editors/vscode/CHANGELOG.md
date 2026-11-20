@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.7.0
+
+The version now matches the Scalactive library (0.7.0).
+
+- New directives are highlighted and completed: `v-focus`, `v-scroll-into-view`, `v-click-outside`, and custom
+  directives (`v-name="value"` or `v-name` without a value, with modifiers).
+- Import statements written inside string literals (code samples in `s"""..."""`) are no longer treated as imports,
+  so the generated `import org.scalajs.dom.*` is not dropped by mistake.
+
 ## 0.6.2
 
 The version now matches the Scalactive library (0.6.2).
