@@ -2,7 +2,8 @@ name: Deploy Docs
 
 on:
   push:
-    tags: [ "doc*" ]
+    # doc/v0.7.1 のような、docで始まるタグで動かす(* は / に一致しないため ** にする)
+    tags: [ "doc**" ]
   workflow_dispatch:
 
 permissions:
