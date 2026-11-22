@@ -1,6 +1,6 @@
 <script lang="scala">
 import Router.*
-import io.github.ondeoma.scalactive.doc.components.contents.list.{ForBasic, ForIndex, ForKey, TemplateFor}
+import io.github.ondeoma.scalactive.doc.components.contents.list.{ForBasic, ForIndex, ForKey, ForSvg, TemplateFor}
 
 val codeFor = // language=html
   """<script lang="scala">
@@ -83,6 +83,25 @@ val codeTemplateFor = // language=html
      |  </dl>
      |</template>
      |""".stripMargin
+
+val codeSvg = // language=html
+  """<script lang="scala">
+     |case class State(values: RV[List[Int]] = RV(List(3, 7, 5)))
+     |
+     |def initState() = State()
+     |</script>
+     |
+     |<template>
+     |  <button @click="s.values := s.values.v :+ (scala.util.Random.nextInt(9) + 1)">棒を足す</button>
+     |  <svg :viewBox='s"0 0 ${s.values.v.length * 20} 100"' width="240" height="100">
+     |    <g v-for="(v, i) in s.values">
+     |      <rect :x="i * 20 + 2" :y="100 - v * 10" width="16" :height="v * 10" fill="steelblue">
+     |        <title>{{ v }}</title>
+     |      </rect>
+     |    </g>
+     |  </svg>
+     |</template>
+     |""".stripMargin
 </script>
 
 <template>
@@ -100,6 +119,7 @@ val codeTemplateFor = // language=html
     <li><a @click='setHash("update")'>リストが変わったとき</a></li>
     <li><a @click='setHash("key")'>key</a></li>
     <li><a @click='setHash("templateFor")'>&lt;template v-for&gt;</a></li>
+    <li><a @click='setHash("svg")'>SVGの中のv-for</a></li>
   </ul>
 
   <h2 id="vFor">v-for</h2>
@@ -213,5 +233,20 @@ val codeTemplateFor = // language=html
 
   <div class="rendered">
     <TemplateFor />
+  </div>
+
+  <h2 id="svg">SVGの中のv-for</h2>
+
+  <p>
+    <code>&lt;svg&gt;</code> の中のv-for・v-if・子コンポーネントは、SVGの要素として作られます.<br>
+    グラフなどを、リストから描画できます.<br>
+    <code>&lt;foreignObject&gt;</code> の中はHTMLの要素に戻ります.<br>
+    <code>:viewBox</code> のような大文字を含む属性名や、<code>:xlink:href</code> もそのまま使えます.
+  </p>
+
+  <pre><code class="language-st">{{ codeSvg }}</code></pre>
+
+  <div class="rendered">
+    <ForSvg />
   </div>
 </template>

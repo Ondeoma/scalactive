@@ -20,22 +20,23 @@ private[scalactive] object TemplateCache {
 
   private val cache = mutable.LinkedHashMap[String, DocumentFragment]()
 
-  private def parse(html: String): DocumentFragment = {
-    val t = document.createElement("template").asInstanceOf[HTMLTemplateElement]
-    t.innerHTML = html
-    t.content
-  }
+  /** SVGの文脈で解析したもののキー(HTMLの文脈のものと分ける). HTMLの先頭には現れない文字で始める */
+  private def keyOf(html: String, svg: Boolean): String = if (svg) "\u0000svg:" + html else html
 
-  def nodes(html: String): List[Node] = {
+  /**
+   * @param svg trueならSVGの要素の中に入れるものとして解析します(要素はSVGの名前空間で作られます)
+   */
+  def nodes(html: String, svg: Boolean = false): List[Node] = {
     val fragment =
-      if (html.length > maxLength) parse(html)
+      if (html.length > maxLength) DomUtil.parseHtml(html, svg)
       else {
-        val f = cache.remove(html) match {
+        val key = keyOf(html, svg)
+        val f = cache.remove(key) match {
           case Some(cached) => cached
-          case None => parse(html)
+          case None => DomUtil.parseHtml(html, svg)
         }
         // 最近使ったものとして末尾に置き直す
-        cache.update(html, f)
+        cache.update(key, f)
         if (cache.size > maxEntries) cache.remove(cache.head._1)
         f.cloneNode(true).asInstanceOf[DocumentFragment]
       }

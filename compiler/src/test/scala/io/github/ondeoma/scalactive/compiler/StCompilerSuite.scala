@@ -100,6 +100,18 @@ class StCompilerSuite extends munit.FunSuite {
     assert(c.contains("given __CM = __cm6; Child() })"), c)
   }
 
+  test("svg: 属性名の大文字を保ち、v-forの行は__CM.forEachCで作る(名前空間は実行時に目印の親で決める)") {
+    val c = compile(
+      """<template>
+        |<svg :viewBox="vb"><g v-for="m in ms"><circle :cx="m" r="4" /><title>{{ m }}</title></g></svg>
+        |</template>""".stripMargin).code
+    assert(c.contains("__st.attr(\"viewBox\", (/* Foo.st:2 */ vb))"), c)
+    assert(c.contains("__CM.forEachC(__st.each(/* Foo.st:2 */ ms))"), c)
+    assert(c.contains("__st.attr(\"cx\", (/* Foo.st:2 */ m))"), c)
+    // 自己終了の <circle /> は閉じタグを付けて出す(HTMLとして解析しても入れ子にならない)
+    assert(c.contains(" r=\\\"4\\\"></circle><title>"), c)
+  }
+
   test("v-html") {
     val c = compile("""<template><div class="x" v-html="s.body"></div><p v-html="raw" /></template>""").code
     assert(c.contains("\"<div class=\\\"x\\\">\" +"), c)

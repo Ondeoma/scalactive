@@ -42,14 +42,32 @@ object FormProps {
 
   /** 属性を付けて、プロパティも合わせます */
   def set(ele: Element, attr: String, value: String): Unit = {
-    ele.setAttribute(attr, value)
+    setAttr(ele, attr, value)
     sync(ele, attr, Some(value))
   }
 
   /** 属性を外して、プロパティも合わせます */
   def remove(ele: Element, attr: String): Unit = {
-    ele.removeAttribute(attr)
+    removeAttr(ele, attr)
     sync(ele, attr, None)
+  }
+
+  private val XLinkNamespace = "http://www.w3.org/1999/xlink"
+
+  /** SVGの `xlink:href` などは、解析したときと同じくxlinkの名前空間の属性にします */
+  private def isXLink(ele: Element, attr: String): Boolean =
+    attr.startsWith("xlink:") && ele.namespaceURI == io.github.ondeoma.scalactive.utils.SvgContext.SvgNamespace
+
+  /** 属性を付けます(プロパティは変えない) */
+  def setAttr(ele: Element, attr: String, value: String): Unit = {
+    if (isXLink(ele, attr)) ele.setAttributeNS(XLinkNamespace, attr, value)
+    else ele.setAttribute(attr, value)
+  }
+
+  /** 属性を外します(プロパティは変えない) */
+  def removeAttr(ele: Element, attr: String): Unit = {
+    if (isXLink(ele, attr)) ele.removeAttributeNS(XLinkNamespace, attr.drop("xlink:".length))
+    else ele.removeAttribute(attr)
   }
 
 }

@@ -3,6 +3,7 @@ package io.github.ondeoma.scalactive.components
 import io.github.ondeoma.scalactive.controllers.ComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.reactive.Reactive
+import io.github.ondeoma.scalactive.utils.SvgContext
 import io.github.ondeoma.scalactive.utils.TypeAlias.GenComponentF
 import org.scalajs.dom.*
 
@@ -35,7 +36,9 @@ object Mount {
   private[scalactive] def start(el: Element,
                                 component: GenComponentF): Either[String, MountHandle] = {
     val root = el.asInstanceOf[HTMLElement]
-    component(root, AddMethod.append(root)).init().map(c => new MountHandle(c))
+    // SVGの要素に描画する場合は、SVGの名前空間で作る
+    SvgContext.within(SvgContext.isSvgParent(el))(component(root, AddMethod.append(root)))
+      .init().map(c => new MountHandle(c))
   }
 
 }

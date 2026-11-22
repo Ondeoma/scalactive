@@ -3,6 +3,7 @@ package io.github.ondeoma.scalactive.components
 import io.github.ondeoma.scalactive.controllers.NodesComponentController
 import io.github.ondeoma.scalactive.models.AddMethod
 import io.github.ondeoma.scalactive.utils.DomUtil.*
+import io.github.ondeoma.scalactive.utils.SvgContext
 import org.scalajs.dom.*
 
 /**
@@ -34,7 +35,8 @@ object Teleport extends BaseComponent {
         else Option(document.querySelector(to)).map(Some(_)).toRight(s"Teleport: target '$to' was not found")
       for {
         t <- target
-        t4 <- ComponentManager(cm => slot()(using cm))
+        // 描画先の要素で文脈を決める(SVGの中から body へ移す場合はHTMLとして作る)
+        t4 <- SvgContext.within(t.fold(SvgContext.current)(SvgContext.isSvgParent))(ComponentManager(cm => slot()(using cm)))
         // Scala 3.4.0~
         // (ns, children, tmpRs, eIds) = t4
         (ns, children, tmpRs, eIds) = t4

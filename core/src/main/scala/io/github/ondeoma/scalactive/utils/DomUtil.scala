@@ -176,6 +176,31 @@ object DomUtil {
     toInput.orElse(toSelect).orElse(toTextArea)
   }
 
+  /**
+   * HTML文字列を解析します.
+   *
+   * @param svg trueならSVGの要素の中に入れるものとして解析します. `<svg>` で包んで解析し、その中身を取り出すので、
+   *            `<g>` や `<circle>` もSVGの名前空間で作られます(`<foreignObject>` の中はHTMLに戻ります).
+   */
+  def parseHtml(html: String, svg: Boolean = false): DocumentFragment = {
+    val t = mkTemplate()
+    if (!svg) {
+      t.innerHTML = html
+      t.content
+    } else {
+      t.innerHTML = "<svg>" + html + "</svg>"
+      val content = t.content
+      val result = document.createDocumentFragment()
+      val wrapper = content.firstChild
+      if (wrapper != null) {
+        while (wrapper.firstChild != null) result.appendChild(wrapper.firstChild)
+        // SVGの中に書けないHTMLの要素(divなど)があると、解析でsvgが閉じられて後ろに並ぶ. それも残す
+        while (wrapper.nextSibling != null) result.appendChild(wrapper.nextSibling)
+      }
+      result
+    }
+  }
+
   def mkTemplate(): HTMLTemplateElement = {
     document.createElement("template").asInstanceOf[HTMLTemplateElement]
   }
@@ -203,7 +228,7 @@ object DomUtil {
         case b: Boolean => ""
         case s: String => s
       }
-      e.setAttribute(n, fixedV)
+      FormProps.setAttr(e, n, fixedV)
     }
     // リアクティブな属性値の指定
     attrRVs.foreach { (n, rv) =>
@@ -222,9 +247,11 @@ object DomUtil {
   object Ext {
 
     extension (e: Node) {
+      /** HTMLElement(SVGの要素も含む)として取り出します */
       def toHtml: Option[HTMLElement] = {
         e match {
           case e: HTMLElement => Some(e)
+          case e: SVGElement => Some(e.asInstanceOf[HTMLElement])
           case _ =>
             ConsoleUtil.debug(s"NOT HTMLElement($e).")
             None
@@ -289,6 +316,7 @@ object DomUtil {
       def getStyle(name: String): String = {
         e match {
           case e: HTMLElement => e.style.getPropertyValue(name)
+          case e: SVGElement => e.asInstanceOf[HTMLElement].style.getPropertyValue(name)
           case _ => ""
         }
       }
@@ -298,6 +326,7 @@ object DomUtil {
                    priority: String = ""): Unit = {
         e match {
           case e: HTMLElement => e.style.setProperty(name, value, priority)
+          case e: SVGElement => e.asInstanceOf[HTMLElement].style.setProperty(name, value, priority)
           case _ => ()
         }
       }
@@ -305,6 +334,7 @@ object DomUtil {
       def rmStyle(name: String): Unit = {
         e match {
           case e: HTMLElement => e.style.removeProperty(name)
+          case e: SVGElement => e.asInstanceOf[HTMLElement].style.removeProperty(name)
           case _ => ()
         }
       }
@@ -376,14 +406,13 @@ object DomUtil {
 
     extension (html: String) {
 
+      /** HTMLを解析します. SVGの要素の中に描画している間(SvgContext)は、SVGの名前空間で作ります. */
       def toNodes: List[Node] = {
-        val t = mkTemplate()
-        t.innerHTML = html
-        t.content.childNodes.toList
+        parseHtml(html, SvgContext.current).childNodes.toList
       }
 
       /** toNodesと同じ. 同じHTMLの解析結果を覚えておき、2回目からは複製します. */
-      def toNodesCached: List[Node] = TemplateCache.nodes(html)
+      def toNodesCached: List[Node] = TemplateCache.nodes(html, SvgContext.current)
 
       def toElement: Option[Element] = {
         toNodes.collectFirst {
@@ -406,9 +435,14 @@ object DomUtil {
     }
 
     extension (nodes: List[Node]) {
+      /**
+       * 要素だけを取り出します. SVGの要素も含めます(HTMLElementとして扱いますが、
+       * 属性・class・style・イベントの操作はSVGの要素でもそのまま使えます).
+       */
       def toHtmlElements: List[HTMLElement] = {
         nodes.collect {
           case e: HTMLElement => e
+          case e: SVGElement => e.asInstanceOf[HTMLElement]
         }
       }
       

@@ -1,6 +1,7 @@
 package io.github.ondeoma.scalactive.controllers
 
 import io.github.ondeoma.scalactive.reactive.*
+import io.github.ondeoma.scalactive.utils.SvgContext
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
 
@@ -24,7 +25,7 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
 
   override def refresh(): Unit = {
     onRefresh match {
-      case Some(f) => f(this)
+      case Some(f) => SvgContext.within(svgContext)(f(this))
       case None => super.refresh()
     }
   }
@@ -33,7 +34,7 @@ class NodesComponentController(val initF: NodesComponentController => Either[Str
   var afterInit: List[NodesComponentController => Unit] = Nil
 
   def init(): Either[String, NodesComponentController] = {
-    initF(this).map { c =>
+    SvgContext.within(svgContext)(initF(this)).map { c =>
       c.markMounted()
       onInit(c)
       afterInit.foreach(_(c))

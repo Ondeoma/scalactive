@@ -10,6 +10,7 @@ import io.github.ondeoma.scalactive.models.*
 import io.github.ondeoma.scalactive.models.Selector.*
 import io.github.ondeoma.scalactive.reactive.*
 import io.github.ondeoma.scalactive.utils.DomUtil.*
+import io.github.ondeoma.scalactive.utils.SvgContext
 import io.github.ondeoma.scalactive.utils.TypeAlias.*
 import org.scalajs.dom.*
 
@@ -97,13 +98,13 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
         n match {
           case c: Comment =>
             if (bufGC.nonEmpty && c.data.startsWith("cm-")) comments.update(c.data, c)
-          case e: HTMLElement if bufEE.nonEmpty =>
+          case e: Element if bufEE.nonEmpty =>
             val attrs = e.attributes
             var i = attrs.length - 1
             while (i >= 0) {
               val name = attrs(i).name
               // 目印の属性は残す(取り除くと1,000行あたり数ms遅くなる. IDは連番で、属性名は使い回される)
-              if (name.startsWith("data-cm-")) elements.update(name.drop("data-".length), e)
+              if (name.startsWith("data-cm-")) elements.update(name.drop("data-".length), e.asInstanceOf[HTMLElement])
               i -= 1
             }
           case _ => ()
@@ -112,7 +113,8 @@ class ComponentManager private(genHtml: ComponentManager => HTML) {
       }
       val gcs = bufGC.toList.flatMap { (commentId, gen) =>
         comments.get(commentId) match {
-          case Some(c) => Some(gen(ele, AddMethod.afterNode(c)))
+          // 目印の親がSVGの要素なら、子はSVGの文脈で描画する(子のコントローラーが作られたときに覚える)
+          case Some(c) => Some(SvgContext.within(SvgContext.isSvgParent(c.parentNode))(gen(ele, AddMethod.afterNode(c))))
           case None =>
             io.github.ondeoma.scalactive.utils.ConsoleUtil.error(s"Not Found Comment: `$commentId`")
             None

@@ -13,6 +13,9 @@ trait ComponentController[CC <: ComponentController[?]] {
   private[scalactive] val boundary: Option[io.github.ondeoma.scalactive.components.BoundaryHandle] =
     io.github.ondeoma.scalactive.components.ErrorBoundaryContext.current
 
+  /** 作られたときにSVGの要素の中へ描画していたか. init・描き直しはこの文脈で描画します */
+  private[scalactive] val svgContext: Boolean = io.github.ondeoma.scalactive.utils.SvgContext.current
+
   private var scrollX: Double = 0
   private var scrollY: Double = 0
 
