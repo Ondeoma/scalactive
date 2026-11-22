@@ -2,8 +2,10 @@ package io.github.ondeoma.scalactive.compiler
 
 class StCompilerSuite extends munit.FunSuite {
 
-  private def compile(src: String, name: String = "Foo", pkg: Option[String] = Some("a.b")): StOutput = {
-    StCompiler.compile(StInput(src, s"a/b/$name.st", name, pkg)) match {
+  // 版を指定しない場合は 3.3(@nowarn を付けない版)として生成する
+  private def compile(src: String, name: String = "Foo", pkg: Option[String] = Some("a.b"),
+                      scalaVersion: Option[String] = Some("3.3.7")): StOutput = {
+    StCompiler.compile(StInput(src, s"a/b/$name.st", name, pkg, scalaVersion = scalaVersion)) match {
       case Right(o) => o
       case Left(e) => fail(e.toString)
     }
@@ -587,9 +589,39 @@ class StCompilerSuite extends munit.FunSuite {
 
   test("同じディレクトリの.stは完全修飾名で参照し、組み込み(RouterLinkなど)と同じ名前でも利用者のものを使う") {
     val c = StCompiler.compile(StInput("""<template><div><RouterLink to="/" /><Other /></div></template>""", "a/b/Foo.st", "Foo", Some("a.b"),
-      siblings = Set("Foo", "RouterLink"))).fold(e => fail(e.toString), _.code)
+      siblings = Set("Foo", "RouterLink"), scalaVersion = Some("3.3.7"))).fold(e => fail(e.toString), _.code)
     assert(c.contains("_root_.a.b.RouterLink(to = \"/\")"), c)
     assert(c.contains("given __CM = __cm2; Other() })"), c)
+  }
+
+  test("Scala 3.7以降では、子コンポーネントかscriptがあればobjectに @nowarn を付ける") {
+    val nowarn = "@scala.annotation.nowarn(\"msg=Implicit parameters should be provided with a `using` clause\")\nobject Foo "
+    val child = """<template><div><Child :n="s.n" /></div></template>"""
+    val script = "<script>\nval routes = List(\"/\" -> (_ => Home()))\n</script>\n<template><p>x</p></template>"
+    val plain = "<template><p>x</p></template>"
+    for (v <- List(Some("3.7.0"), Some("3.9.0"), Some("3.10.1-RC1"), None)) {
+      assert(compile(child, scalaVersion = v).code.contains(nowarn), v)
+      assert(compile(script, scalaVersion = v).code.contains(nowarn), v)
+      assert(!compile(plain, scalaVersion = v).code.contains("nowarn(\"msg=Implicit"), v)
+    }
+    for (v <- List("3.3.7", "3.6.4"); src <- List(child, script)) {
+      assert(!compile(src, scalaVersion = Some(v)).code.contains("nowarn(\"msg=Implicit"), v)
+    }
+  }
+
+  test("componentsの下のパッケージ(utilsなど)は、パッケージとして使っているときだけヘッダーのimportから除く") {
+    def header(script: String) = compile(s"<script>\n$script\n</script>\n<template><p>x</p></template>").code.linesIterator
+      .find(_.startsWith("import io.github.ondeoma.scalactive.components.")).get
+    assertEquals(header("def f = 1"), "import io.github.ondeoma.scalactive.components.*")
+    assertEquals(header("def f = utils.Foo.x"), "import io.github.ondeoma.scalactive.components.{utils as _, *}")
+    // scriptのimportの中の名前も数える(除かないと、importの utils が components.utils になる)
+    assertEquals(header("import utils.Foo\nimport routes.Bar\ndef f = Foo.x"),
+      "import io.github.ondeoma.scalactive.components.{routes as _, utils as _, *}")
+    // 文字列やコメントの中の名前は数えない
+    assertEquals(header("// utils\ndef f = \"fors\""), "import io.github.ondeoma.scalactive.components.*")
+    // 変数名・項目名・メンバーの選択(s.inputs)は数えない
+    assertEquals(header("case class S(inputs: Int = 0)\nval texts = Map(1 -> 2)\ndef f(s: S) = texts(s.inputs)"),
+      "import io.github.ondeoma.scalactive.components.*")
   }
 
   test("errors carry line numbers") {

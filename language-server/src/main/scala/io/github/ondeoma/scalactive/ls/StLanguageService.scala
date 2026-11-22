@@ -165,7 +165,7 @@ final class StLanguageService(log: String => Unit) {
           case Left(msg) => Left(PcFailure(msg))
           case Right(p) =>
             val root = StSources.rootOf(p.config.sourceRoots, path).get
-            StCompiler.compile(StSources.input(root, path, text).copy(domNames = p.domNames)) match {
+            StCompiler.compile(StSources.input(root, path, text).copy(domNames = p.domNames, scalaVersion = Some(p.config.scalaVersion))) match {
               case Left(e) => Left(StFailure(e, index))
               case Right(out) =>
                 val genUri = StSources.outputFile(p.config.generatedDirectory, out).toUri

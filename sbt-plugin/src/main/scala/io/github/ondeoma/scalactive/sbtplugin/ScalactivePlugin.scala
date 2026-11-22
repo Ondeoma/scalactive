@@ -46,7 +46,7 @@ object ScalactivePlugin extends AutoPlugin {
       val outDir = (sourceManaged.value / "scalactive").toPath
       // dom.* を使っている場合だけimportするため、scalajs-domのjarから名前を読む(外部の依存だけで足りる)
       val classpath = externalDependencyClasspath.value.map(_.data.toPath)
-      generate(roots, inputs, outDir, classpath, streams.value.log)
+      generate(roots, inputs, outDir, classpath, scalaVersion.value, streams.value.log)
     },
     sourceGenerators += scalactiveGenerate.taskValue,
     scalactiveLspConfig := {
@@ -102,7 +102,8 @@ object ScalactivePlugin extends AutoPlugin {
 
   }
 
-  private def generate(roots: Seq[Path], inputs: Seq[Path], outDir: Path, classpath: Seq[Path], log: Logger): Seq[File] = {
+  private def generate(roots: Seq[Path], inputs: Seq[Path], outDir: Path, classpath: Seq[Path], scalaVersion: String,
+                       log: Logger): Seq[File] = {
     val sass = new SassStyles(roots.map(_.toFile))
     val domNames = DomNames.fromClasspath(classpath)
     val results = try {
@@ -110,7 +111,7 @@ object ScalactivePlugin extends AutoPlugin {
         val abs = file.toAbsolutePath.normalize
         val root = StSources.rootOf(roots, abs).getOrElse(sys.error(s"$abs is not under scalactiveSourceDirectories"))
         val in = StSources.input(root, abs, new String(Files.readAllBytes(abs), StandardCharsets.UTF_8))
-          .copy(styleCompiler = Some(sass.forFile(abs)), domNames = domNames)
+          .copy(styleCompiler = Some(sass.forFile(abs)), domNames = domNames, scalaVersion = Some(scalaVersion))
         StCompiler.compile(in).left.map(e => s"$abs:${e.line}: ${e.message}")
       }
     } finally sass.close()
